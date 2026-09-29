@@ -111,7 +111,7 @@ async function settings(){
     <div class="healthrow"><span>起動</span><b>${h.standalone?'PWA / ホーム画面':'ブラウザ'}</b></div>
     <div class="healthrow"><span>IndexedDB</span><b>${h.idbOk?'保存済み':'未確認'}</b></div>
     <div class="healthrow"><span>localStorageミラー</span><b>${h.localOk?'保存済み':'未確認'}</b></div>
-    <div class="healthrow"><span>永続保存</span><b>${h.persisted?'許可済み':'未許可'}</b></div>
+    <div class="healthrow"><span>保存保護</span><b>${h.persisted?'永続保存':'通常保存'}</b></div>
     <div class="healthrow"><span>最終保存</span><b>${state.updatedAt?new Date(state.updatedAt).toLocaleString('ja-JP'):'まだありません'}</b></div>
     <div class="healthrow"><span>最終バックアップ</span><b>${lastBackup}</b></div>
     <div class="healthrow"><span>使用量</span><b>${bytes(h.usage)} / ${bytes(h.quota)}</b></div>
@@ -121,13 +121,13 @@ async function settings(){
   <div class="tiny muted" style="margin-top:4px">料理・加工データ: rickychiki/sos-grand-bazaar (MIT), pinned commit 52ca676f…</div>
   <div class="stack" style="margin-top:12px">
     ${h.standalone?'':'<button class="btn secondary" id="installBtn">ホーム画面にアプリとして追加</button>'}
-    <button class="btn secondary" id="persistBtn">ブラウザに永続保存を依頼</button>
+    <button class="btn secondary" id="persistBtn">保存保護を確認・再試行</button>
     <button class="btn secondary" id="exportBtn">JSONバックアップを書き出す</button>
     <label class="btn secondary" style="text-align:center">JSONを読み込む<input id="importFile" type="file" accept="application/json" class="hidden"></label>
     <button class="btn danger" id="resetBtn">初期状態に戻す</button>
   </div><div class="sheet-actions"><button class="btn" onclick="closeModal()">閉じる</button></div>`);
   const ib=$('#installBtn');if(ib)ib.onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;closeModal();toast('ホーム画面への追加を確認しました')}else toast('Chromeメニューの「アプリをインストール / ホーム画面に追加」を使ってください')};
-  $('#persistBtn').onclick=async()=>{if(navigator.storage?.persist){const ok=await navigator.storage.persist();toast(ok?'永続保存が許可されました':'ブラウザ側で許可されませんでした');closeModal();settings()}else toast('このブラウザは未対応です')};
+  $('#persistBtn').onclick=async()=>{if(navigator.storage?.persist){const ok=await navigator.storage.persist();toast(ok?'保存保護が有効になりました':'通常保存で利用中です。Chromeは利用状況に応じて後から保存保護を許可することがあります');closeModal();settings()}else toast('このブラウザは保存保護APIに未対応です')};
   $('#exportBtn').onclick=exportJson;$('#importFile').onchange=importJson;
   $('#resetBtn').onclick=()=>confirmDelete('現在の入力を消して初期状態へ戻しますか？',async()=>{state=clone(INITIAL);await save();closeModal();render();toast('初期状態に戻しました')})
 }
