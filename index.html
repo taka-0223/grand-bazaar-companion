@@ -91,38 +91,22 @@ const CAL_BIRTHDAYS={
 '秋':{3:['ロイド'],6:['アイザック'],11:['スチュアート'],14:['メイプル'],18:['シギュン','ララミー'],20:['ユリス'],22:['ディアナ'],25:['フレイヤ'],29:['クレア']},
 '冬':{4:['ミーナ'],12:['エンジュ'],17:['アラタ'],26:['シュミット'],28:['アギ']}
 };
-const RESIDENT_GIFTS={
-'ユリス':{color:'青',best:'ハーブ香水',likes:'香水全般',avoid:'さわやかなはちみつ / チーズホールケーキ？'},
-'ディルカ':{color:'赤',best:'クリームコロッケ',likes:'カブトムシ系 / ドリア',avoid:'のりのつくだ煮'},
-'ロイド':{color:'青',best:'パエリャ',likes:'虫系 / カレー / 春巻き / 餃子 / しゅうまい',avoid:'ゆで卵'},
-'アギ':{color:'黄',best:'オムライス',likes:'クルミ / くり / ひまわり / ラディッシュ / ハッシュドポテト',avoid:'ピクルス類 / 和食 / おかゆ'},
-'シュミット':{color:'黄',best:'シチュー',likes:'ご飯 / 茶碗むし / きのこご飯',avoid:'至高のカレー？'},
-'アラタ':{color:'青',best:'うな丼',likes:'魚全般 / キノコ / ラディッシュ',avoid:'ガスパチョ？'},
-'シェルファ':{color:'黄',best:'ハーブサラダ',likes:'ハーブがゆ / トパーズ / 黒いネックレス',avoid:'辛口カレー？'},
-'エンジュ':{color:'青',best:'チェリーティー',likes:'カエル全般 / 毛糸玉',avoid:'バッタ / 卵かけご飯 / 魚？'},
-'フレイヤ':{color:'赤',best:'シトラス香水',likes:'マジックレッド草 / 宝石類 / アクセサリー類 / ホットミルク',avoid:'魚全般 / 虫？ / てんぷら'},
-'メイプル':{color:'赤',best:'エンガディナー',likes:'マジックブルー草 / マジックレッド草 / さわやかなはちみつ / 甘いもの',avoid:'カエル / トノサマガエル'},
-'カゲツ':{color:'青',best:'豆乳プリン',likes:'野草類 / 農産物全般',avoid:'料理全般 / 究極のカレー'},
-'ディアナ':{color:'赤',best:'アップルパイ',likes:'さわやかなはちみつ / 辛いもの',avoid:''},
-'フェリックス':{color:'赤',best:'辛口カレー',likes:'',avoid:'焼きなす'},
-'エーリッヒ':{color:'青',best:'春色ブレンドティー',likes:'紅茶類',avoid:'ミルク？'},
-'スチュアート':{color:'黄',best:'',likes:'羊毛全般',avoid:''},
-'サニア':{color:'赤',best:'フルーツ白玉',likes:'マジックブルー草 / マジックレッド草 / 毛糸玉全般',avoid:''},
-'メリーニ':{color:'黄',best:'フルーツサンド',likes:'',avoid:''},
-'ミーナ':{color:'黄',best:'ハーブパスタ',likes:'ハーブ全般 / マジックレッド草',avoid:'虫 / 魚 / のり'},
-'ウィルバー':{color:'赤',best:'きのこのむし焼き',likes:'焼きまつたけ',avoid:'さわやかなはちみつ'},
-'クレア':{color:'青',best:'ブロッコリーのピクルス',likes:'焼きとうもろこし',avoid:'虫全般'},
-'ケヴィン':{color:'赤',best:'オオクワガタ',likes:'ポテトのパンケーキ？',avoid:'豆腐'},
-'アイザック':{color:'赤',best:'ジャムパン？',likes:'パン類 / はちみつ',avoid:''},
-'ネリネ':{color:'黄',best:'極上ミルク',likes:'',avoid:'ポキサラダ'},
-'シギュン':{color:'青',best:'ドーナツ',likes:'',avoid:'マジックブルー草 / 豆腐 / ピーマン'},
-'ララミー':{color:'青',best:'',likes:'ラベンダー',avoid:'にんじん'},
-'ミゲル':{color:'赤',best:'',likes:'ホタル全般',avoid:''},
-'ハロルド':{color:'青',best:'',likes:'',avoid:'さわやかなはちみつ / トマトフォンデュ / トマト'},
-'シェリーン':{color:'黄',best:'海苔カレー',likes:'果物ジュース',avoid:'鉱石類 / コロッケ / カレーパン'}
+const RESIDENT_PROFILE={
+'ユリス':{color:'青',likes:'香りが良いもの',dislikes:'甘いもの'},
+'ディルカ':{color:'赤',likes:'カブトムシなどの虫',dislikes:'サラダ'},
+'ロイド':{color:'青',likes:'手の込んだ料理',dislikes:'すぐに作れる料理'},
+'アギ':{color:'黄',likes:'甘いもの',dislikes:'ピクルス'},
+'シュミット':{color:'黄',likes:'家庭的な料理',dislikes:'高級料理'},
+'アラタ':{color:'青',likes:'ガッツリしたもの',dislikes:'酸っぱいもの'},
+'シェルファ':{color:'黄',likes:'あっさりとしたもの',dislikes:'辛いもの'},
+'エンジュ':{color:'青',likes:'デザートや紅茶',dislikes:'魚'},
+'フレイヤ':{color:'赤',likes:'キレイなもの',dislikes:'天ぷら'},
+'メイプル':{color:'赤',likes:'甘いもの',dislikes:'辛いもの'},
+'カゲツ':{color:'青',likes:'あっさりとしたもの',dislikes:'料理したもの'},
+'ディアナ':{color:'赤',likes:'甘いもの',dislikes:'油っこいもの'}
 };
-const RESIDENT_GIFT_SOURCE='https://wikiwiki.jp/grandbazaar/%E5%A5%BD%E7%89%A9%E4%B8%80%E8%A6%A7';
-function openResidentCard(name,backDay=null){const x=RESIDENT_GIFTS[name]||{},uncertain=[x.best,x.likes,x.avoid].some(v=>String(v||'').includes('？'));modal(`<h3>🎂 ${esc(name)}</h3><div class="card"><div class="tiny muted">好きな色</div><div class="strong" style="margin-bottom:10px">${esc(x.color||'未確認')}</div><div class="tiny muted">一番好き / 大好物候補</div><div class="strong" style="margin-bottom:10px">${esc(x.best||'未確認')}</div><div class="tiny muted">好物</div><div class="small" style="margin-bottom:10px">${esc(x.likes||'未確認')}</div><div class="tiny muted">避けたいもの</div><div class="small">${esc(x.avoid||'未確認')}</div></div><div class="notice" style="margin-top:10px">コミュニティWikiの確認情報です。${uncertain?'「？」付きは未確定候補を含みます。':'ゲーム内での確認報告をもとにしています。'}</div><div class="sheet-actions">${backDay!=null?'<button class="btn secondary" id="backResidentDay">日付へ戻る</button>':''}<a class="btn secondary" href="${RESIDENT_GIFT_SOURCE}" target="_blank" rel="noopener" style="text-decoration:none;text-align:center">詳しい好物一覧</a><button class="btn" onclick="closeModal()">閉じる</button></div>`);if(backDay!=null)$('#backResidentDay').onclick=()=>openCalendarDay(backDay)}
+function residentBirthday(name){for(const [season,days] of Object.entries(CAL_BIRTHDAYS))for(const [day,names] of Object.entries(days))if(names.includes(name))return{season,day:Number(day)};return null}
+function openResidentCard(name,backDay=null){const x=RESIDENT_PROFILE[name]||{},bd=residentBirthday(name);modal(`<h3>🎂 ${esc(name)}</h3><div class="card"><div class="tiny muted">誕生日</div><div class="strong" style="margin-bottom:10px">${bd?`${bd.season}の月 ${bd.day}日`:'未確認'}</div><div class="tiny muted">好きな色</div><div class="strong" style="margin-bottom:10px">${esc(x.color||'未収録')}</div><div class="tiny muted">好きなもの</div><div class="small" style="margin-bottom:10px">${esc(x.likes||'ゲーム内「住人情報」の文言を未収録')}</div><div class="tiny muted">苦手なもの</div><div class="small">${esc(x.dislikes||'ゲーム内「住人情報」の文言を未収録')}</div></div><div class="notice" style="margin-top:10px">ゲーム内の「住人情報」に書かれる範囲だけ表示します。プレゼント反応などから推測した好物一覧は表示しません。</div><div class="sheet-actions">${backDay!=null?'<button class="btn secondary" id="backResidentDay">日付へ戻る</button>':''}<button class="btn" onclick="closeModal()">閉じる</button></div>`);if(backDay!=null)$('#backResidentDay').onclick=()=>openCalendarDay(backDay)}
 function calendarState(){state.calendar=state.calendar||{year:1,today:{year:1,season:'',day:null},notes:{'春':{},'夏':{},'秋':{},'冬':{}},notesByYear:{}};const c=state.calendar;c.year=Math.max(1,Number(c.year)||1);c.today=c.today||{year:c.year,season:'',day:null};c.today.year=Math.max(1,Number(c.today.year)||c.year);c.notes=c.notes||{};c.notesByYear=c.notesByYear||{};if(!c.notesByYear['1'])c.notesByYear['1']=clone(c.notes);return c}
 function calendarNotes(year,season){const c=calendarState(),yk=String(year);c.notesByYear[yk]=c.notesByYear[yk]||{};c.notesByYear[yk][season]=c.notesByYear[yk][season]||{};return c.notesByYear[yk][season]}
 function calAbs(year,season,day){return (Math.max(1,year)-1)*124+CAL_SEASONS.indexOf(season)*31+(day-1)}
