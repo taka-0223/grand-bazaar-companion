@@ -92,6 +92,7 @@ function migrateV08PlanningToV7(x){
       }
       continue;
     }
+    if(Object.prototype.hasOwnProperty.call(x.requirements,a.id)&&ownedReqs.length===0)delete x.requirements[a.id];
     out.push(a);
   }
   x.actions=out;
