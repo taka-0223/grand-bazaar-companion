@@ -280,3 +280,34 @@ function v05RenderWrite(mode){
   const input=$('#v05WriteInput'),box=$('#v05WriteResults'),raw=input.value.trim();if(!raw){box.innerHTML='<div class="v05-empty-compact">見つけたもの、やりたいこと、忘れたくないことをそのまま書けます。</div>';return}
   const known=v05KnownWriteCandidates(raw),fresh=v05NewConnections(raw);
   let html='';
+  if(known.length)html+='<div class="v05-write-section"><div class="v05-write-label">ノートにある</div><div class="card">'+known.map((c,i)=>'<button class="v05-write-row v05WriteKnown" data-i="'+i+'"><span>'+c.icon+'</span><span class="main">'+esc(c.label)+'<span class="sub">'+esc(c.sub)+'</span></span><span>開く ›</span></button>').join('')+'</div></div>';
+  if(fresh.length)html+='<div class="v05-write-section"><div class="v05-write-label">新しくつながる</div><div class="card">'+fresh.map((c,i)=>'<button class="v05-write-row v05WriteFresh" data-i="'+i+'"><span>'+c.icon+'</span><span class="main">'+esc(c.label)+'<span class="sub">'+esc(c.sub)+'</span></span><span>記録する</span></button>').join('')+'</div></div>';
+  html+='<div class="v05-write-action"><button class="btn secondary" id="v05AsMemo">📝 メモ</button><button class="btn secondary" id="v05AsGoal">🎯 進める</button><button class="btn secondary" id="v05AsAction">□ やること</button>'+(mode==='crop'?'<button class="btn secondary" id="v05AsCustom">🌱 品目</button>':'')+'</div>';
+  box.innerHTML=html;
+  $$('.v05WriteKnown').forEach(b=>b.onclick=function(){v05OpenKnown(known[Number(b.dataset.i)])});
+  $$('.v05WriteFresh').forEach(b=>b.onclick=function(){v05ConnectCandidate(fresh[Number(b.dataset.i)])});
+  $('#v05AsMemo').onclick=function(){v05SaveMemo(raw)};$('#v05AsGoal').onclick=function(){v05CreateGoal(raw)};$('#v05AsAction').onclick=function(){v05CreateAction(raw)};if($('#v05AsCustom'))$('#v05AsCustom').onclick=function(){v05CreateCustomEntity(raw)};
+}
+window.openWrite=function(mode){
+  mode=mode||'capture';modal('<h3>'+(mode==='search'?'ノートを探す':'書く')+'</h3><div class="field"><input id="v05WriteInput" class="search v05-write-input" autocomplete="off" placeholder="名前やメモをそのまま入力"></div><div id="v05WriteResults"></div><div class="tiny muted" style="margin-top:10px">未来の候補は出しません。確実につながらない入力は、そのままメモにできます。</div>');
+  const input=$('#v05WriteInput');input.oninput=function(){v05RenderWrite(mode)};input.onkeydown=function(e){if(e.key!=='Enter'||e.isComposing)return;e.preventDefault();const raw=input.value.trim();if(!raw)return;const known=v05KnownWriteCandidates(raw).filter(c=>c.exact),fresh=v05NewConnections(raw);if(known.length===1)v05OpenKnown(known[0]);else if(!known.length&&fresh.length===1)v05ConnectCandidate(fresh[0]);else v05SaveMemo(raw)};v05RenderWrite(mode);setTimeout(function(){input.focus()},40);
+};
+openQuickAdd=function(){openWrite('capture')};
+
+const v05LegacyShowCrop=showCrop;showCrop=function(id){v05TouchRecent('crop',id,name(id));return v05LegacyShowCrop(id)};
+const v05LegacyShowRecipe=showRecipe;showRecipe=function(id){v05TouchRecent('recipe',id,rname(id));return v05LegacyShowRecipe(id)};
+const v05LegacyShowGoal=showGoal;showGoal=function(id){const g=state.goals.find(x=>x.id===id);if(g)v05TouchRecent('goal',id,g.title);return v05LegacyShowGoal(id)};
+const v05LegacyShowRequest=showRequestRecord;showRequestRecord=function(id){const r=requestsState().find(x=>x.id===id);if(r)v05TouchRecent('request',id,r.title);return v05LegacyShowRequest(id)};
+const v05LegacyResident=openResidentCard;openResidentCard=function(n,day){v05TouchRecent('resident',n,n);return v05LegacyResident(n,day)};
+
+function v05InstallNav(){
+  const old=document.querySelector('#app > #quickAdd');if(old)old.remove();
+  const nav=$('.bottomnav');if(!nav)return;
+  nav.innerHTML='<button class="navbtn active" data-nav="home"><span>☀️</span>きょう</button><button class="navbtn" data-nav="plan"><span>▶</span>進行中</button><button id="v05Write" class="navwrite" aria-label="書く">＋<small>書く</small></button><button class="navbtn" data-nav="inbox"><span>📖</span>ノート</button>';
+  $$('.navbtn').forEach(function(b){b.onclick=function(){show(b.dataset.nav);if(b.dataset.nav==='home')home();if(b.dataset.nav==='plan')plan();if(b.dataset.nav==='inbox')inbox()}});$('#v05Write').onclick=function(){openWrite('capture')};
+}
+
+v05InstallNav();
+state.ui=state.ui||{};if(!state.ui.v05NotebookShelf)state.ui.v05NotebookShelf='index';
+home();plan();inbox();show('home');
+})();
