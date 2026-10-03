@@ -170,3 +170,65 @@ plan=function(){
   $('#plan').innerHTML=html;
   v05BindProgress();
   $('#v05ToggleDone')?.addEventListener('click',async function(){state.ui.v05ShowDone=!showDone;await save();plan()});
+  $$('.v05DoneRequest').forEach(x=>x.onclick=function(){showRequestRecord(x.dataset.id)});$$('.v05DoneGoal').forEach(x=>x.onclick=function(){showGoal(x.dataset.id)});
+};
+
+const v05LegacyInbox=inbox;
+function v05ShelfBack(){state.ui.v05NotebookShelf='index';save().then(inbox)}
+function v05NotebookIndex(){
+  const residentCount=v05KnownResidentNames().length,requestCount=requestsState().filter(r=>r.status==='completed'||r.archived).length,memoCount=(state.captures||[]).length;
+  $('#inbox').innerHTML='<div class="section"><div class="section-head"><div><div class="v05-title">ノート</div><div class="v05-sub">自分の牧場が覚えているもの</div></div></div><input id="v05NotebookSearch" class="search v05-notebook-search" placeholder="ノートを探す / 書く" readonly><div class="v05-shelves"><button class="v05-shelf" data-shelf="crops"><span class="v05-shelf-icon">🌱</span><div class="v05-shelf-name">作物と花</div><div class="v05-shelf-count">'+(state.knownEntities||[]).length+'件</div></button><button class="v05-shelf" data-shelf="recipes"><span class="v05-shelf-icon">🍳</span><div class="v05-shelf-name">料理</div><div class="v05-shelf-count">'+(state.knownRecipes||[]).length+'件</div></button><button class="v05-shelf" data-shelf="residents"><span class="v05-shelf-icon">👤</span><div class="v05-shelf-name">住人</div><div class="v05-shelf-count">'+residentCount+'人</div></button><button class="v05-shelf" data-shelf="requests"><span class="v05-shelf-icon">🙏</span><div class="v05-shelf-name">お願いの記録</div><div class="v05-shelf-count">'+requestCount+'件</div></button><button class="v05-shelf" data-shelf="memos"><span class="v05-shelf-icon">📝</span><div class="v05-shelf-name">メモ</div><div class="v05-shelf-count">'+memoCount+'件</div></button><button class="v05-shelf" data-shelf="calendar"><span class="v05-shelf-icon">📅</span><div class="v05-shelf-name">暦</div><div class="v05-shelf-count">'+esc(v05TodayLabel())+'</div></button></div></div>';
+  $('#v05NotebookSearch').onclick=function(){openWrite('search')};
+  $$('.v05-shelf').forEach(function(b){b.onclick=async function(){const shelf=b.dataset.shelf;state.ui.v05NotebookShelf=shelf;await save();if(shelf==='crops'){show('crops');crops()}else if(shelf==='recipes'){show('recipes');recipesScreen()}else inbox()}});
+}
+function v05ResidentsShelf(){
+  const xs=v05KnownResidentNames();
+  $('#inbox').innerHTML='<button class="back v05-back" id="v05ShelfBack">‹ ノート</button><div class="section"><div class="section-head"><h2>住人</h2></div><div class="v05-inline-list">'+(xs.length?xs.map(n=>'<div class="card clickable v05ResidentOpen" data-name="'+esc(n)+'"><div class="row between"><div class="small strong">👤 '+esc(n)+'</div><b>›</b></div></div>').join(''):'<div class="card empty">まだ記録した住人はいません</div>')+'</div></div>';
+  $('#v05ShelfBack').onclick=v05ShelfBack;$$('.v05ResidentOpen').forEach(x=>x.onclick=function(){openResidentCard(x.dataset.name)});
+}
+function v05RequestsShelf(){
+  const xs=requestsState().filter(r=>r.status==='completed'||r.archived);
+  $('#inbox').innerHTML='<button class="back v05-back" id="v05ShelfBack">‹ ノート</button><div class="section"><div class="section-head"><h2>お願いの記録</h2></div>'+(xs.length?xs.map(requestCardHtml).join(''):'<div class="card empty">完了したお願いはまだありません</div>')+'</div>';
+  $('#v05ShelfBack').onclick=v05ShelfBack;$$('.requestOpen').forEach(b=>b.onclick=function(){showRequestRecord(b.dataset.id)});
+}
+function v05CalendarShelf(){
+  $('#inbox').innerHTML='<button class="back v05-back" id="v05ShelfBack">‹ ノート</button>'+seasonCalendarHtml();
+  $('#v05ShelfBack').onclick=v05ShelfBack;bindCalendar();
+}
+inbox=function(){
+  const shelf=state.ui.v05NotebookShelf||'index';
+  if(shelf==='memos'){v05LegacyInbox();$('#inbox').insertAdjacentHTML('afterbegin','<button class="back v05-back" id="v05ShelfBack">‹ ノート</button>');$('#v05ShelfBack').onclick=v05ShelfBack;return}
+  if(shelf==='residents')return v05ResidentsShelf();
+  if(shelf==='requests')return v05RequestsShelf();
+  if(shelf==='calendar')return v05CalendarShelf();
+  return v05NotebookIndex();
+};
+
+const v05LegacyCrops=crops;
+crops=function(){
+  v05LegacyCrops();
+  $('#crops').insertAdjacentHTML('afterbegin','<button class="back v05-back" id="v05CropShelfBack">‹ ノート</button>');
+  $('#v05CropShelfBack').onclick=async function(){state.ui.v05NotebookShelf='index';await save();show('inbox');inbox()};
+  const add=$('#addKnown');if(add){add.textContent='＋ 書く';add.onclick=function(){openWrite('crop')}};
+};
+const v05LegacyRecipes=recipesScreen;
+recipesScreen=function(){
+  v05LegacyRecipes();
+  $('#recipes').insertAdjacentHTML('afterbegin','<button class="back v05-back" id="v05RecipeShelfBack">‹ ノート</button>');
+  $('#v05RecipeShelfBack').onclick=async function(){state.ui.v05NotebookShelf='index';await save();show('inbox');inbox()};
+  const add=$('#addKnownRecipe');if(add){add.textContent='＋ 書く';add.onclick=function(){openWrite('recipe')}};
+};
+
+function v05KnownWriteCandidates(raw){
+  const q=norm(raw),out=[],seen=new Set();if(!q)return out;
+  const push=function(type,id,label,icon,sub){const k=type+'|'+id;if(seen.has(k))return;seen.add(k);out.push({type:type,id:String(id),label:label,icon:icon,sub:sub||'',exact:norm(label)===q})};
+  for(const id of state.knownEntities||[]){const label=name(id);if(norm(label).includes(q))push('crop',id,label,iconFor(ent(id)),'ノートにある')}
+  for(const id of state.knownRecipes||[]){const label=rname(id);if(norm(label).includes(q))push('recipe',id,label,'🍳','ノートにある')}
+  for(const n of v05KnownResidentNames())if(norm(n).includes(q))push('resident',n,n,'👤','ノートにある');
+  for(const r of requestsState())if(requestNorm(r.title).includes(requestNorm(raw)))push('request',r.id,r.title,'🙏',r.status==='completed'?'済んだお願い':'進行中のお願い');
+  for(const g of state.goals||[])if(norm(g.title).includes(q))push('goal',g.id,g.title,'🎯',g.status==='done'?'済んだ目標':'進行中');
+  for(const c of state.captures||[])if(norm(c.text).includes(q))push('memo',c.id,c.text,'📝','メモ');
+  return out.sort((a,b)=>Number(b.exact)-Number(a.exact)||a.label.localeCompare(b.label,'ja')).slice(0,8);
+}
+function v05NewConnections(raw){
+  const out=[],q=norm(raw);if(!q)return out;
