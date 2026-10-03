@@ -232,3 +232,51 @@ function v05KnownWriteCandidates(raw){
 }
 function v05NewConnections(raw){
   const out=[],q=norm(raw);if(!q)return out;
+  const existingMasterIds=new Set(requestsState().map(r=>r.masterId).filter(Boolean));
+  const req=requestMasterExactMatches(raw,'');if(req.length===1&&!existingMasterIds.has(req[0].id))out.push({type:'requestMaster',id:req[0].id,label:req[0].title,icon:'🙏',sub:req[0].requester+'のお願い'});
+  const recipes=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);const rr=recipes.find(x=>norm(rname(x.id))===q||norm(x.id)===q);if(rr&&!state.knownRecipes.includes(rr.id))out.push({type:'recipeMaster',id:rr.id,label:rname(rr.id),icon:'🍳',sub:'料理として記録'});
+  const e=findByName(raw);if(e&&!state.knownEntities.includes(e.id)&&(isCropEntity(e)||isFruitEntity(e)||isFlower(e)||isMushroom(e)))out.push({type:'entityMaster',id:e.id,label:name(e.id),icon:iconFor(e),sub:'品目として記録'});
+  const rn=v05AllResidentNames().find(n=>norm(n)===q);if(rn&&!v05KnownResidentNames().includes(rn))out.push({type:'residentMaster',id:rn,label:rn,icon:'👤',sub:'住人として記録'});
+  return out;
+}
+function v05OpenKnown(c){
+  closeModal();if(c.type==='crop')showCrop(c.id);else if(c.type==='recipe')showRecipe(c.id);else if(c.type==='resident')openResidentCard(c.id);else if(c.type==='request')showRequestRecord(c.id);else if(c.type==='goal')showGoal(c.id);else if(c.type==='memo')openCapture(c.id);
+}
+async function v05SaveMemo(text){
+  const now=new Date().toISOString();state.captures.unshift({id:'c'+Date.now(),text:text,status:'active',processed:false,children:[],createdAt:now,updatedAt:now});await save();closeModal();toast('メモしました');if($('#inbox').classList.contains('active'))inbox();else home();
+}
+async function v05CreateGoal(text){
+  const id='g'+Date.now();state.goals.unshift({id:id,title:text,status:'active',blocker:'',kind:'goal',tags:[],season:state.season||'',createdAt:new Date().toISOString()});state.requirements[id]=[];await save();closeModal();showGoal(id);toast('進行中に追加しました');
+}
+async function v05CreateAction(text){
+  state.actions.unshift({id:'a'+Date.now(),text:text,done:false,goalId:null,pinned:false,createdAt:new Date().toISOString()});await save();closeModal();show('plan');plan();toast('やることに追加しました');
+}
+async function v05RecordEntity(id){
+  const e=ent(id);if(!state.knownEntities.includes(id))state.knownEntities.push(id);const p=player(id),ms=masterSeasonsForId(id);if(!(p.knownSeasons||[]).length&&ms.length)p.knownSeasons=ms;p.updatedAt=new Date().toISOString();await save();closeModal();showCrop(id);toast('ノートにつながりました');
+}
+async function v05RecordRecipe(id){
+  const r=recipeData(id);if(!r)return;if(!state.knownRecipes.includes(id))state.knownRecipes.push(id);for(const x of r.ingredient||[])addKnownConcrete(x);await save();closeModal();showRecipe(id);toast('ノートにつながりました');
+}
+async function v05RecordResident(nameValue){
+  state.residentProfiles=state.residentProfiles||{};state.residentProfiles[nameValue]=state.residentProfiles[nameValue]||{};await save();closeModal();openResidentCard(nameValue);toast('住人をノートに記録しました');
+}
+function v05RequestRecordSheet(master){
+  const earlier=requestEarlierStepCandidates(master);
+  modal('<h3>🙏 '+esc(master.title)+'</h3><div class="tiny muted">'+esc(master.requester)+'</div>'+requestMasterPreview(master)+(earlier.length?'<div class="card" style="margin-top:10px"><div class="switchline"><div><div class="small strong">以前のお願いも記録する</div><div class="tiny">過去'+earlier.length+'件を補完します。完了日は記録しません。</div></div><label class="switch"><input id="v05BackfillRequest" type="checkbox" checked><span class="slider"></span></label></div></div>':'')+'<div class="stack" style="margin-top:12px"><button class="btn" id="v05RequestActive">進行中として記録</button><button class="btn secondary" id="v05RequestDone">完了済みとして記録</button><button class="btn ghost" onclick="closeModal()">戻る</button></div>');
+  const commit=async function(status){const now=new Date().toISOString(),done=status==='completed',r={id:'rq'+Date.now(),title:master.title,requester:master.requester,status:status,note:'',reward:master.reward||'',masterId:master.id,objectives:done?requestMasterCompletedObjectives(master):requestMasterCloneObjectives(master),createdAt:now,updatedAt:now};if(done)r.completedAt=now;const backfill=!!$('#v05BackfillRequest')?.checked;let n=0;await withUndo('お願い登録を元に戻せます',function(){state.requests.unshift(r);if(backfill)n=applyEarlierRequestHistory(master,now)});closeModal();showRequestRecord(r.id);toast(n?'お願いと過去'+n+'件を記録しました':'お願いを記録しました')};
+  $('#v05RequestActive').onclick=function(){commit('active')};$('#v05RequestDone').onclick=function(){commit('completed')};
+}
+function v05CreateCustomEntity(raw){
+  modal('<h3>「'+esc(raw)+'」を品目として記録</h3><div class="field"><label>種類</label><select id="v05CustomKind"><option value="crop">作物</option><option value="fruit">果樹</option><option value="flower">花</option><option value="custom">きのこ・その他</option></select></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">戻る</button><button class="btn" id="v05CustomSave">記録</button></div>');
+  $('#v05CustomSave').onclick=async function(){const id='user_'+Date.now(),e={id:id,name_ja:raw,kind:$('#v05CustomKind').value,attributes:{},provenance:{source:'user'}};state.customEntities.push(e);state.knownEntities.push(id);player(id).updatedAt=new Date().toISOString();await save();closeModal();showCrop(id);toast('品目として記録しました')};
+}
+function v05ConnectCandidate(c){
+  if(c.type==='requestMaster')return v05RequestRecordSheet(requestMasterById.get(c.id));
+  if(c.type==='entityMaster')return v05RecordEntity(c.id);
+  if(c.type==='recipeMaster')return v05RecordRecipe(c.id);
+  if(c.type==='residentMaster')return v05RecordResident(c.id);
+}
+function v05RenderWrite(mode){
+  const input=$('#v05WriteInput'),box=$('#v05WriteResults'),raw=input.value.trim();if(!raw){box.innerHTML='<div class="v05-empty-compact">見つけたもの、やりたいこと、忘れたくないことをそのまま書けます。</div>';return}
+  const known=v05KnownWriteCandidates(raw),fresh=v05NewConnections(raw);
+  let html='';
