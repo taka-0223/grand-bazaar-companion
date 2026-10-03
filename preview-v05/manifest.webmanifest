@@ -1,0 +1,19 @@
+{
+  "name": "風のグランドバザール 牧場ノート Preview",
+  "short_name": "グラバザPreview",
+  "description": "Product Architecture v0.5 実機確認用プレビュー",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1e9",
+  "theme_color": "#597852",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
