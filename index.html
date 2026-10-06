@@ -31,7 +31,7 @@ for(const x of INGREDIENT_ROWS)if(!baseById.has(x.id))baseById.set(x.id,{id:x.id
 for(const x of PROCESS_ROWS)if(!baseById.has(x.id))baseById.set(x.id,{id:x.id,name_ja:REMOTE_JA[x.id]||x.id,name_en:null,kind:'processed',attributes:{price:x.price,windmill:x.windmill,craft_time:x.craft_time}});
 for(const x of GROUP_ROWS)if(!baseById.has(x.id))baseById.set(x.id,{id:x.id,name_ja:REMOTE_JA[x.id]||x.id,name_en:null,kind:'group',attributes:{}});
 for(const x of RECIPE_ROWS)if(!baseById.has(x.id))baseById.set(x.id,{id:x.id,name_ja:REMOTE_JA[x.id]||x.id,name_en:null,kind:'dish',attributes:{price:x.price,category:x.category,effect:x.effect}});
-let state=null,undoTimer=null,undoSnapshot=null,needsStableMigration=false,DETAIL_CONTEXT='';
+let state=null,undoTimer=null,undoSnapshot=null,needsStableMigration=false,DETAIL_CONTEXT='',GOAL_RETURN_CONTEXT='plan';
 function parseOldSeasons(t=''){return ['春','夏','秋','冬'].filter(x=>t.includes(x))}
 const SEASON_JA={spring:'春',summer:'夏',autumn:'秋',fall:'秋',winter:'冬','春':'春','夏':'夏','秋':'秋','冬':'冬'};
 function masterSeasonsForId(id){const e=baseById.get(id);const raw=e?.attributes?.seasons||e?.attributes?.fruit_seasons||e?.attributes?.season||[];return [...new Set((Array.isArray(raw)?raw:[raw]).map(x=>SEASON_JA[String(x).toLowerCase()]||SEASON_JA[x]).filter(Boolean))]}
@@ -339,7 +339,7 @@ function recentMeta(entry){
 function recentItems(){const out=[];for(const e of state.ui.recent||[]){const m=recentMeta(e);if(m)out.push(m);if(out.length>=3)break}return out}
 function recentStripHtml(){const xs=recentItems();if(!xs.length)return'';return `<div class="recentStrip"><span class="recentLabel">さっき</span><div class="recentItems">${xs.map(x=>`<button class="recentItem recentOpen" data-kind="${x.kind}" data-id="${esc(x.id)}" title="${esc(x.label)}">${x.icon} ${esc(x.label)}</button>`).join('')}</div></div>`}
 function bindRecent(){$$('.recentOpen').forEach(b=>b.onclick=()=>openRecent(b.dataset.kind,b.dataset.id))}
-function openRecent(kind,id){if(kind==='crop')showCrop(id);else if(kind==='recipe')showRecipe(id);else if(kind==='goal')showGoal(id);else if(kind==='request')showRequestRecord(id);else if(kind==='resident')openResidentCard(id);else if(kind==='capture')openCapture(id)}
+function openRecent(kind,id){if(kind==='crop')showCrop(id);else if(kind==='recipe')showRecipe(id);else if(kind==='goal'){if(activeScreenId()==='home')openGoalSheet(id);else showGoal(id)}else if(kind==='request')showRequestRecord(id);else if(kind==='resident')openResidentCard(id);else if(kind==='capture')openCapture(id)}
 function touchRecent(kind,id){if(id==null)return;state.ui=state.ui||{};const key=String(id),now=new Date().toISOString(),old=Array.isArray(state.ui.recent)?state.ui.recent:[];state.ui.recent=[{kind,id:key,at:now},...old.filter(x=>!(x.kind===kind&&String(x.id)===key))].slice(0,10);void save()}
 function bazaarPrepItems(){const g=findBazaarGoal();return g?state.actions.filter(a=>a.goalId===g.id):[]}
 function bazaarPrepHtml(){
@@ -347,8 +347,8 @@ function bazaarPrepHtml(){
   return `<div class="section"><div class="section-head"><h2>${title}</h2>${b?(g?'<button class="miniLink" id="openBazaarPlan">目標を開く</button>':'<button class="miniLink" id="createBazaarPlan">目標を作る</button>'):''}</div><div class="card">${!b?'<div class="tiny muted" style="margin-bottom:8px">カレンダーで「今日」を設定すると残り日数を表示します。</div>':''}${g?`<div class="tiny muted" style="margin-bottom:8px">関連：${esc(bazaarRelationLabel(goalBazaar(g)))}</div>`:''}${items.length?items.map(x=>`<div class="bazaarPrepRow ${x.done?'done':''}"><input class="check bazaarPrepCheck" type="checkbox" data-id="${x.id}" ${x.done?'checked':''}><div class="grow prepText small clickable bazaarPrepEdit" data-id="${x.id}">${esc(x.text)}</div><button class="iconAction bazaarPrepDelete" data-id="${x.id}">×</button></div>`).join(''):`<div class="empty">${g?'やることはまだありません':'この回に関連する目標はまだありません'}</div>`}</div></div>`
 }
 function bindBazaarPrep(){
-  $('#openBazaarPlan')?.addEventListener('click',()=>{const g=findBazaarGoal();if(g)showGoal(g.id)});
-  $('#createBazaarPlan')?.addEventListener('click',async()=>{const g=await createBazaarGoalForNext();if(g)showGoal(g.id)});
+  $('#openBazaarPlan')?.addEventListener('click',()=>{const g=findBazaarGoal();if(g)openGoalSheet(g.id)});
+  $('#createBazaarPlan')?.addEventListener('click',async()=>{const g=await createBazaarGoalForNext();if(g)openGoalSheet(g.id)});
   $$('.bazaarPrepCheck').forEach(x=>x.onchange=async()=>{const i=state.actions.find(y=>y.id===x.dataset.id);if(i)i.done=x.checked;await save();home()});
   $$('.bazaarPrepEdit').forEach(x=>x.onclick=()=>{const g=findBazaarGoal();if(g)openAction(g.id,x.dataset.id)});
   $$('.bazaarPrepDelete').forEach(x=>x.onclick=async e=>{e.stopPropagation();state.actions=state.actions.filter(y=>y.id!==x.dataset.id);await save();home()})
@@ -687,7 +687,7 @@ function home(){
   <div class="section"><div class="section-head"><h2>未整理メモ</h2></div><div class="card">${memos.length?memos.map(c=>`<div class="row between clickable homeCapture" data-id="${c.id}" style="padding:7px 0"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">ありません</div>'}</div></div>${bazaarPrepHtml()}`;
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.homeActionOpen').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id));
-  $$('.homeGoal').forEach(x=>x.onclick=()=>showGoal(x.dataset.id));
+  $('.homeGoal').forEach(x=>x.onclick=()=>openGoalSheet(x.dataset.id));
   $$('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
   $$('.homeNav').forEach(x=>x.onclick=()=>openHomeNav(x.dataset.dest));
   bindTodayStrip();bindSeasonReminderUi();bindRecent();bindBazaarPrep();bindCalendar()
@@ -848,7 +848,7 @@ function confirmRevealProcess(id){const p=processData(id);if(!p)return;modal(`<h
 function openRecipeGoal(rid){const r=recipeData(rid);modal(`<h3>${esc(rname(rid))}を作りたい</h3><div class="field"><label>作る数</label><input id="recipeQty" type="number" min="1" value="1" inputmode="numeric"></div><p class="small muted">必要素材だけをRequirementとして作成します。在庫数は必要なものだけ後から更新します。</p><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="createRecipeGoal">計画に追加</button></div>`);$('#createRecipeGoal').onclick=async()=>{const qty=Math.max(1,+$('#recipeQty').value||1),existing=recipeGoalFor(rid);if(existing){closeModal();showGoal(existing.id);toast('進行中の計画があります');return}const gid='g'+Date.now(),counts=countIngredients(r.ingredient||[]);state.goals.unshift({id:gid,tags:[],title:`${rname(rid)} ×${qty}`,status:'active',season:state.season||'',sourceRecipeId:rid,targetQty:qty});state.requirements[gid]=counts.map(x=>({label:rname(x.id),targetId:x.id,targetType:groupById.has(x.id)?'group':'entity',need:x.qty*qty,have:0,quality:'',sourceRecipeId:rid}));await save();closeModal();showGoal(gid);toast('料理の計画を追加しました')}}
 function recipeReverseSection(g,rs){if(!g.sourceRecipeId)return'';const blocks=rs.map(r=>{let target=r.targetId,p=processData(target),known=p&&(state.knownProcesses||[]).includes(target);if(!p&&groupById.has(target)){const opt=knownGroupOptions(target).find(x=>processData(x)&&(state.knownProcesses||[]).includes(x));if(opt){target=opt;p=processData(opt);known=true}}if(p&&known){const ins=countIngredients(p.ingredient||[]).map(x=>rname(x.id)).join(' + '),outName=rname(target);return `<div class="reverseBox"><div class="small strong">${esc(r.label)}</div>${target!==r.targetId?`<div class="tiny">既知の候補：${esc(outName)}</div>`:''}<div class="tiny">${esc(ins)} → ${esc(windmillJa(p.windmill))} → ${esc(outName)}</div><button class="miniLink addDerivedAction" data-gid="${g.id}" data-text="${esc(outName)}を${windmillJa(p.windmill)}で作る">やることに追加</button></div>`}if(state.playerState[target])return `<div class="reverseBox"><div class="small strong">${esc(r.label)}</div>${playerHint(target)}</div>`;return''}).filter(Boolean).join('');return blocks?`<div class="section"><div class="section-head"><h2>料理から逆算</h2></div><div class="card">${blocks}</div></div>`:''}
 function bindDerivedActions(){$$('.addDerivedAction').forEach(b=>b.onclick=async()=>{const text=b.dataset.text,gid=b.dataset.gid;if(!state.actions.some(a=>!a.done&&a.goalId===gid&&a.text===text))state.actions.unshift({id:'a'+Date.now(),text,done:false,goalId:gid,pinned:false});await save();showGoal(gid);toast('やることに追加しました')})}
-function openRecipeGoalQty(gid){const g=state.goals.find(x=>x.id===gid);if(!g?.sourceRecipeId)return;const r=recipeData(g.sourceRecipeId);modal(`<h3>作る数を変更</h3><div class="field"><label>${esc(rname(g.sourceRecipeId))}</label><input id="editRecipeQty" type="number" min="1" value="${g.targetQty||1}" inputmode="numeric"></div><p class="small muted">自動生成した必要数を新しい作る数に合わせます。現在数は維持します。</p><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="saveRecipeQty">更新</button></div>`);$('#saveRecipeQty').onclick=async()=>{const qty=Math.max(1,+$('#editRecipeQty').value||1),old=Math.max(1,g.targetQty||1);g.targetQty=qty;g.title=`${rname(g.sourceRecipeId)} ×${qty}`;for(const req of state.requirements[gid]||[]){if(req.sourceRecipeId===g.sourceRecipeId){const unit=Math.max(1,Math.round(req.need/old));req.need=unit*qty;req.have=Math.min(req.have,req.need)}}await save();closeModal();showGoal(gid);toast('作る数を更新しました')}}
+function openRecipeGoalQty(gid){const g=state.goals.find(x=>x.id===gid);if(!g?.sourceRecipeId)return;modal(`<h3>作る数を変更</h3><div class="field"><label>${esc(rname(g.sourceRecipeId))}</label><input id="editRecipeQty" type="number" min="1" value="${g.targetQty||1}" inputmode="numeric"></div><p class="small muted">自動生成した必要数を新しい作る数に合わせます。現在数は維持します。</p><div class="sheet-actions"><button class="btn secondary" id="cancelRecipeQty">キャンセル</button><button class="btn" id="saveRecipeQty">更新</button></div>`);$('#cancelRecipeQty').onclick=()=>returnToGoal(gid);$('#saveRecipeQty').onclick=async()=>{const qty=Math.max(1,+$('#editRecipeQty').value||1),old=Math.max(1,g.targetQty||1);g.targetQty=qty;g.title=`${rname(g.sourceRecipeId)} ×${qty}`;for(const req of state.requirements[gid]||[]){if(req.sourceRecipeId===g.sourceRecipeId){const unit=Math.max(1,Math.round(req.need/old));req.need=unit*qty;req.have=Math.min(req.have,req.need)}}await save();returnToGoal(gid);toast('作る数を更新しました')}}
 function plan(){
   const goals=state.goals.filter(g=>g.status!=='done'),completed=state.goals.filter(g=>g.status==='done'),actions=state.actions.filter(a=>!a.done),showCompleted=!!state.ui.planShowCompleted;
   $('#plan').innerHTML=`<div class="hero"><h1>計画</h1><p>お願い・目標・やることを、ここでまとめて管理します。</p></div>
@@ -866,9 +866,44 @@ function plan(){
   $$('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();plan()});
 }
 
-async function toggleAction(id,done,goalContext=null){await withUndo(done?'完了を元に戻せます':'変更を元に戻せます',()=>{const a=state.actions.find(x=>x.id===id);if(a)a.done=done});if(goalContext)showGoal(goalContext);else render()}
+async function toggleAction(id,done,goalContext=null){await withUndo(done?'完了を元に戻せます':'変更を元に戻せます',()=>{const a=state.actions.find(x=>x.id===id);if(a)a.done=done});if(goalContext)returnToGoal(goalContext);else render()}
+function returnToGoal(id){if(GOAL_RETURN_CONTEXT==='home')openGoalSheet(id);else showGoal(id)}
+function leaveGoalAfterDelete(){if(GOAL_RETURN_CONTEXT==='home'){closeModal();home()}else{closeModal();show('plan');plan()}}
+function goalSheetHtml(g){
+  const id=g.id,kind=planKind(g),rs=state.requirements[id]||[],acts=state.actions.filter(a=>a.goalId===id).sort((a,b)=>Number(a.done)-Number(b.done)),isDone=g.status==='done',isRequest=kind==='request',isBazaar=isBazaarGoal(g),statusLabel={active:'進行中',someday:'いつか',blocked:'止まっている',done:'完了'}[g.status]||'進行中',reqTitle=isBazaar?'出品予定':'必要なもの';
+  return `<div class="row between" style="align-items:flex-start;gap:10px"><div class="grow"><div class="tiny muted">${esc(statusLabel)}</div><h3 style="margin:3px 0 0">🎯 ${esc(g.title)}</h3></div><button class="iconAction" id="closeGoalSheet" aria-label="閉じる">×</button></div>
+    ${isBazaar?`<div class="card" style="margin-top:12px"><div class="tiny muted">関連</div><div class="small strong" style="margin-top:4px">🎪 ${esc(bazaarRelationLabel(goalBazaar(g)))}</div></div>`:''}
+    ${isRequest&&g.requestContent?`<div class="notice" style="margin-top:12px"><b>お願い内容</b><br>${esc(g.requestContent)}${g.reward?`<div class="small" style="margin-top:8px"><b>報酬：</b>${esc(g.reward)}</div>`:''}</div>`:''}
+    ${g.blocker?`<div class="notice" style="margin-top:12px">${esc(g.blocker)}</div>`:''}
+    <div class="section" style="margin-top:14px"><div class="section-head"><h2>${reqTitle}</h2>${isDone?'':'<button class="btn secondary smallbtn" id="sheetAddReq">＋追加</button>'}</div><div class="card">${rs.length?rs.map((r,i)=>`<div class="req"><div class="row between"><div class="grow clickable sheetReqEdit" data-i="${i}"><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="countPair"><span>現在 <b>${r.have}</b></span><span>${isBazaar?'目標':'必要'} <b>${r.need}</b></span></div></div><div class="stepper"><button class="sheetReqStep" data-i="${i}" data-d="-1">−</button><button class="sheetReqStep" data-i="${i}" data-d="1">＋</button></div></div></div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
+    <div class="section"><div class="section-head"><h2>やること</h2>${isDone?'':'<button class="btn secondary smallbtn" id="sheetAddAction">＋追加</button>'}</div><div class="card">${acts.length?acts.map(a=>`<div class="actionrow ${a.done?'done':''}"><input class="check sheetActionCheck" type="checkbox" data-id="${a.id}" ${a.done?'checked':''}><div class="grow clickable sheetActionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div></div>${a.done?'':`<button class="iconAction pin sheetPin ${a.pinned?'active':''}" data-id="${a.id}">★</button>`}</div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
+    <div class="section"><div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div><div class="card"><textarea id="sheetGoalMemo" placeholder="この計画について残しておきたいこと">${esc(g.memo||'')}</textarea></div></div>
+    ${recipeReverseSection(g,rs)}
+    <div class="goalCompleteBox" style="margin-top:14px">${isDone?'<button class="btn secondary goalCompleteAction" id="sheetReopenGoal">進行中に戻す</button>':'<button class="btn goalCompleteAction" id="sheetCompleteGoal"><span class="goalCompleteIcon">✓</span>この計画を完了する</button>'}</div>
+    <div class="sheet-actions"><button class="btn secondary" id="sheetEditGoal">編集</button>${g.sourceRecipeId?'<button class="btn secondary" id="sheetEditRecipeQty">個数</button>':''}<button class="btn" id="sheetCloseBottom">閉じる</button></div>`
+}
+function openGoalSheet(id){
+  GOAL_RETURN_CONTEXT='home';DETAIL_CONTEXT='home';
+  const g=state.goals.find(x=>x.id===id);if(!g)return;touchRecent('goal',id);
+  modal(goalSheetHtml(g));
+  const close=()=>{closeModal();home()};
+  $('#closeGoalSheet').onclick=close;$('#sheetCloseBottom').onclick=close;
+  $('#sheetEditGoal').onclick=()=>openGoal(id);
+  if(g.sourceRecipeId)$('#sheetEditRecipeQty').onclick=()=>openRecipeGoalQty(id);
+  $('#sheetAddReq')?.addEventListener('click',()=>openReq(id));
+  $('#sheetAddAction')?.addEventListener('click',()=>openAction(id));
+  $$('.sheetReqEdit').forEach(b=>b.onclick=()=>openReq(id,+b.dataset.i));
+  $$('.sheetReqStep').forEach(b=>b.onclick=async()=>{const r=state.requirements[id][+b.dataset.i];r.have=Math.max(0,Math.min(r.need,r.have+Number(b.dataset.d)));await save();openGoalSheet(id)});
+  $$('.sheetActionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked,id));
+  $$('.sheetActionEdit').forEach(x=>x.onclick=()=>openAction(id,x.dataset.id));
+  $$('.sheetPin').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.id);if(!a)return;a.pinned=!a.pinned;await save();openGoalSheet(id)});
+  bindAutosave([$('#sheetGoalMemo')],async()=>{g.memo=$('#sheetGoalMemo').value;await save()});
+  $('#sheetCompleteGoal')?.addEventListener('click',async()=>{await withUndo('計画の完了を元に戻せます',()=>{g.status='done'});close();toast('計画を完了しました')});
+  $('#sheetReopenGoal')?.addEventListener('click',async()=>{await withUndo('計画の再開を元に戻せます',()=>{g.status='active'});openGoalSheet(id);toast('計画を再開しました')});
+  bindDerivedActions()
+}
 function showGoal(id){
-  DETAIL_CONTEXT='plan';
+  GOAL_RETURN_CONTEXT='plan';DETAIL_CONTEXT='plan';
   const g=state.goals.find(x=>x.id===id);if(!g)return;touchRecent('goal',id);
   const kind=planKind(g),rs=state.requirements[id]||[],acts=state.actions.filter(a=>a.goalId===id).sort((a,b)=>Number(a.done)-Number(b.done)),isDone=g.status==='done';
   const isRequest=kind==='request',isBazaar=isBazaarGoal(g),statusLabel={active:'進行中',someday:'いつか',blocked:'止まっている',done:'完了'}[g.status]||'進行中';
@@ -908,9 +943,9 @@ function openGeneralPlan(id=null){
   modal(`<h3>${id?'目標を編集':'目標を追加'}</h3><div class="field"><label>目標</label><input id="goalTitle" value="${esc(g.title)}" placeholder="例：ピザを8個作る"></div>
     ${id?`<div class="field" style="margin-top:8px"><label>状態</label><select id="goalStatus"><option value="active" ${g.status==='active'?'selected':''}>進行中</option><option value="someday" ${g.status==='someday'?'selected':''}>いつか</option><option value="blocked" ${g.status==='blocked'?'selected':''}>止まっている</option><option value="done" ${g.status==='done'?'selected':''}>完了</option></select></div><div class="field" style="margin-top:8px"><label>止まっている理由・補足（任意）</label><input id="goalBlocker" value="${esc(g.blocker||'')}"></div>`:''}
     <div class="sheet-actions">${id?'<button class="btn danger" id="deleteGoal">削除</button>':''}<button class="btn secondary" id="closeGoalEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="createGoal">作成</button>'}</div>`);
-  $('#closeGoalEditor').onclick=()=>{closeModal();if(id)showGoal(id)};
+  $('#closeGoalEditor').onclick=()=>{closeModal();if(id)returnToGoal(id)};
   if(id){
-    $('#deleteGoal').onclick=()=>confirmDelete('この目標と必要なものを削除しますか？',async()=>{await withUndo('目標の削除を元に戻せます',()=>{state.goals=state.goals.filter(x=>x.id!==id);delete state.requirements[id];for(const a of state.actions)if(a.goalId===id)a.goalId=null});closeModal();show('plan');plan()});
+    $('#deleteGoal').onclick=()=>confirmDelete('この目標と必要なものを削除しますか？',async()=>{await withUndo('目標の削除を元に戻せます',()=>{state.goals=state.goals.filter(x=>x.id!==id);delete state.requirements[id];for(const a of state.actions)if(a.goalId===id)a.goalId=null});leaveGoalAfterDelete()});
     const persist=async()=>{const t=$('#goalTitle').value.trim();if(t)g.title=t;g.status=$('#goalStatus').value;g.blocker=$('#goalBlocker').value.trim();await save()};
     bindAutosave([$('#goalTitle'),$('#goalStatus'),$('#goalBlocker')],persist);
   }else{
@@ -921,37 +956,37 @@ function openGeneralPlan(id=null){
 function openRequestPlan(id=null){
   const g=id?state.goals.find(x=>x.id===id):{title:'',kind:'request',tags:['request'],status:'active',season:state.season||'',blocker:'',requester:'',requestContent:'',reward:''};
   modal(`<h3>${id?'お願いを編集':'住人からのお願い'}</h3><div class="field"><label>依頼人</label><input id="goalRequester" value="${esc(g.requester||'')}" placeholder="ゲーム内の依頼人"></div><div class="field" style="margin-top:8px"><label>お願い内容</label><textarea id="goalRequestContent" placeholder="ゲーム内の内容をそのまま">${esc(g.requestContent||'')}</textarea></div><div class="field" style="margin-top:8px"><label>報酬（任意）</label><input id="goalReward" value="${esc(g.reward||'')}" placeholder="ゲーム内の報酬"></div>${id?'':`<div class="card" style="margin-top:12px"><div class="small strong" style="margin-bottom:8px">最初の必要なもの（任意）</div><div class="field"><label>品物</label><input id="requestItem" placeholder="例：チーズ"></div><div class="grid2" style="margin-top:8px"><div class="field"><label>必要数</label><input id="requestNeed" type="number" min="1" value="1"></div><div class="field"><label>現在数</label><input id="requestHave" type="number" min="0" value="0"></div></div><div class="field" style="margin-top:8px"><label>品質条件（任意）</label><input id="requestQuality" placeholder="例：★2以上"></div></div>`}<div class="field" style="margin-top:8px"><label>状態</label><select id="goalStatus"><option value="active" ${g.status==='active'?'selected':''}>進行中</option><option value="blocked" ${g.status==='blocked'?'selected':''}>止まっている</option><option value="done" ${g.status==='done'?'selected':''}>完了</option></select></div><div class="field" style="margin-top:8px"><label>補足（任意）</label><input id="goalBlocker" value="${esc(g.blocker||'')}"></div><div class="sheet-actions">${id?'<button class="btn danger" id="deleteGoal">削除</button>':''}<button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="saveGoal">保存</button></div>`);
-  if(id)$('#deleteGoal').onclick=()=>confirmDelete('このお願いと必要物を削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>{state.goals=state.goals.filter(x=>x.id!==id);delete state.requirements[id];for(const a of state.actions)if(a.goalId===id)a.goalId=null});closeModal();show('plan');plan()});
+  if(id)$('#deleteGoal').onclick=()=>confirmDelete('このお願いと必要物を削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>{state.goals=state.goals.filter(x=>x.id!==id);delete state.requirements[id];for(const a of state.actions)if(a.goalId===id)a.goalId=null});leaveGoalAfterDelete()});
   $('#saveGoal').onclick=async()=>{
     const requester=$('#goalRequester').value.trim(),content=$('#goalRequestContent').value.trim();if(!requester&&!content)return;
     const gid=id||('g'+Date.now()),title=requester?`${requester}のお願い`:(content.slice(0,30)||'住人からのお願い'),base={title,kind:'request',tags:['request'],status:$('#goalStatus').value,blocker:$('#goalBlocker').value.trim(),season:g.season||state.season||'',requester,requestContent:content,reward:$('#goalReward').value.trim()};
     if(id)Object.assign(g,base);else{state.goals.unshift({id:gid,...base});state.requirements[gid]=state.requirements[gid]||[];const item=$('#requestItem').value.trim();if(item)state.requirements[gid].push({label:item,need:Math.max(1,+$('#requestNeed').value||1),have:Math.max(0,+$('#requestHave').value||0),quality:$('#requestQuality').value.trim()})}
-    await save();closeModal();render();showGoal(gid);
+    await save();closeModal();render();returnToGoal(gid);
   };
 }
 function openReq(gid,idx=null){
   const g=state.goals.find(x=>x.id===gid),isBazaar=isBazaarGoal(g),r=idx==null?{label:'',need:1,have:0,quality:''}:state.requirements[gid][idx],editing=idx!=null;
   modal(`<h3>${editing?(isBazaar?'出品予定を編集':'必要なものを編集'):(isBazaar?'出品予定を追加':'必要なものを追加')}</h3><div class="field"><label>${isBazaar?'品物':'名前'}</label><input id="reqLabel" value="${esc(r.label)}"></div><div class="grid2" style="margin-top:8px"><div class="field"><label>${isBazaar?'目標数':'必要数'}</label><input id="reqNeed" type="number" min="1" value="${r.need}"></div><div class="field"><label>現在数</label><input id="reqHave" type="number" min="0" value="${r.have}"></div></div><div class="field" style="margin-top:8px"><label>品質条件</label><input id="reqQ" value="${esc(r.quality||'')}" placeholder="例：★2以上"></div><div class="sheet-actions">${editing?'<button class="btn danger" id="deleteReq">削除</button>':''}<button class="btn secondary" id="closeReqEditor">${editing?'閉じる':'キャンセル'}</button>${editing?'':'<button class="btn" id="addReqRecord">追加</button>'}</div>`);
-  $('#closeReqEditor').onclick=()=>{closeModal();showGoal(gid)};
+  $('#closeReqEditor').onclick=()=>{closeModal();returnToGoal(gid)};
   if(editing){
-    $('#deleteReq').onclick=()=>confirmDelete(isBazaar?'この出品予定を削除しますか？':'この必要なものを削除しますか？',async()=>{await withUndo(isBazaar?'出品予定の削除を元に戻せます':'必要なものの削除を元に戻せます',()=>state.requirements[gid].splice(idx,1));closeModal();showGoal(gid)});
+    $('#deleteReq').onclick=()=>confirmDelete(isBazaar?'この出品予定を削除しますか？':'この必要なものを削除しますか？',async()=>{await withUndo(isBazaar?'出品予定の削除を元に戻せます':'必要なものの削除を元に戻せます',()=>state.requirements[gid].splice(idx,1));closeModal();returnToGoal(gid)});
     const persist=async()=>{const label=$('#reqLabel').value.trim();if(label)r.label=label;r.need=Math.max(1,+$('#reqNeed').value||1);r.have=Math.max(0,+$('#reqHave').value||0);r.quality=$('#reqQ').value.trim();await save()};
     bindAutosave([$('#reqLabel'),$('#reqNeed'),$('#reqHave'),$('#reqQ')],persist);
   }else{
-    $('#addReqRecord').onclick=async()=>{const label=$('#reqLabel').value.trim();if(!label)return;(state.requirements[gid]??=[]).push({...r,label,need:Math.max(1,+$('#reqNeed').value||1),have:Math.max(0,+$('#reqHave').value||0),quality:$('#reqQ').value.trim()});await save();closeModal();showGoal(gid)}
+    $('#addReqRecord').onclick=async()=>{const label=$('#reqLabel').value.trim();if(!label)return;(state.requirements[gid]??=[]).push({...r,label,need:Math.max(1,+$('#reqNeed').value||1),have:Math.max(0,+$('#reqHave').value||0),quality:$('#reqQ').value.trim()});await save();closeModal();returnToGoal(gid)}
   }
 }
 
 function openAction(goalId=null,id=null){
   const a=id?state.actions.find(x=>x.id===id):{text:'',goalId:goalId||null,pinned:false};if(!a)return;
   modal(`<h3>${id?'やることを編集':'やることを追加'}</h3><div class="field"><label>内容</label><input id="actionText" value="${esc(a.text)}"></div><div class="field" style="margin-top:8px"><label>関連する目標</label><select id="actionGoal"><option value="">なし</option>${state.goals.filter(g=>g.status!=='done'||g.id===a.goalId).map(g=>`<option value="${g.id}" ${a.goalId===g.id?'selected':''}>${esc(g.title)}</option>`).join('')}</select></div><div class="switchline" style="margin-top:12px"><div><div class="small strong">★ 今やる</div><div class="tiny">ホーム上部に固定</div></div><label class="switch"><input id="actionPin" type="checkbox" ${a.pinned?'checked':''}><span class="slider"></span></label></div><div class="sheet-actions">${id?'<button class="btn danger" id="deleteAction">削除</button>':''}<button class="btn secondary" id="closeActionEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addActionRecord">追加</button>'}</div>`);
-  $('#closeActionEditor').onclick=()=>{closeModal();if(goalId)showGoal(goalId);else{show('plan');plan()}};
+  $('#closeActionEditor').onclick=()=>{closeModal();if(goalId)returnToGoal(goalId);else{show('plan');plan()}};
   if(id){
-    $('#deleteAction').onclick=()=>confirmDelete('この「やること」を削除しますか？',async()=>{await withUndo('やることの削除を元に戻せます',()=>state.actions=state.actions.filter(x=>x.id!==id));closeModal();if(goalId)showGoal(goalId);else{show('plan');plan()}});
+    $('#deleteAction').onclick=()=>confirmDelete('この「やること」を削除しますか？',async()=>{await withUndo('やることの削除を元に戻せます',()=>state.actions=state.actions.filter(x=>x.id!==id));closeModal();if(goalId)returnToGoal(goalId);else{show('plan');plan()}});
     const persist=async()=>{const t=$('#actionText').value.trim();if(t)a.text=t;a.goalId=$('#actionGoal').value||null;a.pinned=$('#actionPin').checked;await save()};
     bindAutosave([$('#actionText'),$('#actionGoal'),$('#actionPin')],persist);
   }else{
-    $('#addActionRecord').onclick=async()=>{const t=$('#actionText').value.trim();if(!t)return;const linked=$('#actionGoal').value||null;state.actions.unshift({id:'a'+Date.now(),text:t,done:false,goalId:linked,pinned:$('#actionPin').checked});await save();closeModal();if(goalId&&linked===goalId)showGoal(goalId);else{show('plan');plan()}};
+    $('#addActionRecord').onclick=async()=>{const t=$('#actionText').value.trim();if(!t)return;const linked=$('#actionGoal').value||null;state.actions.unshift({id:'a'+Date.now(),text:t,done:false,goalId:linked,pinned:$('#actionPin').checked});await save();closeModal();if(goalId&&linked===goalId)returnToGoal(goalId);else{show('plan');plan()}};
   }
 }
 
