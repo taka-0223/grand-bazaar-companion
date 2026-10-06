@@ -192,7 +192,7 @@ function openResidentCard(name,backDay=null){
   if(backDay!=null)$('#backResidentDay').onclick=()=>openCalendarDay(backDay);
   $('#editResidentProfile').onclick=()=>openResidentEdit(name,backDay);
   $('#closeResidentCard').onclick=closeModal;
-  $('.residentRequestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id));
+  $$('.residentRequestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id));
   bindAutosave([$('#residentCardNote')],async()=>{state.residentProfiles[name]={...residentProfile(name),note:$('#residentCardNote').value,updatedAt:new Date().toISOString()};await save()})
 }
 function openResidentEdit(name,backDay=null){
@@ -245,8 +245,8 @@ function seasonReminderInboxHtml(){
 }
 function refreshAfterSeasonReminder(){const screen=activeScreenId();if(screen==='inbox')inbox();else home()}
 function bindSeasonReminderUi(){
-  $('.seasonReminderOpen').forEach(b=>b.onclick=()=>openSeasonReminderEditor(b.dataset.id));
-  $('.seasonReminderDone').forEach(b=>b.onclick=async e=>{e.stopPropagation();const r=seasonReminderItems().find(x=>x.id===b.dataset.id);if(!r)return;r.doneAt=new Date().toISOString();await save();refreshAfterSeasonReminder();toast('季節メモを確認済みにしました')})
+  $$('.seasonReminderOpen').forEach(b=>b.onclick=()=>openSeasonReminderEditor(b.dataset.id));
+  $$('.seasonReminderDone').forEach(b=>b.onclick=async e=>{e.stopPropagation();const r=seasonReminderItems().find(x=>x.id===b.dataset.id);if(!r)return;r.doneAt=new Date().toISOString();await save();refreshAfterSeasonReminder();toast('季節メモを確認済みにしました')})
 }
 function openSeasonReminderEditor(id){
   const r=seasonReminderItems().find(x=>x.id===id);if(!r)return;
@@ -507,7 +507,7 @@ function bindRequestsHome(){
   $('#addRequest')?.addEventListener('click',()=>openRequestRecord());
   $('#toggleCompletedRequests')?.addEventListener('click',async()=>{state.ui.requestShowCompleted=!state.ui.requestShowCompleted;await save();refresh()});
   $('#toggleArchivedRequests')?.addEventListener('click',async()=>{state.ui.requestShowArchived=!state.ui.requestShowArchived;await save();refresh()});
-  $('.requestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id))
+  $$('.requestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id))
 }
 function openRequestRecord(id=null){
   const r=id?requestsState().find(x=>x.id===id):{title:'',requester:'',status:'active',note:'',objectives:[],reward:'',masterId:null};if(id&&!r)return;
@@ -526,7 +526,7 @@ function openRequestRecord(id=null){
     const box=$('#requestRequesterSuggestions');if(!box)return;
     const matches=residentNameSuggestions($('#requestRequester').value);
     box.innerHTML=matches.length?`<div class="card" style="margin-top:6px;padding:5px">${matches.map(n=>`<button type="button" class="miniLink residentNameCandidate" data-name="${esc(n)}" style="display:block;width:100%;text-align:left;padding:7px 4px">${esc(n)}</button>`).join('')}</div>`:'';
-    $('.residentNameCandidate').forEach(b=>b.onclick=()=>{$('#requestRequester').value=b.dataset.name;box.innerHTML='';renderMaster()})
+    $$('.residentNameCandidate').forEach(b=>b.onclick=()=>{$('#requestRequester').value=b.dataset.name;box.innerHTML='';renderMaster()})
   };
   const renderPrior=()=>{
     const m=selected(),box=$('#requestPriorSteps'),earlier=(!id&&m)?requestEarlierStepCandidates(m):[];
@@ -584,7 +584,7 @@ function openRequestRecord(id=null){
   $('#closeRequestEditor').onclick=()=>{closeModal();if(id)showRequestRecord(id);else if(activeScreenId()==='plan')plan();else home()};
 
   if(id){
-    $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();home()});
+    $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();if(activeScreenId()==='plan')plan();else home()});
     const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.status=$('#requestStatus').value;r.masterId=selectedMasterId||null;if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
     bindAutosave([$('#requestTitle'),$('#requestRequester'),$('#requestStatus')],persist)
   }else{
@@ -954,9 +954,9 @@ function inbox(){
   const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ'};
   $('#inbox').innerHTML=`<div class="hero"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておけます。</p></div>${seasonReminderInboxHtml()}<div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="small">${esc(c.text)}</div>${captureChildrenExpanded(c)}<div class="row" style="margin-top:10px">${filter==='active'?`<button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="action">やることへ</button><button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="goal">目標へ</button>`:''}${filter==='archived'?`<button class="btn ghost smallbtn capRestore" data-id="${c.id}">戻す</button>`:`<button class="btn ghost smallbtn capArchive" data-id="${c.id}">アーカイブ</button>`}</div></div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>`;
   bindSeasonReminderUi();
-  $('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
-  $('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
-  $('.subInlineEdit').forEach(b=>b.onclick=e=>{e.stopPropagation();openSubMemoEditor(b.dataset.parent,b.dataset.child)});
+  $$('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
+  $$('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
+  $$('.subInlineEdit').forEach(b=>b.onclick=e=>{e.stopPropagation();openSubMemoEditor(b.dataset.parent,b.dataset.child)});
   $$('.capTo').forEach(b=>b.onclick=e=>{e.stopPropagation();confirmConvert(b.dataset.id,b.dataset.to)});
   $$('.capArchive').forEach(b=>b.onclick=async e=>{e.stopPropagation();const c=state.captures.find(x=>x.id===b.dataset.id);if(!c)return;c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString();await save();inbox();toast('アーカイブしました')});
   $$('.capRestore').forEach(b=>b.onclick=async e=>{e.stopPropagation();const c=state.captures.find(x=>x.id===b.dataset.id);if(!c)return;c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString();await save();inbox();toast('戻しました')})
@@ -994,8 +994,8 @@ function openCapture(id=null){
     $('#restoreCaptureDetail')?.addEventListener('click',async()=>{await withUndo('メモの復元を元に戻せます',()=>{c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString()});openCapture(id);toast('戻しました')});
 
     $$('.subCheck').forEach(x=>x.onchange=async()=>{const ch=children.find(y=>y.id===x.dataset.child);if(ch)ch.done=x.checked;c.updatedAt=new Date().toISOString();await save()});
-    $('.subDelete').forEach(x=>x.onclick=()=>confirmDelete('このサブメモを削除しますか？',async()=>{c.children=children.filter(y=>y.id!==x.dataset.child);c.updatedAt=new Date().toISOString();await save();openCapture(id)}));
-    $('.subEdit').forEach(x=>x.onclick=async()=>{await persist();openSubMemoEditor(id,x.dataset.child)});
+    $$('.subDelete').forEach(x=>x.onclick=()=>confirmDelete('このサブメモを削除しますか？',async()=>{c.children=children.filter(y=>y.id!==x.dataset.child);c.updatedAt=new Date().toISOString();await save();openCapture(id)}));
+    $$('.subEdit').forEach(x=>x.onclick=async()=>{await persist();openSubMemoEditor(id,x.dataset.child)});
     $('#addSub').onclick=async()=>{const t=$('#subText').value.trim();if(!t)return;children.push({id:'sc'+Date.now(),text:t,done:false});c.children=children;c.updatedAt=new Date().toISOString();await save();openCapture(id)};
     $('#subText').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#addSub').click()}})
   }else{
