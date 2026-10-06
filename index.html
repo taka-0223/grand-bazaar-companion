@@ -18,7 +18,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.10.8';
+const APP_VERSION='0.10.9';
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
 const STORAGE='gb-board-data',OLD_KEYS=['gb-board-v05','gb-board-v04','gb-board-v03','gb-board-v02'],DBNAME='gb-board-db',OLD_DBS=['gb-board-v05-db','gb-board-v03-db'];
@@ -165,8 +165,12 @@ const CAL_BIRTHDAYS={
 };
 function residentBirthday(name){for(const [season,days] of Object.entries(CAL_BIRTHDAYS))for(const [day,names] of Object.entries(days))if(names.includes(name))return{season,day:Number(day)};return null}
 function residentProfile(name){state.residentProfiles=state.residentProfiles||{};return state.residentProfiles[name]||{}}
+function residentCompletedRequests(name){
+  const q=requestNorm(name);
+  return requestsState().filter(r=>requestNorm(r.requester||'')===q&&r.status==='completed').sort((a,b)=>String(b.completedAt||b.updatedAt||'').localeCompare(String(a.completedAt||a.updatedAt||'')))
+}
 function openResidentCard(name,backDay=null){
-  touchRecent('resident',name);const x=residentProfile(name),bd=residentBirthday(name);
+  touchRecent('resident',name);const x=residentProfile(name),bd=residentBirthday(name),completedRequests=residentCompletedRequests(name);
   modal(`<h3>🎂 ${esc(name)}</h3>
     <div class="card">
       <div class="tiny muted">誕生日</div><div class="strong" style="margin-bottom:10px">${bd?`${bd.season}の月 ${bd.day}日`:'未確認'}</div>
@@ -174,6 +178,7 @@ function openResidentCard(name,backDay=null){
       <div class="tiny muted">好きなもの</div><div class="small" style="margin-bottom:10px">${esc(x.likes||'未入力')}</div>
       <div class="tiny muted">苦手なもの</div><div class="small">${esc(x.dislikes||'未入力')}</div>
     </div>
+    ${completedRequests.length?`<div class="section" style="margin-top:12px"><div class="section-head"><h2>完了したお願い</h2><div class="tiny muted">${completedRequests.length}件</div></div><div class="card">${completedRequests.map(r=>`<button class="miniLink residentRequestOpen" data-id="${r.id}" style="display:block;width:100%;text-align:left;padding:8px 0">✓ ${esc(r.title)}${r.inferred?' <span class="tiny muted">（履歴補完）</span>':''}</button>`).join('')}</div></div>`:''}
     <div class="section" style="margin-top:12px">
       <div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div>
       <div class="card"><div class="field"><textarea id="residentCardNote" placeholder="この住人について覚えておきたいこと">${esc(x.note||'')}</textarea></div></div>
@@ -187,6 +192,7 @@ function openResidentCard(name,backDay=null){
   if(backDay!=null)$('#backResidentDay').onclick=()=>openCalendarDay(backDay);
   $('#editResidentProfile').onclick=()=>openResidentEdit(name,backDay);
   $('#closeResidentCard').onclick=closeModal;
+  $$('.residentRequestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id));
   bindAutosave([$('#residentCardNote')],async()=>{state.residentProfiles[name]={...residentProfile(name),note:$('#residentCardNote').value,updatedAt:new Date().toISOString()};await save()})
 }
 function openResidentEdit(name,backDay=null){
@@ -202,11 +208,13 @@ function openResidentEdit(name,backDay=null){
   const persist=async()=>{state.residentProfiles[name]={...residentProfile(name),color:$('#residentColor').value.trim(),likes:$('#residentLikes').value.trim(),dislikes:$('#residentDislikes').value.trim(),updatedAt:new Date().toISOString()};await save()};
   bindAutosave([$('#residentColor'),$('#residentLikes'),$('#residentDislikes')],persist)
 }
-function calendarState(){state.calendar=state.calendar||{year:1,viewSeason:state.season||'春',today:{year:1,season:'',day:null},notes:{'春':{},'夏':{},'秋':{},'冬':{}},notesByYear:{},weatherByYear:{}};const c=state.calendar;c.year=Math.max(1,Number(c.year)||1);c.today=c.today||{year:c.year,season:'',day:null};c.today.year=Math.max(1,Number(c.today.year)||c.year);c.viewSeason=CAL_SEASONS.includes(c.viewSeason)?c.viewSeason:(c.today.season||state.season||'春');c.notes=c.notes||{};c.notesByYear=c.notesByYear||{};c.weatherByYear=c.weatherByYear||{};if(!c.notesByYear['1'])c.notesByYear['1']=clone(c.notes);state.ui=state.ui||{};state.ui.calendarOpen=!!state.ui.calendarOpen;state.ui.recent=Array.isArray(state.ui.recent)?state.ui.recent.slice(0,10):[];return c}
+function calendarState(){state.calendar=state.calendar||{year:1,viewSeason:state.season||'春',today:{year:1,season:'',day:null},notes:{'春':{},'夏':{},'秋':{},'冬':{}},notesByYear:{},weatherByYear:{},seasonReminders:[]};const c=state.calendar;c.year=Math.max(1,Number(c.year)||1);c.today=c.today||{year:c.year,season:'',day:null};c.today.year=Math.max(1,Number(c.today.year)||c.year);c.viewSeason=CAL_SEASONS.includes(c.viewSeason)?c.viewSeason:(c.today.season||state.season||'春');c.notes=c.notes||{};c.notesByYear=c.notesByYear||{};c.weatherByYear=c.weatherByYear||{};c.seasonReminders=Array.isArray(c.seasonReminders)?c.seasonReminders:[];if(!c.notesByYear['1'])c.notesByYear['1']=clone(c.notes);state.ui=state.ui||{};state.ui.calendarOpen=!!state.ui.calendarOpen;state.ui.recent=Array.isArray(state.ui.recent)?state.ui.recent.slice(0,10):[];return c}
 function calendarNotes(year,season){const c=calendarState(),yk=String(year);c.notesByYear[yk]=c.notesByYear[yk]||{};c.notesByYear[yk][season]=c.notesByYear[yk][season]||{};return c.notesByYear[yk][season]}
-const WEATHER_TYPES=['晴れ','雨','雪','台風','吹雪'];
+const WEATHER_TYPES=['晴れ','曇り','雨','雪','台風','吹雪'];
+const WIND_LEVELS=[0,1,2,3];
+function windLabel(v){const n=Math.max(0,Math.min(3,Number(v)||0));return n===0?'—':'△'.repeat(n)}
 function calendarWeather(year,season){const c=calendarState(),yk=String(Math.max(1,Number(year)||1));c.weatherByYear[yk]=c.weatherByYear[yk]||{};c.weatherByYear[yk][season]=c.weatherByYear[yk][season]||{};return c.weatherByYear[yk][season]}
-function weatherSymbol(weather){return({晴れ:'☀',雨:'☂',雪:'❄',台風:'🌀',吹雪:'🌨'})[weather]||''}
+function weatherSymbol(weather){return({晴れ:'☀',曇り:'☁',雨:'☂',雪:'❄',台風:'🌀',吹雪:'🌨'})[weather]||''}
 function writeCalendarWeather(year,season,day,weather,wind){const rows=calendarWeather(year,season),key=String(Number(day)),next={};if(WEATHER_TYPES.includes(weather))next.weather=weather;if(Number.isInteger(wind)&&wind>=0&&wind<=3)next.wind=wind;if(Object.keys(next).length)rows[key]=next;else delete rows[key];return next}
 function calendarHasToday(t){return !!(t&&Number(t.year)>=1&&CAL_SEASONS.includes(t.season)&&Number(t.day)>=1&&Number(t.day)<=31)}
 function calAbs(year,season,day){return (Math.max(1,year)-1)*124+CAL_SEASONS.indexOf(season)*31+(day-1)}
@@ -218,13 +226,61 @@ function hasFestival(year,season,day){return !!festivalMap(year,season)[day]?.le
 function isBazaarDate(year,season,day){const abs=calAbs(year,season,day);if(calWeekday(year,season,day)===6&&!hasFestival(year,season,day))return true;if(abs>0){const p=calFromAbs(abs-1);if(calWeekday(p.year,p.season,p.day)===6&&hasFestival(p.year,p.season,p.day)&&!hasFestival(year,season,day))return true}return false}
 function dayEntries(year,season,day){const arr=[];if(isBazaarDate(year,season,day))arr.push({type:'bazaar',icon:'🎪',label:'バザール'});for(const x of festivalMap(year,season)[day]||[])arr.push({type:'festival',icon:'🎉',label:x});for(const x of CAL_BIRTHDAYS[season]?.[day]||[])arr.push({type:'birthday',icon:'🎂',label:x,resident:x});return arr}
 function nextBazaarFromToday(){const c=calendarState(),t=c.today;if(!t?.season||!t.day)return null;const start=calAbs(t.year||c.year,t.season,Number(t.day));for(let delta=0;delta<=14;delta++){const d=calFromAbs(start+delta);if(isBazaarDate(d.year,d.season,d.day))return{...d,delta}}return null}
+function seasonReminderItems(){return calendarState().seasonReminders}
+function seasonReminderTargetLabel(r){return `${r.targetYear}年目 ${r.targetSeason}`}
+function seasonReminderDue(r){
+  if(r.doneAt)return false;const c=calendarState(),t=c.today;if(!calendarHasToday(t))return false;
+  return calAbs(Number(r.targetYear),r.targetSeason,1)<=calAbs(Number(t.year),t.season,Number(t.day))
+}
+function pendingSeasonReminders(){
+  return seasonReminderItems().filter(r=>!r.doneAt).sort((a,b)=>calAbs(Number(a.targetYear),a.targetSeason,1)-calAbs(Number(b.targetYear),b.targetSeason,1))
+}
+function seasonReminderBannerHtml(){
+  const due=pendingSeasonReminders().filter(seasonReminderDue);if(!due.length)return'';
+  return `<div class="section" style="margin-top:10px"><div class="section-head"><h2>🌿 季節メモ</h2><div class="tiny muted">今思い出すこと</div></div>${due.map(r=>`<div class="card clickable seasonReminderOpen" data-id="${r.id}"><div class="row between"><div class="grow"><div class="tiny muted">${esc(seasonReminderTargetLabel(r))}</div><div class="small strong" style="margin-top:4px">${esc(r.text)}</div></div><button class="btn secondary smallbtn seasonReminderDone" data-id="${r.id}">確認済み</button></div></div>`).join('')}</div>`
+}
+function seasonReminderInboxHtml(){
+  const xs=pendingSeasonReminders();if(!xs.length)return'';
+  return `<div class="section"><div class="section-head"><h2>季節メモ</h2><div class="tiny muted">${xs.length}件</div></div>${xs.map(r=>`<div class="card clickable seasonReminderOpen" data-id="${r.id}"><div class="row between"><div class="grow"><div class="tiny muted">${esc(seasonReminderTargetLabel(r))}${seasonReminderDue(r)?' ・ 今季':''}</div><div class="small" style="margin-top:4px">${esc(r.text)}</div></div><div>›</div></div></div>`).join('')}</div>`
+}
+function refreshAfterSeasonReminder(){const screen=activeScreenId();if(screen==='inbox')inbox();else home()}
+function bindSeasonReminderUi(){
+  $$('.seasonReminderOpen').forEach(b=>b.onclick=()=>openSeasonReminderEditor(b.dataset.id));
+  $$('.seasonReminderDone').forEach(b=>b.onclick=async e=>{e.stopPropagation();const r=seasonReminderItems().find(x=>x.id===b.dataset.id);if(!r)return;r.doneAt=new Date().toISOString();await save();refreshAfterSeasonReminder();toast('季節メモを確認済みにしました')})
+}
+function openSeasonReminderEditor(id){
+  const r=seasonReminderItems().find(x=>x.id===id);if(!r)return;
+  modal(`<h3>🌿 季節メモ</h3><div class="tiny muted" style="margin-bottom:8px">${esc(seasonReminderTargetLabel(r))}に思い出す</div><div class="field"><textarea id="seasonReminderText">${esc(r.text)}</textarea></div><div class="sheet-actions"><button class="btn danger" id="deleteSeasonReminder">削除</button><button class="btn secondary" id="closeSeasonReminder">閉じる</button><button class="btn" id="saveSeasonReminder">保存</button></div>`);
+  $('#closeSeasonReminder').onclick=()=>{closeModal();refreshAfterSeasonReminder()};
+  $('#deleteSeasonReminder').onclick=()=>confirmDelete('この季節メモを削除しますか？',async()=>{const c=calendarState();c.seasonReminders=c.seasonReminders.filter(x=>x.id!==id);await save();closeModal();refreshAfterSeasonReminder()});
+  $('#saveSeasonReminder').onclick=async()=>{const text=$('#seasonReminderText').value.trim();if(!text)return;r.text=text;r.updatedAt=new Date().toISOString();await save();closeModal();refreshAfterSeasonReminder();toast('季節メモを更新しました')}
+}
+async function applyTodayPosition(next){
+  const c=calendarState();c.today={year:next.year,season:next.season,day:next.day};c.year=next.year;c.viewSeason=next.season;state.season=next.season;
+  await save();$('#seasonSelect').value=state.season||'';setSeasonSelectClass();home()
+}
+function openSeasonEndDialog(from,next){
+  const sameYear=Number(from.year)+1;
+  modal(`<h3>${esc(from.season)}の月、お疲れさまでした 🌿</h3><p class="small muted">次にこの経験を活かせるよう、季節メモを残せます。</p><div class="field"><label>思い出すタイミング</label><select id="seasonReminderTarget"><option value="same">来年の${esc(from.season)}（${sameYear}年目）</option><option value="next">次の季節：${esc(next.season)}（${next.year}年目）</option></select></div><div class="field" style="margin-top:10px"><label>季節メモ</label><textarea id="seasonReminderNew" placeholder="例：序盤からこの作物を多めに育てる"></textarea></div><div class="sheet-actions"><button class="btn secondary" id="skipSeasonReminder">そのまま進む</button><button class="btn" id="saveSeasonReminderNew">メモして進む</button></div>`);
+  const advance=async(saveNote)=>{
+    const text=$('#seasonReminderNew')?.value.trim()||'';
+    if(saveNote&&text){
+      const target=$('#seasonReminderTarget').value,now=new Date().toISOString();
+      calendarState().seasonReminders.push({id:'sr'+Date.now(),text,targetYear:target==='same'?sameYear:next.year,targetSeason:target==='same'?from.season:next.season,sourceYear:Number(from.year),sourceSeason:from.season,createdAt:now,updatedAt:now,doneAt:null})
+    }
+    closeModal();await applyTodayPosition(next);
+    if(saveNote&&text)toast('季節メモを残しました')
+  };
+  $('#skipSeasonReminder').onclick=()=>advance(false);
+  $('#saveSeasonReminderNew').onclick=()=>advance(true)
+}
 function todayStripHtml(){
   const c=calendarState(),t=c.today,hasToday=calendarHasToday(t),open=!!state.ui.calendarOpen;
   let dateHtml='<button class="todaySet" id="setTodayFromStrip">今日を設定</button>',weatherHtml='',planHtml='';
   if(hasToday){
     const year=Number(t.year),day=Number(t.day),weekday=CAL_WEEKDAYS[calWeekday(year,t.season,day)],wd=calendarWeather(year,t.season)[String(day)]||{};
     dateHtml=`<div class="todayDate">${year}年目 ${esc(t.season)}${day}日（${weekday}）</div><div class="todayDateNav"><button id="todayPrev" aria-label="前の日">‹</button><button id="todayNext" aria-label="次の日">›</button></div>`;
-    weatherHtml=`<div class="todayChoiceRow"><div class="todayChoiceLabel">天気</div><div class="todayChoices">${WEATHER_TYPES.map(w=>`<button class="todayChoice todayWeather ${wd.weather===w?'active':''}" data-weather="${w}" aria-pressed="${wd.weather===w?'true':'false'}">${w}</button>`).join('')}</div></div><div class="todayChoiceRow"><div class="todayChoiceLabel">風</div><div class="todayChoices">${[0,1,2,3].map(w=>`<button class="todayChoice todayWind ${wd.wind===w?'active':''}" data-wind="${w}" aria-pressed="${wd.wind===w?'true':'false'}">${w}</button>`).join('')}</div></div>`;
+    weatherHtml=`<div class="todayChoiceRow"><div class="todayChoiceLabel">天気</div><div class="todayChoices">${WEATHER_TYPES.map(w=>`<button class="todayChoice todayWeather ${wd.weather===w?'active':''}" data-weather="${w}" aria-pressed="${wd.weather===w?'true':'false'}">${w}</button>`).join('')}</div></div><div class="todayChoiceRow"><div class="todayChoiceLabel">風力</div><div class="todayChoices">${WIND_LEVELS.map(w=>`<button class="todayChoice todayWind ${wd.wind===w?'active':''}" data-wind="${w}" aria-pressed="${wd.wind===w?'true':'false'}">${windLabel(w)}</button>`).join('')}</div></div>`;
     const parts=[];
     for(const e of dayEntries(year,t.season,day)){
       if(e.resident)parts.push(`<button class="miniLink todayResident" data-resident="${esc(e.resident)}">${e.icon} ${esc(e.label)}</button>`);
@@ -240,8 +296,9 @@ function todayStripHtml(){
 async function shiftToday(delta){
   const c=calendarState(),t=c.today;if(!calendarHasToday(t))return;
   const current=calAbs(Number(t.year),t.season,Number(t.day)),next=calFromAbs(Math.max(0,current+Number(delta||0)));
-  c.today={year:next.year,season:next.season,day:next.day};c.year=next.year;c.viewSeason=next.season;state.season=next.season;
-  await save();$('#seasonSelect').value=state.season||'';setSeasonSelectClass();home()
+  const crossed=Number(delta)>0&&(next.year!==Number(t.year)||next.season!==t.season);
+  if(crossed){openSeasonEndDialog({year:Number(t.year),season:t.season,day:Number(t.day)},next);return}
+  await applyTodayPosition(next)
 }
 async function setTodayWeather(kind,value){
   const c=calendarState(),t=c.today;if(!calendarHasToday(t))return;
@@ -285,11 +342,11 @@ function bindBazaarPrep(){
   $$('.bazaarPrepEdit').forEach(x=>x.onclick=()=>{const g=findBazaarGoal();if(g)openAction(g.id,x.dataset.id)});
   $$('.bazaarPrepDelete').forEach(x=>x.onclick=async e=>{e.stopPropagation();state.actions=state.actions.filter(y=>y.id!==x.dataset.id);await save();home()})
 }
-function seasonCalendarHtml(){const cal=calendarState(),season=cal.viewSeason||state.season||cal.today?.season||'春',year=cal.year,notes=calendarNotes(year,season),weather=calendarWeather(year,season),today=cal.today?.year===year&&cal.today?.season===season?Number(cal.today.day):null,first=calWeekday(year,season,1),days=Array.from({length:31},(_,i)=>i+1),week=['日','月','火','水','木','金','土'];return `<div class="section"><div class="section-head"><div class="calendarControls"><button class="yearBtn" id="calMonthPrev" aria-label="前の月">‹</button><h2 style="margin:0">📅 ${year}年目 ${season}の月</h2><button class="yearBtn" id="calMonthNext" aria-label="次の月">›</button></div><div class="tiny muted">${today?`今日 ${today}日`:cal.today?.season?`今日：${cal.today.year}年目 ${cal.today.season}${cal.today.day}日`:'今日 未設定'}</div></div><div class="card calendarCard"><div class="calendarGrid">${week.map((w,i)=>`<div class="calWeekday ${i===0?'sun':i===6?'sat':''}">${w}</div>`).join('')}${Array.from({length:first},()=>'<div class="calBlank"></div>').join('')}${days.map(d=>{const note=String(notes[d]||'').trim(),entries=dayEntries(year,season,d),wd=weather[String(d)]||{},wx=weatherSymbol(wd.weather),wind=Number.isInteger(wd.wind)?wd.wind:null;return `<button class="calDay ${today===d?'today':''} ${note?'hasNote':''}" data-day="${d}"><div class="calNum">${d}</div>${wx||wind!=null?`<div class="calWeather">${wx}${wind!=null?wind:''}</div>`:''}<div class="calTags">${entries.slice(0,3).map(e=>`<div class="calTag ${e.type}">${e.icon} ${esc(e.label)}</div>`).join('')}${note?`<div class="calNote">📝 ${esc(note)}</div>`:''}</div></button>`}).join('')}</div><div class="calendarLegend"><span><i class="todayDot"></i>今日</span><span>🎪 バザール</span><span>🎉 イベント</span><span>🎂 誕生日</span><span><i class="noteDot"></i>自分のメモ</span><span>☀晴 ☂雨 ❄雪 🌀台風 🌨吹雪 / 数字=風</span></div></div></div>`}
+function seasonCalendarHtml(){const cal=calendarState(),season=cal.viewSeason||state.season||cal.today?.season||'春',year=cal.year,notes=calendarNotes(year,season),weather=calendarWeather(year,season),today=cal.today?.year===year&&cal.today?.season===season?Number(cal.today.day):null,first=calWeekday(year,season,1),days=Array.from({length:31},(_,i)=>i+1),week=['日','月','火','水','木','金','土'];return `<div class="section"><div class="section-head"><div class="calendarControls"><button class="yearBtn" id="calMonthPrev" aria-label="前の月">‹</button><h2 style="margin:0">📅 ${year}年目 ${season}の月</h2><button class="yearBtn" id="calMonthNext" aria-label="次の月">›</button></div><div class="tiny muted">${today?`今日 ${today}日`:cal.today?.season?`今日：${cal.today.year}年目 ${cal.today.season}${cal.today.day}日`:'今日 未設定'}</div></div><div class="card calendarCard"><div class="calendarGrid">${week.map((w,i)=>`<div class="calWeekday ${i===0?'sun':i===6?'sat':''}">${w}</div>`).join('')}${Array.from({length:first},()=>'<div class="calBlank"></div>').join('')}${days.map(d=>{const note=String(notes[d]||'').trim(),entries=dayEntries(year,season,d),wd=weather[String(d)]||{},wx=weatherSymbol(wd.weather),wind=Number.isInteger(wd.wind)?wd.wind:null;return `<button class="calDay ${today===d?'today':''} ${note?'hasNote':''}" data-day="${d}"><div class="calNum">${d}</div>${wx||wind!=null?`<div class="calWeather">${wx}${wind!=null?windLabel(wind):''}</div>`:''}<div class="calTags">${entries.slice(0,3).map(e=>`<div class="calTag ${e.type}">${e.icon} ${esc(e.label)}</div>`).join('')}${note?`<div class="calNote">📝 ${esc(note)}</div>`:''}</div></button>`}).join('')}</div><div class="calendarLegend"><span><i class="todayDot"></i>今日</span><span>🎪 バザール</span><span>🎉 イベント</span><span>🎂 誕生日</span><span><i class="noteDot"></i>自分のメモ</span><span>☀晴 ☁曇 ☂雨 ❄雪 🌀台風 🌨吹雪 / 風力=△</span></div></div></div>`}
 function openCalendarDay(day){
   const cal=calendarState(),season=cal.viewSeason||state.season||'春',year=cal.year,notes=calendarNotes(year,season),weather=calendarWeather(year,season),saved=weather[String(day)]||{},isToday=cal.today?.year===year&&cal.today?.season===season&&Number(cal.today.day)===Number(day),entries=dayEntries(year,season,day);
   let selectedWeather=saved.weather||'',selectedWind=Number.isInteger(saved.wind)?saved.wind:null;
-  modal(`<h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3>${entries.length?`<div class="card">${entries.map(e=>e.resident?`<button class="miniLink residentOpen" data-resident="${esc(e.resident)}" style="display:block;padding:7px 0">${e.icon} ${esc(e.label)} ›</button>`:`<div class="small" style="padding:5px 0">${e.icon} ${esc(e.label)}</div>`).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風</div><div class="todayChoiceRow"><div class="todayChoiceLabel">天気</div><div class="todayChoices">${WEATHER_TYPES.map(w=>`<button type="button" class="todayChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}">${w}</button>`).join('')}</div></div><div class="todayChoiceRow"><div class="todayChoiceLabel">風</div><div class="todayChoices">${[0,1,2,3].map(w=>`<button type="button" class="todayChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}">${w}</button>`).join('')}</div></div></div><div class="field" style="margin-top:12px"><label>この日のメモ</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button><button class="btn" id="saveCalDay">保存</button></div>`);
+  modal(`<h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3>${entries.length?`<div class="card">${entries.map(e=>e.resident?`<button class="miniLink residentOpen" data-resident="${esc(e.resident)}" style="display:block;padding:7px 0">${e.icon} ${esc(e.label)} ›</button>`:`<div class="small" style="padding:5px 0">${e.icon} ${esc(e.label)}</div>`).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風</div><div class="todayChoiceRow"><div class="todayChoiceLabel">天気</div><div class="todayChoices">${WEATHER_TYPES.map(w=>`<button type="button" class="todayChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}">${w}</button>`).join('')}</div></div><div class="todayChoiceRow"><div class="todayChoiceLabel">風力</div><div class="todayChoices">${WIND_LEVELS.map(w=>`<button type="button" class="todayChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}">${windLabel(w)}</button>`).join('')}</div></div></div><div class="field" style="margin-top:12px"><label>この日のメモ</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button><button class="btn" id="saveCalDay">保存</button></div>`);
   const refreshWeatherButtons=()=>{$$('.dayWeather').forEach(b=>b.classList.toggle('active',b.dataset.weather===selectedWeather));$$('.dayWind').forEach(b=>b.classList.toggle('active',Number(b.dataset.wind)===selectedWind))};
   $$('.dayWeather').forEach(b=>b.onclick=()=>{selectedWeather=selectedWeather===b.dataset.weather?'':b.dataset.weather;refreshWeatherButtons()});
   $$('.dayWind').forEach(b=>b.onclick=()=>{const v=Number(b.dataset.wind);selectedWind=selectedWind===v?null:v;refreshWeatherButtons()});
@@ -301,6 +358,26 @@ async function changeCalendarMonth(delta){const c=calendarState(),i=CAL_SEASONS.
 function bindCalendar(){$$('.calDay').forEach(x=>x.onclick=()=>openCalendarDay(Number(x.dataset.day)));$('#calMonthPrev')?.addEventListener('click',()=>changeCalendarMonth(-1));$('#calMonthNext')?.addEventListener('click',()=>changeCalendarMonth(1))}
 function requestsState(){state.requests=Array.isArray(state.requests)?state.requests:[];return state.requests}
 function requestNorm(v=''){return norm(v).replace(/[!！?？。、,.「」『』♪…〜~]/g,'')}
+function knownResidentNames(){
+  const out=new Set(Object.keys(state.residentProfiles||{}));
+  for(const r of requestsState())if(r.requester)out.add(r.requester);
+  for(const e of state.ui?.recent||[])if(e.kind==='resident'&&e.id)out.add(String(e.id));
+  return [...out].filter(Boolean)
+}
+function residentNameUniverse(){
+  const out=new Set(knownResidentNames());
+  for(const m of REQUEST_MASTER)if(m.requester)out.add(m.requester);
+  for(const days of Object.values(CAL_BIRTHDAYS))for(const names of Object.values(days))for(const n of names)out.add(n);
+  return [...out].filter(Boolean)
+}
+function residentNameSuggestions(value=''){
+  const q=requestNorm(value);if(!q)return[];
+  const known=knownResidentNames().filter(n=>requestNorm(n).includes(q)).slice(0,5);
+  if(known.length)return known;
+  if(q.length<2)return[];
+  const hidden=residentNameUniverse().filter(n=>requestNorm(n).includes(q));
+  return hidden.length===1?hidden:[]
+}
 function requestMasterTitleValues(m){return [m?.title,...(m?.aliases||[])].filter(Boolean)}
 function requestRawMatches(title,requester=''){
   const q=requestNorm(title),rq=requestNorm(requester);if(q.length<2)return[];
@@ -426,9 +503,10 @@ function requestsHomeHtml(){
   </div>`
 }
 function bindRequestsHome(){
+  const refresh=()=>activeScreenId()==='plan'?plan():home();
   $('#addRequest')?.addEventListener('click',()=>openRequestRecord());
-  $('#toggleCompletedRequests')?.addEventListener('click',async()=>{state.ui.requestShowCompleted=!state.ui.requestShowCompleted;await save();home()});
-  $('#toggleArchivedRequests')?.addEventListener('click',async()=>{state.ui.requestShowArchived=!state.ui.requestShowArchived;await save();home()});
+  $('#toggleCompletedRequests')?.addEventListener('click',async()=>{state.ui.requestShowCompleted=!state.ui.requestShowCompleted;await save();refresh()});
+  $('#toggleArchivedRequests')?.addEventListener('click',async()=>{state.ui.requestShowArchived=!state.ui.requestShowArchived;await save();refresh()});
   $$('.requestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id))
 }
 function openRequestRecord(id=null){
@@ -439,11 +517,17 @@ function openRequestRecord(id=null){
     <div id="requestMasterSuggestions"></div>
     <div id="requestMasterPreview"></div>
     <div id="requestPriorSteps"></div>
-    <div class="field" style="margin-top:8px"><label>依頼人</label><input id="requestRequester" value="${esc(r.requester||'')}" placeholder="住人名" autocomplete="off"></div>
+    <div class="field" style="margin-top:8px"><label>依頼人</label><input id="requestRequester" value="${esc(r.requester||'')}" placeholder="住人名" autocomplete="off"><div id="requestRequesterSuggestions"></div></div>
     <div class="field" style="margin-top:8px"><label>状態</label><select id="requestStatus"><option value="active" ${r.status!=='completed'?'selected':''}>進行中</option><option value="completed" ${r.status==='completed'?'selected':''}>完了済み</option></select></div>
     <div class="sheet-actions">${id?'<button class="btn danger" id="deleteRequest">削除</button>':''}<button class="btn secondary" id="closeRequestEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="createRequest">登録</button>'}</div>`);
 
   const selected=()=>selectedMasterId?requestMasterById.get(selectedMasterId):null;
+  const renderResidentSuggestions=()=>{
+    const box=$('#requestRequesterSuggestions');if(!box)return;
+    const matches=residentNameSuggestions($('#requestRequester').value);
+    box.innerHTML=matches.length?`<div class="card" style="margin-top:6px;padding:5px">${matches.map(n=>`<button type="button" class="miniLink residentNameCandidate" data-name="${esc(n)}" style="display:block;width:100%;text-align:left;padding:7px 4px">${esc(n)}</button>`).join('')}</div>`:'';
+    $$('.residentNameCandidate').forEach(b=>b.onclick=()=>{$('#requestRequester').value=b.dataset.name;box.innerHTML='';renderMaster()})
+  };
   const renderPrior=()=>{
     const m=selected(),box=$('#requestPriorSteps'),earlier=(!id&&m)?requestEarlierStepCandidates(m):[];
     box.innerHTML=earlier.length?`<div class="card" style="margin-top:8px"><div class="switchline"><div><div class="small strong">以前のお願いも記録する</div><div class="tiny">この系列の過去 ${earlier.length}件を「完了済み・アーカイブ」として補完します。完了日は記録しません。</div></div><label class="switch"><input id="requestBackfillPrior" type="checkbox" checked><span class="slider"></span></label></div></div>`:''
@@ -494,12 +578,13 @@ function openRequestRecord(id=null){
     })
   };
   $('#requestTitle').addEventListener('input',()=>{if(selectedMasterId&&!requestTitleMatchesMasterValue($('#requestTitle').value,selected()))selectedMasterId=null;renderMaster()});
-  $('#requestRequester').addEventListener('input',()=>{if(selectedMasterId&&norm($('#requestRequester').value)!==norm(selected()?.requester||''))selectedMasterId=null;renderMaster()});
+  $('#requestRequester').addEventListener('input',()=>{if(selectedMasterId&&norm($('#requestRequester').value)!==norm(selected()?.requester||''))selectedMasterId=null;renderResidentSuggestions();renderMaster()});
+  if($('#requestRequester').value.trim())renderResidentSuggestions();
   if(selectedMasterId){$('#requestMasterPreview').innerHTML=requestMasterPreview(selected());renderPrior()}else if($('#requestTitle').value.trim().length>=2)renderMaster();
-  $('#closeRequestEditor').onclick=()=>{closeModal();if(id)showRequestRecord(id);else home()};
+  $('#closeRequestEditor').onclick=()=>{closeModal();if(id)showRequestRecord(id);else if(activeScreenId()==='plan')plan();else home()};
 
   if(id){
-    $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();home()});
+    $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();if(activeScreenId()==='plan')plan();else home()});
     const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.status=$('#requestStatus').value;r.masterId=selectedMasterId||null;if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
     bindAutosave([$('#requestTitle'),$('#requestRequester'),$('#requestStatus')],persist)
   }else{
@@ -550,7 +635,7 @@ function showRequestRecord(id){
     <div class="goalCompleteBox">${r.archived?'<button class="btn secondary goalCompleteAction" id="restoreRequestArchive">アーカイブから戻す</button>':done?'<button class="btn secondary goalCompleteAction" id="reopenRequest">進行中に戻す</button>':'<button class="btn goalCompleteAction" id="completeRequest"><span class="goalCompleteIcon">✓</span>このお願いを完了する</button>'}</div>
     <div class="sheet-actions"><button class="btn secondary" id="editRequestMeta">タイトル・依頼人</button><button class="btn" id="closeRequestDetail">閉じる</button></div>`);
 
-  $('#closeRequestDetail').onclick=()=>{closeModal();home()};
+  $('#closeRequestDetail').onclick=()=>{closeModal();if(activeScreenId()==='plan')plan();else home()};
   $('#editRequestMeta').onclick=()=>openRequestRecord(id);
   $('#matchRequestMaster')?.addEventListener('click',()=>openRequestRecord(id));
   $('#addRequestObjective')?.addEventListener('click',()=>openRequestObjective(id));
@@ -585,9 +670,8 @@ function openRequestObjective(requestId,idx=null){
 function home(){
   const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>g.status!=='done'),short=[],memos=state.captures.filter(c=>captureStatus(c)==='active');
   for(const g of goals)for(const r of state.requirements[g.id]||[])if(r.have<r.need)short.push({...r,goal:g.title,goalId:g.id});
-  $('#home').innerHTML=`${todayStripHtml()}${recentStripHtml()}
+  $('#home').innerHTML=`${todayStripHtml()}${seasonReminderBannerHtml()}${recentStripHtml()}
   <div class="section"><div class="section-head"><h2>⭐ 今やる</h2></div><div class="card">${pinned.length?pinned.map(a=>`<div class="actionrow"><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable homeActionOpen" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><div>›</div></div>`).join(''):'<div class="empty">「やること」に★を付けるとここに出ます。</div>'}</div></div>
-  ${requestsHomeHtml()}
   <div class="section"><div class="section-head"><h2>不足</h2></div><div class="card">${short.length?short.slice(0,6).map(r=>`<div class="row between clickable homeGoal" data-id="${r.goalId}" style="padding:7px 0"><div><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="tiny">${esc(r.goal)}</div></div><div class="countPair" style="min-width:108px"><span>現在 <b>${r.have}</b></span><span>必要 <b>${r.need}</b></span></div></div>`).join(''):'<div class="empty">追跡中の不足はありません</div>'}</div></div>
   <div class="section"><div class="section-head"><h2>未整理メモ</h2></div><div class="card">${memos.length?memos.map(c=>`<div class="row between clickable homeCapture" data-id="${c.id}" style="padding:7px 0"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">ありません</div>'}</div></div>${bazaarPrepHtml()}`;
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
@@ -595,7 +679,7 @@ function home(){
   $$('.homeGoal').forEach(x=>x.onclick=()=>showGoal(x.dataset.id));
   $$('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
   $$('.homeNav').forEach(x=>x.onclick=()=>openHomeNav(x.dataset.dest));
-  bindTodayStrip();bindRecent();bindRequestsHome();bindBazaarPrep();bindCalendar()
+  bindTodayStrip();bindSeasonReminderUi();bindRecent();bindBazaarPrep();bindCalendar()
 }
 function planTags(g){const k=planKind(g);return k==='request'?[k]:[]}
 function hasPlanTag(g,tag){return planKind(g)===tag}
@@ -756,12 +840,14 @@ function bindDerivedActions(){$$('.addDerivedAction').forEach(b=>b.onclick=async
 function openRecipeGoalQty(gid){const g=state.goals.find(x=>x.id===gid);if(!g?.sourceRecipeId)return;const r=recipeData(g.sourceRecipeId);modal(`<h3>作る数を変更</h3><div class="field"><label>${esc(rname(g.sourceRecipeId))}</label><input id="editRecipeQty" type="number" min="1" value="${g.targetQty||1}" inputmode="numeric"></div><p class="small muted">自動生成した必要数を新しい作る数に合わせます。現在数は維持します。</p><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="saveRecipeQty">更新</button></div>`);$('#saveRecipeQty').onclick=async()=>{const qty=Math.max(1,+$('#editRecipeQty').value||1),old=Math.max(1,g.targetQty||1);g.targetQty=qty;g.title=`${rname(g.sourceRecipeId)} ×${qty}`;for(const req of state.requirements[gid]||[]){if(req.sourceRecipeId===g.sourceRecipeId){const unit=Math.max(1,Math.round(req.need/old));req.need=unit*qty;req.have=Math.min(req.have,req.need)}}await save();closeModal();showGoal(gid);toast('作る数を更新しました')}}
 function plan(){
   const goals=state.goals.filter(g=>g.status!=='done'),completed=state.goals.filter(g=>g.status==='done'),actions=state.actions.filter(a=>!a.done),showCompleted=!!state.ui.planShowCompleted;
-  $('#plan').innerHTML=`<div class="hero"><h1>計画</h1><p>目標と、そのために必要なもの・やることをまとめます。</p></div>
+  $('#plan').innerHTML=`<div class="hero"><h1>計画</h1><p>お願い・目標・やることを、ここでまとめて管理します。</p></div>
+  ${requestsHomeHtml()}
   <div class="section"><div class="section-head"><h2>目標</h2><button class="btn secondary smallbtn" id="addGoal">＋追加</button></div>${goals.length?goals.map(goalCard).join(''):'<div class="card empty">まだありません</div>'}${completed.length?`<button class="miniLink" id="toggleCompletedGoals" style="margin:5px 2px 0">${showCompleted?'完了した計画を閉じる':`完了した計画 ${completed.length}件`}</button>`:''}</div>
   ${showCompleted&&completed.length?`<div class="section"><div class="section-head"><h2>完了した計画</h2></div>${completed.map(goalCard).join('')}</div>`:''}
   <div class="section"><div class="section-head"><h2>やること</h2><button class="btn secondary smallbtn" id="addAction">＋追加</button></div><div class="card">${actions.length?actions.map(a=>`<div class="actionrow"><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable actionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><button class="iconAction pin ${a.pinned?'active':''}" data-pin="${a.id}" aria-label="今やる">★</button></div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>`;
   $('#addGoal').onclick=()=>openGeneralPlan();
   $('#addAction').onclick=()=>openAction();
+  bindRequestsHome();
   $('#toggleCompletedGoals')?.addEventListener('click',async()=>{state.ui.planShowCompleted=!showCompleted;await save();plan()});
   bindGoalOpen();
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
@@ -860,11 +946,17 @@ function openAction(goalId=null,id=null){
 
 function captureStatus(c){return c.status||(c.processed?'processed':'active')}
 function captureChildrenSummary(c){const xs=c.children||[];if(!xs.length)return'';const done=xs.filter(x=>x.done).length;return `<div class="tiny muted" style="margin-top:6px">サブメモ ${done}/${xs.length}</div>`}
+function captureChildrenExpanded(c){
+  const xs=c.children||[];if(!xs.length)return'';
+  return `<div style="margin-top:9px;border-top:1px solid var(--line);padding-top:6px">${xs.map(ch=>`<button type="button" class="miniLink subInlineEdit" data-parent="${c.id}" data-child="${ch.id}" style="display:flex;width:100%;text-align:left;gap:7px;padding:5px 0"><span>${ch.done?'✓':'○'}</span><span class="${ch.done?'muted':''}">${esc(ch.text)}</span></button>`).join('')}</div>`
+}
 function inbox(){
   const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ'};
-  $('#inbox').innerHTML=`<div class="hero"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておけます。</p></div><div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}<div class="row" style="margin-top:10px">${filter==='active'?`<button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="action">やることへ</button><button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="goal">目標へ</button>`:''}${filter==='archived'?`<button class="btn ghost smallbtn capRestore" data-id="${c.id}">戻す</button>`:`<button class="btn ghost smallbtn capArchive" data-id="${c.id}">アーカイブ</button>`}</div></div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>`;
+  $('#inbox').innerHTML=`<div class="hero"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておけます。</p></div>${seasonReminderInboxHtml()}<div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="small">${esc(c.text)}</div>${captureChildrenExpanded(c)}<div class="row" style="margin-top:10px">${filter==='active'?`<button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="action">やることへ</button><button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="goal">目標へ</button>`:''}${filter==='archived'?`<button class="btn ghost smallbtn capRestore" data-id="${c.id}">戻す</button>`:`<button class="btn ghost smallbtn capArchive" data-id="${c.id}">アーカイブ</button>`}</div></div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>`;
+  bindSeasonReminderUi();
   $$('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
   $$('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
+  $$('.subInlineEdit').forEach(b=>b.onclick=e=>{e.stopPropagation();openSubMemoEditor(b.dataset.parent,b.dataset.child)});
   $$('.capTo').forEach(b=>b.onclick=e=>{e.stopPropagation();confirmConvert(b.dataset.id,b.dataset.to)});
   $$('.capArchive').forEach(b=>b.onclick=async e=>{e.stopPropagation();const c=state.captures.find(x=>x.id===b.dataset.id);if(!c)return;c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString();await save();inbox();toast('アーカイブしました')});
   $$('.capRestore').forEach(b=>b.onclick=async e=>{e.stopPropagation();const c=state.captures.find(x=>x.id===b.dataset.id);if(!c)return;c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString();await save();inbox();toast('戻しました')})
@@ -875,6 +967,13 @@ function confirmConvert(id,to){
   modal(`<h3>${label}へ変換しますか？</h3><div class="notice">${esc(c.text)}</div><p class="small muted">元メモは「変換済み」として保持します。</p><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">戻る</button><button class="btn" id="doConvert">変換する</button></div>`);
   $('#doConvert').onclick=async()=>{await withUndo('メモ変換を元に戻せます',()=>{if(to==='goal')state.goals.unshift({id:'g'+Date.now(),title:c.text,status:'active',blocker:'',kind:'goal',tags:[],season:'',sourceCaptureId:id});else state.actions.unshift({id:'a'+Date.now(),text:c.text,done:false,goalId:null,pinned:false,sourceCaptureId:id});c.processed=true;c.status='processed';c.updatedAt=new Date().toISOString()});closeModal();inbox()}
 }
+function openSubMemoEditor(captureId,childId){
+  const c=state.captures.find(x=>x.id===captureId),ch=c?.children?.find(x=>x.id===childId);if(!c||!ch)return;
+  modal(`<h3>サブメモを編集</h3><div class="field"><textarea id="subEditText">${esc(ch.text)}</textarea></div><div class="sheet-actions"><button class="btn danger" id="deleteSubEdit">削除</button><button class="btn secondary" id="backSubEdit">戻る</button><button class="btn" id="saveSubEdit">保存</button></div>`);
+  $('#backSubEdit').onclick=()=>openCapture(captureId);
+  $('#deleteSubEdit').onclick=()=>confirmDelete('このサブメモを削除しますか？',async()=>{c.children=(c.children||[]).filter(x=>x.id!==childId);c.updatedAt=new Date().toISOString();await save();openCapture(captureId)});
+  $('#saveSubEdit').onclick=async()=>{const t=$('#subEditText').value.trim();if(!t)return;ch.text=t;c.updatedAt=new Date().toISOString();await save();openCapture(captureId);toast('サブメモを更新しました')};
+}
 function openCapture(id=null){
   const c=id?state.captures.find(x=>x.id===id):{text:'',status:'active',processed:false,children:[]};if(id&&!c)return;if(id)touchRecent('capture',id);const children=c.children||[],status=id?captureStatus(c):'active';
   const organize=id?(status==='active'
@@ -883,7 +982,7 @@ function openCapture(id=null){
       ?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><div class="card"><button class="btn secondary" id="restoreCaptureDetail" style="width:100%">アーカイブから戻す</button></div></div>`
       :`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><div class="card"><button class="btn ghost" id="archiveCaptureDetail" style="width:100%">アーカイブ</button></div></div>`
   ):'';
-  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3><div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow small ${ch.done?'muted':''}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
+  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3><div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow small clickable subEdit ${ch.done?'muted':''}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
   $('#closeCaptureEditor').onclick=()=>{closeModal();inbox()};
   if(id){
     $('#deleteCap').onclick=()=>confirmDelete('このメモを削除しますか？',async()=>{await withUndo('メモ削除を元に戻せます',()=>state.captures=state.captures.filter(x=>x.id!==id));closeModal();inbox()});
@@ -896,7 +995,9 @@ function openCapture(id=null){
 
     $$('.subCheck').forEach(x=>x.onchange=async()=>{const ch=children.find(y=>y.id===x.dataset.child);if(ch)ch.done=x.checked;c.updatedAt=new Date().toISOString();await save()});
     $$('.subDelete').forEach(x=>x.onclick=()=>confirmDelete('このサブメモを削除しますか？',async()=>{c.children=children.filter(y=>y.id!==x.dataset.child);c.updatedAt=new Date().toISOString();await save();openCapture(id)}));
-    $('#addSub').onclick=async()=>{const t=$('#subText').value.trim();if(!t)return;children.push({id:'sc'+Date.now(),text:t,done:false});c.children=children;c.updatedAt=new Date().toISOString();await save();openCapture(id)}
+    $$('.subEdit').forEach(x=>x.onclick=async()=>{await persist();openSubMemoEditor(id,x.dataset.child)});
+    $('#addSub').onclick=async()=>{const t=$('#subText').value.trim();if(!t)return;children.push({id:'sc'+Date.now(),text:t,done:false});c.children=children;c.updatedAt=new Date().toISOString();await save();openCapture(id)};
+    $('#subText').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();$('#addSub').click()}})
   }else{
     $('#addCaptureRecord').onclick=async()=>{const t=$('#capText').value.trim();if(!t)return;state.captures.unshift({id:'c'+Date.now(),text:t,processed:false,status:'active',children:[],updatedAt:new Date().toISOString()});await save();closeModal();inbox();toast('メモしました')}
   }
@@ -1018,7 +1119,20 @@ async function exportJson(){
 }
 function importJson(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const raw=JSON.parse(r.result);const x=migrate(raw?.state||raw);if(!x)throw Error('schema');state=x;state.ui=state.ui||{};await save();closeModal();render();toast('バックアップを読み込みました')}catch(e){alert('対応しているバックアップとして読み込めませんでした')}};r.readAsText(f)}
 function activeScreenId(){return $('.screen.active')?.id||'home'}
-function openQuickAdd(){const raw=activeScreenId(),screen=raw==='detail'?(DETAIL_CONTEXT||'home'):raw,actions=screen==='crops'?[['🌱','品目を登録','crop']]:screen==='recipes'?[['🍳','料理を登録','recipe']]:screen==='plan'?[['✓','やることを追加','action']]:screen==='home'?[['🙏','お願いを登録','request']]:[];modal(`<h3>📝 メモ</h3><div class="field"><textarea id="quickMemo" placeholder="思いついたことをそのまま"></textarea></div><div class="sheet-actions" style="margin-top:8px"><button class="btn secondary" onclick="closeModal()">閉じる</button><button class="btn" id="saveQuickMemo">メモ保存</button></div>${actions.length?`<div class="section" style="margin-top:12px"><div class="tiny muted" style="margin-bottom:6px">この画面で追加</div><div class="stack">${actions.map(([icon,label,type])=>`<button class="btn secondary quickRelated" data-type="${type}" style="width:100%;text-align:left">${icon} ${label}</button>`).join('')}</div></div>`:''}`);$('#saveQuickMemo').onclick=async()=>{const t=$('#quickMemo').value.trim();if(!t)return;state.captures.unshift({id:'c'+Date.now(),text:t,status:'active',processed:false,children:[],createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});await save();closeModal();if(screen==='inbox')inbox();else if(screen==='home')home();toast('メモしました')};$$('.quickRelated').forEach(b=>b.onclick=()=>{const type=b.dataset.type;closeModal();if(type==='crop')openAddKnown();else if(type==='recipe')openKnownRecipe();else if(type==='action')openAction();else if(type==='request')openRequestRecord()})}
+function openQuickAdd(){
+  const raw=activeScreenId(),screen=raw==='detail'?(DETAIL_CONTEXT||'home'):raw;
+  if(screen==='inbox'){openCapture();return}
+  const actions=screen==='crops'
+    ?[['🌱','品目を登録','crop'],['📝','メモを残す','memo']]
+    :screen==='recipes'
+      ?[['🍳','料理を登録','recipe'],['📝','メモを残す','memo']]
+      :screen==='plan'
+        ?[['🎯','計画を追加','goal'],['🙏','お願いを登録','request'],['✓','やることを追加','action'],['📝','メモを残す','memo']]
+        :[['✓','やることを追加','action'],['🎯','計画を追加','goal'],['🙏','お願いを登録','request'],['📝','メモを残す','memo']];
+  const label={crops:'種管理',recipes:'料理',plan:'計画',home:'ホーム'}[screen]||'この画面';
+  modal(`<h3>＋ 追加</h3><div class="tiny muted" style="margin-bottom:8px">${label}で追加するものを選びます。</div><div class="stack">${actions.map(([icon,title,type],i)=>`<button class="btn ${i===0?'':'secondary'} quickRelated" data-type="${type}" style="width:100%;text-align:left">${icon} ${title}</button>`).join('')}</div><div class="sheet-actions"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`);
+  $$('.quickRelated').forEach(b=>b.onclick=()=>{const type=b.dataset.type;closeModal();if(type==='crop')openAddKnown();else if(type==='recipe')openKnownRecipe();else if(type==='goal')openGeneralPlan();else if(type==='action')openAction();else if(type==='request')openRequestRecord();else if(type==='memo')openCapture()})
+}
 function bindGoalOpen(){$$('.goalOpen').forEach(b=>b.onclick=()=>showGoal(b.dataset.id))}function render(){state=migrate(state)||clone(INITIAL);const bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();$('#seasonSelect').value=state.season||'';setSeasonSelectClass();home();crops();recipesScreen();plan();inbox();const active=$('.navbtn.active')?.dataset.nav||'home';show(active);updateSaveStatus();if(bazaarNormalized||groupsNormalized||requestsSynced)save()}
 $('#seasonSelect').onchange=async e=>{state.season=e.target.value;const c=calendarState();if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;$$('.navbtn').forEach(b=>b.onclick=()=>{show(b.dataset.nav);if(b.dataset.nav==='home')home();if(b.dataset.nav==='crops')crops();if(b.dataset.nav==='recipes')recipesScreen();if(b.dataset.nav==='plan')plan();if(b.dataset.nav==='inbox')inbox()});render();hydrate();
 </script>
