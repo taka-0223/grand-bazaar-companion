@@ -252,9 +252,9 @@ async function setTodayWeather(kind,value){
 }
 function bindTodayStrip(){
   $('#todayPrev')?.addEventListener('click',()=>shiftToday(-1));$('#todayNext')?.addEventListener('click',()=>shiftToday(1));
-  $('.todayWeather').forEach(b=>b.onclick=()=>setTodayWeather('weather',b.dataset.weather));
-  $('.todayWind').forEach(b=>b.onclick=()=>setTodayWeather('wind',b.dataset.wind));
-  $('.todayResident').forEach(b=>b.onclick=()=>openResidentCard(b.dataset.resident));
+  $$('.todayWeather').forEach(b=>b.onclick=()=>setTodayWeather('weather',b.dataset.weather));
+  $$('.todayWind').forEach(b=>b.onclick=()=>setTodayWeather('wind',b.dataset.wind));
+  $$('.todayResident').forEach(b=>b.onclick=()=>openResidentCard(b.dataset.resident));
   $('#todayCalendarToggle')?.addEventListener('click',async()=>{state.ui.calendarOpen=!state.ui.calendarOpen;await save();home()});
   $('#setTodayFromStrip')?.addEventListener('click',async()=>{state.ui.calendarOpen=true;await save();home()})
 }
@@ -270,7 +270,7 @@ function recentMeta(entry){
 }
 function recentItems(){const out=[];for(const e of state.ui.recent||[]){const m=recentMeta(e);if(m)out.push(m);if(out.length>=3)break}return out}
 function recentStripHtml(){const xs=recentItems();if(!xs.length)return'';return `<div class="recentStrip"><span class="recentLabel">さっき</span><div class="recentItems">${xs.map(x=>`<button class="recentItem recentOpen" data-kind="${x.kind}" data-id="${esc(x.id)}" title="${esc(x.label)}">${x.icon} ${esc(x.label)}</button>`).join('')}</div></div>`}
-function bindRecent(){$('.recentOpen').forEach(b=>b.onclick=()=>openRecent(b.dataset.kind,b.dataset.id))}
+function bindRecent(){$$('.recentOpen').forEach(b=>b.onclick=()=>openRecent(b.dataset.kind,b.dataset.id))}
 function openRecent(kind,id){if(kind==='crop')showCrop(id);else if(kind==='recipe')showRecipe(id);else if(kind==='goal')showGoal(id);else if(kind==='request')showRequestRecord(id);else if(kind==='resident')openResidentCard(id);else if(kind==='capture')openCapture(id)}
 function touchRecent(kind,id){if(id==null)return;state.ui=state.ui||{};const key=String(id),now=new Date().toISOString(),old=Array.isArray(state.ui.recent)?state.ui.recent:[];state.ui.recent=[{kind,id:key,at:now},...old.filter(x=>!(x.kind===kind&&String(x.id)===key))].slice(0,10);void save()}
 function bazaarPrepItems(){const g=findBazaarGoal();return g?state.actions.filter(a=>a.goalId===g.id):[]}
