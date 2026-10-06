@@ -208,7 +208,7 @@ function openResidentEdit(name,backDay=null){
   const persist=async()=>{state.residentProfiles[name]={...residentProfile(name),color:$('#residentColor').value.trim(),likes:$('#residentLikes').value.trim(),dislikes:$('#residentDislikes').value.trim(),updatedAt:new Date().toISOString()};await save()};
   bindAutosave([$('#residentColor'),$('#residentLikes'),$('#residentDislikes')],persist)
 }
-function calendarState(){state.calendar=state.calendar||{year:1,viewSeason:state.season||'春',today:{year:1,season:'',day:null},notes:{'春':{},'夏':{},'秋':{},'冬':{}},notesByYear:{},weatherByYear:{}};const c=state.calendar;c.year=Math.max(1,Number(c.year)||1);c.today=c.today||{year:c.year,season:'',day:null};c.today.year=Math.max(1,Number(c.today.year)||c.year);c.viewSeason=CAL_SEASONS.includes(c.viewSeason)?c.viewSeason:(c.today.season||state.season||'春');c.notes=c.notes||{};c.notesByYear=c.notesByYear||{};c.weatherByYear=c.weatherByYear||{};if(!c.notesByYear['1'])c.notesByYear['1']=clone(c.notes);state.ui=state.ui||{};state.ui.calendarOpen=!!state.ui.calendarOpen;state.ui.recent=Array.isArray(state.ui.recent)?state.ui.recent.slice(0,10):[];return c}
+function calendarState(){state.calendar=state.calendar||{year:1,viewSeason:state.season||'春',today:{year:1,season:'',day:null},notes:{'春':{},'夏':{},'秋':{},'冬':{}},notesByYear:{},weatherByYear:{},seasonReminders:[]};const c=state.calendar;c.year=Math.max(1,Number(c.year)||1);c.today=c.today||{year:c.year,season:'',day:null};c.today.year=Math.max(1,Number(c.today.year)||c.year);c.viewSeason=CAL_SEASONS.includes(c.viewSeason)?c.viewSeason:(c.today.season||state.season||'春');c.notes=c.notes||{};c.notesByYear=c.notesByYear||{};c.weatherByYear=c.weatherByYear||{};c.seasonReminders=Array.isArray(c.seasonReminders)?c.seasonReminders:[];if(!c.notesByYear['1'])c.notesByYear['1']=clone(c.notes);state.ui=state.ui||{};state.ui.calendarOpen=!!state.ui.calendarOpen;state.ui.recent=Array.isArray(state.ui.recent)?state.ui.recent.slice(0,10):[];return c}
 function calendarNotes(year,season){const c=calendarState(),yk=String(year);c.notesByYear[yk]=c.notesByYear[yk]||{};c.notesByYear[yk][season]=c.notesByYear[yk][season]||{};return c.notesByYear[yk][season]}
 const WEATHER_TYPES=['晴れ','曇り','雨','雪','台風','吹雪'];
 const WIND_LEVELS=[0,1,2,3];
@@ -226,6 +226,54 @@ function hasFestival(year,season,day){return !!festivalMap(year,season)[day]?.le
 function isBazaarDate(year,season,day){const abs=calAbs(year,season,day);if(calWeekday(year,season,day)===6&&!hasFestival(year,season,day))return true;if(abs>0){const p=calFromAbs(abs-1);if(calWeekday(p.year,p.season,p.day)===6&&hasFestival(p.year,p.season,p.day)&&!hasFestival(year,season,day))return true}return false}
 function dayEntries(year,season,day){const arr=[];if(isBazaarDate(year,season,day))arr.push({type:'bazaar',icon:'🎪',label:'バザール'});for(const x of festivalMap(year,season)[day]||[])arr.push({type:'festival',icon:'🎉',label:x});for(const x of CAL_BIRTHDAYS[season]?.[day]||[])arr.push({type:'birthday',icon:'🎂',label:x,resident:x});return arr}
 function nextBazaarFromToday(){const c=calendarState(),t=c.today;if(!t?.season||!t.day)return null;const start=calAbs(t.year||c.year,t.season,Number(t.day));for(let delta=0;delta<=14;delta++){const d=calFromAbs(start+delta);if(isBazaarDate(d.year,d.season,d.day))return{...d,delta}}return null}
+function seasonReminderItems(){return calendarState().seasonReminders}
+function seasonReminderTargetLabel(r){return `${r.targetYear}年目 ${r.targetSeason}`}
+function seasonReminderDue(r){
+  if(r.doneAt)return false;const c=calendarState(),t=c.today;if(!calendarHasToday(t))return false;
+  return calAbs(Number(r.targetYear),r.targetSeason,1)<=calAbs(Number(t.year),t.season,Number(t.day))
+}
+function pendingSeasonReminders(){
+  return seasonReminderItems().filter(r=>!r.doneAt).sort((a,b)=>calAbs(Number(a.targetYear),a.targetSeason,1)-calAbs(Number(b.targetYear),b.targetSeason,1))
+}
+function seasonReminderBannerHtml(){
+  const due=pendingSeasonReminders().filter(seasonReminderDue);if(!due.length)return'';
+  return `<div class="section" style="margin-top:10px"><div class="section-head"><h2>🌿 季節メモ</h2><div class="tiny muted">今思い出すこと</div></div>${due.map(r=>`<div class="card clickable seasonReminderOpen" data-id="${r.id}"><div class="row between"><div class="grow"><div class="tiny muted">${esc(seasonReminderTargetLabel(r))}</div><div class="small strong" style="margin-top:4px">${esc(r.text)}</div></div><button class="btn secondary smallbtn seasonReminderDone" data-id="${r.id}">確認済み</button></div></div>`).join('')}</div>`
+}
+function seasonReminderInboxHtml(){
+  const xs=pendingSeasonReminders();if(!xs.length)return'';
+  return `<div class="section"><div class="section-head"><h2>季節メモ</h2><div class="tiny muted">${xs.length}件</div></div>${xs.map(r=>`<div class="card clickable seasonReminderOpen" data-id="${r.id}"><div class="row between"><div class="grow"><div class="tiny muted">${esc(seasonReminderTargetLabel(r))}${seasonReminderDue(r)?' ・ 今季':''}</div><div class="small" style="margin-top:4px">${esc(r.text)}</div></div><div>›</div></div></div>`).join('')}</div>`
+}
+function refreshAfterSeasonReminder(){const screen=activeScreenId();if(screen==='inbox')inbox();else home()}
+function bindSeasonReminderUi(){
+  $('.seasonReminderOpen').forEach(b=>b.onclick=()=>openSeasonReminderEditor(b.dataset.id));
+  $('.seasonReminderDone').forEach(b=>b.onclick=async e=>{e.stopPropagation();const r=seasonReminderItems().find(x=>x.id===b.dataset.id);if(!r)return;r.doneAt=new Date().toISOString();await save();refreshAfterSeasonReminder();toast('季節メモを確認済みにしました')})
+}
+function openSeasonReminderEditor(id){
+  const r=seasonReminderItems().find(x=>x.id===id);if(!r)return;
+  modal(`<h3>🌿 季節メモ</h3><div class="tiny muted" style="margin-bottom:8px">${esc(seasonReminderTargetLabel(r))}に思い出す</div><div class="field"><textarea id="seasonReminderText">${esc(r.text)}</textarea></div><div class="sheet-actions"><button class="btn danger" id="deleteSeasonReminder">削除</button><button class="btn secondary" id="closeSeasonReminder">閉じる</button><button class="btn" id="saveSeasonReminder">保存</button></div>`);
+  $('#closeSeasonReminder').onclick=()=>{closeModal();refreshAfterSeasonReminder()};
+  $('#deleteSeasonReminder').onclick=()=>confirmDelete('この季節メモを削除しますか？',async()=>{const c=calendarState();c.seasonReminders=c.seasonReminders.filter(x=>x.id!==id);await save();closeModal();refreshAfterSeasonReminder()});
+  $('#saveSeasonReminder').onclick=async()=>{const text=$('#seasonReminderText').value.trim();if(!text)return;r.text=text;r.updatedAt=new Date().toISOString();await save();closeModal();refreshAfterSeasonReminder();toast('季節メモを更新しました')}
+}
+async function applyTodayPosition(next){
+  const c=calendarState();c.today={year:next.year,season:next.season,day:next.day};c.year=next.year;c.viewSeason=next.season;state.season=next.season;
+  await save();$('#seasonSelect').value=state.season||'';setSeasonSelectClass();home()
+}
+function openSeasonEndDialog(from,next){
+  const sameYear=Number(from.year)+1;
+  modal(`<h3>${esc(from.season)}の月、お疲れさまでした 🌿</h3><p class="small muted">次にこの経験を活かせるよう、季節メモを残せます。</p><div class="field"><label>思い出すタイミング</label><select id="seasonReminderTarget"><option value="same">来年の${esc(from.season)}（${sameYear}年目）</option><option value="next">次の季節：${esc(next.season)}（${next.year}年目）</option></select></div><div class="field" style="margin-top:10px"><label>季節メモ</label><textarea id="seasonReminderNew" placeholder="例：序盤からこの作物を多めに育てる"></textarea></div><div class="sheet-actions"><button class="btn secondary" id="skipSeasonReminder">そのまま進む</button><button class="btn" id="saveSeasonReminderNew">メモして進む</button></div>`);
+  const advance=async(saveNote)=>{
+    const text=$('#seasonReminderNew')?.value.trim()||'';
+    if(saveNote&&text){
+      const target=$('#seasonReminderTarget').value,now=new Date().toISOString();
+      calendarState().seasonReminders.push({id:'sr'+Date.now(),text,targetYear:target==='same'?sameYear:next.year,targetSeason:target==='same'?from.season:next.season,sourceYear:Number(from.year),sourceSeason:from.season,createdAt:now,updatedAt:now,doneAt:null})
+    }
+    closeModal();await applyTodayPosition(next);
+    if(saveNote&&text)toast('季節メモを残しました')
+  };
+  $('#skipSeasonReminder').onclick=()=>advance(false);
+  $('#saveSeasonReminderNew').onclick=()=>advance(true)
+}
 function todayStripHtml(){
   const c=calendarState(),t=c.today,hasToday=calendarHasToday(t),open=!!state.ui.calendarOpen;
   let dateHtml='<button class="todaySet" id="setTodayFromStrip">今日を設定</button>',weatherHtml='',planHtml='';
@@ -248,8 +296,9 @@ function todayStripHtml(){
 async function shiftToday(delta){
   const c=calendarState(),t=c.today;if(!calendarHasToday(t))return;
   const current=calAbs(Number(t.year),t.season,Number(t.day)),next=calFromAbs(Math.max(0,current+Number(delta||0)));
-  c.today={year:next.year,season:next.season,day:next.day};c.year=next.year;c.viewSeason=next.season;state.season=next.season;
-  await save();$('#seasonSelect').value=state.season||'';setSeasonSelectClass();home()
+  const crossed=Number(delta)>0&&(next.year!==Number(t.year)||next.season!==t.season);
+  if(crossed){openSeasonEndDialog({year:Number(t.year),season:t.season,day:Number(t.day)},next);return}
+  await applyTodayPosition(next)
 }
 async function setTodayWeather(kind,value){
   const c=calendarState(),t=c.today;if(!calendarHasToday(t))return;
@@ -621,7 +670,7 @@ function openRequestObjective(requestId,idx=null){
 function home(){
   const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>g.status!=='done'),short=[],memos=state.captures.filter(c=>captureStatus(c)==='active');
   for(const g of goals)for(const r of state.requirements[g.id]||[])if(r.have<r.need)short.push({...r,goal:g.title,goalId:g.id});
-  $('#home').innerHTML=`${todayStripHtml()}${recentStripHtml()}
+  $('#home').innerHTML=`${todayStripHtml()}${seasonReminderBannerHtml()}${recentStripHtml()}
   <div class="section"><div class="section-head"><h2>⭐ 今やる</h2></div><div class="card">${pinned.length?pinned.map(a=>`<div class="actionrow"><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable homeActionOpen" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><div>›</div></div>`).join(''):'<div class="empty">「やること」に★を付けるとここに出ます。</div>'}</div></div>
   <div class="section"><div class="section-head"><h2>不足</h2></div><div class="card">${short.length?short.slice(0,6).map(r=>`<div class="row between clickable homeGoal" data-id="${r.goalId}" style="padding:7px 0"><div><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="tiny">${esc(r.goal)}</div></div><div class="countPair" style="min-width:108px"><span>現在 <b>${r.have}</b></span><span>必要 <b>${r.need}</b></span></div></div>`).join(''):'<div class="empty">追跡中の不足はありません</div>'}</div></div>
   <div class="section"><div class="section-head"><h2>未整理メモ</h2></div><div class="card">${memos.length?memos.map(c=>`<div class="row between clickable homeCapture" data-id="${c.id}" style="padding:7px 0"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">ありません</div>'}</div></div>${bazaarPrepHtml()}`;
@@ -630,7 +679,7 @@ function home(){
   $$('.homeGoal').forEach(x=>x.onclick=()=>showGoal(x.dataset.id));
   $$('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
   $$('.homeNav').forEach(x=>x.onclick=()=>openHomeNav(x.dataset.dest));
-  bindTodayStrip();bindRecent();bindBazaarPrep();bindCalendar()
+  bindTodayStrip();bindSeasonReminderUi();bindRecent();bindBazaarPrep();bindCalendar()
 }
 function planTags(g){const k=planKind(g);return k==='request'?[k]:[]}
 function hasPlanTag(g,tag){return planKind(g)===tag}
@@ -903,8 +952,9 @@ function captureChildrenExpanded(c){
 }
 function inbox(){
   const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ'};
-  $('#inbox').innerHTML=`<div class="hero"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておけます。</p></div><div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="small">${esc(c.text)}</div>${captureChildrenExpanded(c)}<div class="row" style="margin-top:10px">${filter==='active'?`<button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="action">やることへ</button><button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="goal">目標へ</button>`:''}${filter==='archived'?`<button class="btn ghost smallbtn capRestore" data-id="${c.id}">戻す</button>`:`<button class="btn ghost smallbtn capArchive" data-id="${c.id}">アーカイブ</button>`}</div></div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>`;
-  $$('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
+  $('#inbox').innerHTML=`<div class="hero"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておけます。</p></div>${seasonReminderInboxHtml()}<div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="small">${esc(c.text)}</div>${captureChildrenExpanded(c)}<div class="row" style="margin-top:10px">${filter==='active'?`<button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="action">やることへ</button><button class="btn secondary smallbtn capTo" data-id="${c.id}" data-to="goal">目標へ</button>`:''}${filter==='archived'?`<button class="btn ghost smallbtn capRestore" data-id="${c.id}">戻す</button>`:`<button class="btn ghost smallbtn capArchive" data-id="${c.id}">アーカイブ</button>`}</div></div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>`;
+  bindSeasonReminderUi();
+  $('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
   $('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
   $('.subInlineEdit').forEach(b=>b.onclick=e=>{e.stopPropagation();openSubMemoEditor(b.dataset.parent,b.dataset.child)});
   $$('.capTo').forEach(b=>b.onclick=e=>{e.stopPropagation();confirmConvert(b.dataset.id,b.dataset.to)});
