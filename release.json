@@ -1,18 +1,24 @@
 {
-  "version": "0.11.1",
-  "summary": "ホームの密度と完了操作を磨き、チェックUI・季節ヘッダー・FABを実機向けに調整",
+  "version": "0.11.2",
+  "summary": "Request Master v2へ既存お願いを安全に再同期し、進捗・custom編集を保持するmigrationを追加",
   "notes": [
-    "空の「今やる」を大きなカードからコンパクトな案内行へ変更",
-    "関連目標がない場合はホームの「次のバザール」空セクションを表示しない",
-    "お願いの直接完了を大きな✓から「完了」ボタンへ変更し、詳細への矢印との競合を解消",
-    "チェックボックスのチェックマークを文字表示から専用SVG描画へ変更し、角丸・線幅・フォーカス表現を統一",
-    "日付設定済みの場合、ヘッダーの季節セレクトを小型の季節チップへ切り替え、タップでカレンダーを開く",
-    "FABを44pxへ小型化し、下部余白を広げてコンテンツへの被りを軽減",
-    "ホームのカード余白とセクション間隔を少し詰め、一覧性を改善",
-    "schemaVersionと保存形式は変更なし"
+    "masterId付き既存お願いをplayer_state_migration manifestに従ってMaster v2へ安全に再同期",
+    "64件のcompatible migrationでcurrentをindexごとに保持し、v2のlabel・quality・category・alternativesを採用",
+    "「店の傷を直すデス！」の旧binary checkを3素材objectiveへ安全に変換",
+    "「逃げ出した動物を探せ！」の1/3・2/3は地点を推定せず、旧進捗をnoteとmigration情報へ保持",
+    "legacy canonical / customを旧canonical shapeで判定し、custom objectiveはMasterで上書きしない",
+    "Master由来requestへrevision・objective signature・sync modeを保存",
+    "objective追加・削除・type/label/target変更でcustom化し、current変更だけではcanonicalを維持",
+    "JSONバックアップ読込時にも保存前に同じMaster同期を適用",
+    "migrationはrevision/signatureで冪等化し、UI・Master定義・schemaVersionは変更なし"
   ],
   "releasedAt": "2026-10-07",
   "history": [
+    {
+      "version": "0.11.1",
+      "summary": "ホームの密度と完了操作を磨き、チェックUI・季節ヘッダー・FABを実機向けに調整",
+      "releasedAt": "2026-10-07"
+    },
     {
       "version": "0.11.0",
       "summary": "ホーム・進行中・お願い・検索・メモの導線を再整理し、日常操作の迷いと手数を削減",
