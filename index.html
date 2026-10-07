@@ -95,7 +95,7 @@ const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
 const STORAGE='gb-board-data',OLD_KEYS=['gb-board-v05','gb-board-v04','gb-board-v03','gb-board-v02'],DBNAME='gb-board-db',OLD_DBS=['gb-board-v05-db','gb-board-v03-db'];
 const clone=x=>JSON.parse(JSON.stringify(x));const $=q=>document.querySelector(q),$$=q=>[...document.querySelectorAll(q)];const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const baseById=new Map(MASTER.entities.map(e=>[e.id,e])),factById=new Map(MASTER.facts.map(f=>[f.id,f])),REQUEST_MASTER=Array.isArray(MASTER.requests)?MASTER.requests:[],requestMasterById=new Map(REQUEST_MASTER.map(r=>[r.id,r]));
+const baseById=new Map(MASTER.entities.map(e=>[e.id,e])),factById=new Map(MASTER.facts.map(f=>[f.id,f])),REQUEST_MASTER=Array.isArray(MASTER.requests)?MASTER.requests:[],requestMasterById=new Map(REQUEST_MASTER.map(r=>[r.id,r])),REQUEST_MASTER_META=MASTER.meta?.request_master||{},REQUEST_MASTER_MIGRATION=REQUEST_MASTER_META.player_state_migration||{},REQUEST_MASTER_REVISION=REQUEST_MASTER_MIGRATION.to_revision||REQUEST_MASTER_META.audit_version||'';
 const REMOTE_JA=window.I18N?.jp||{},RECIPE_ROWS=Array.isArray(window.recipes)?window.recipes:[],PROCESS_ROWS=Array.isArray(window.processed_goods)?window.processed_goods:[],GROUP_ROWS=Array.isArray(window.groups)?window.groups:[],INGREDIENT_ROWS=Array.isArray(window.ingredients)?window.ingredients:[];
 const recipeById=new Map(RECIPE_ROWS.map(x=>[x.id,x])),processByOutput=new Map(PROCESS_ROWS.map(x=>[x.id,x])),groupById=new Map(GROUP_ROWS.map(x=>[x.id,x]));
 for(const x of INGREDIENT_ROWS)if(!baseById.has(x.id))baseById.set(x.id,{id:x.id,name_ja:REMOTE_JA[x.id]||x.id,name_en:null,kind:x.crop_type==='fruit_tree'?'fruit':(x.crop_type==='flower'?'flower':(['single_harvest','multiple_harvest'].includes(x.crop_type)?'crop':'ingredient')),attributes:{price:x.price,seasons:x.season||[],grow_days:x.grow_times_in_days,regrow_days:x.regrow_times_in_days}});
@@ -568,22 +568,113 @@ function requestMasterMatchHint(title,requester=''){
   if(raw.length>1)return'候補が複数あります。もう少しお願い名を入力してください。';
   return''
 }
+function requestObjectiveCanonicalShape(o){
+  const x={type:String(o?.type||''),label:String(o?.label||''),target:Math.max(1,Number(o?.target)||1)};
+  if(o?.quality!=null)x.quality=clone(o.quality);
+  if(o?.category!=null)x.category=clone(o.category);
+  if(Array.isArray(o?.alternatives))x.alternatives=clone(o.alternatives);
+  return x
+}
+function requestObjectiveSignatureFromObjectives(xs){
+  const raw=JSON.stringify((xs||[]).map(requestObjectiveCanonicalShape));let h=0x811c9dc5;
+  for(let i=0;i<raw.length;i++){h^=raw.charCodeAt(i);h=Math.imul(h,0x01000193)}
+  return 'v1:'+(h>>>0).toString(16).padStart(8,'0')
+}
+function requestMasterObjectiveSignature(m){return requestObjectiveSignatureFromObjectives(m?.objectives||[])}
+function requestMasterSyncFields(m,mode='canonical'){
+  return {masterRevision:REQUEST_MASTER_REVISION,masterObjectiveSignature:requestMasterObjectiveSignature(m),masterSyncMode:mode}
+}
+function requestStampMasterSync(r,m,mode){
+  if(!r||!m)return false;let changed=false;
+  for(const [k,v] of Object.entries(requestMasterSyncFields(m,mode)))if(r[k]!==v){r[k]=v;changed=true}
+  return changed
+}
+function requestCompareFieldValue(o,key){
+  if(key==='target')return Math.max(1,Number(o?.target)||1);
+  if(key==='type'||key==='label')return String(o?.[key]||'');
+  if(key==='alternatives')return JSON.stringify(Array.isArray(o?.alternatives)?o.alternatives:[]);
+  const v=o?.[key];return JSON.stringify(v==null?null:v)
+}
+function requestObjectivesEqualOnFields(a,b,fields=null){
+  const left=Array.isArray(a)?a:[],right=Array.isArray(b)?b:[],keys=fields||REQUEST_MASTER_MIGRATION.legacy_objective_compare_fields||['type','label','target'];
+  return left.length===right.length&&left.every((o,i)=>keys.every(k=>requestCompareFieldValue(o,k)===requestCompareFieldValue(right[i],k)))
+}
+function requestClearMasterObjectiveMetadata(o){
+  if(!o)return;delete o.quality;delete o.category;delete o.alternatives
+}
+function requestMarkCustom(r,o=null){
+  if(o)requestClearMasterObjectiveMetadata(o);
+  if(!r?.masterId)return false;const m=requestMasterById.get(r.masterId);if(!m)return false;
+  return requestStampMasterSync(r,m,'custom')
+}
 function requestMasterCloneObjectives(m){
   const structured=clone(m?.objectives||[]).map(o=>({...o,current:0}));
   if(structured.length)return structured;
   return m?.objectiveText?[{id:'rqo_master_'+m.id,type:'check',label:m.objectiveText,target:1,current:0}]:[]
 }
-function requestMasterCompletedObjectives(m){return clone(m?.objectives||[]).map(o=>({...o,current:Math.max(1,Number(o.target)||1)}))}
+function requestMasterCompletedObjectives(m){
+  return requestMasterCloneObjectives(m).map(o=>({...o,current:Math.max(1,Number(o.target)||1)}))
+}
+function requestClampObjectiveProgress(o,target){
+  const max=Math.max(1,Number(target)||1),raw=o?.type==='check'?(o.current?1:0):Math.max(0,Number(o?.current)||0);
+  return Math.max(0,Math.min(max,raw))
+}
+function requestMasterObjectivesWithProgress(m,local,status){
+  const next=requestMasterCloneObjectives(m);
+  return next.map((o,i)=>({...o,current:status==='completed'?Math.max(1,Number(o.target)||1):requestClampObjectiveProgress(local?.[i],o.target)}))
+}
+function requestAppendMigrationNote(r,text){
+  if(!text||String(r.note||'').includes(text))return false;
+  r.note=String(r.note||'').trim()?String(r.note).trimEnd()+'\n'+text:text;return true
+}
+function requestApplySpecialMigration(r,m,rule){
+  const legacy=(r.objectives||[])[0]||{},next=requestMasterCloneObjectives(m),oldTarget=Math.max(1,Number(legacy.target)||1),oldCurrent=requestClampObjectiveProgress(legacy,oldTarget),completed=r.status==='completed';
+  if(rule.strategy==='binary_check_to_all_items'){
+    const done=completed||oldCurrent>=oldTarget;
+    r.masterMigrationInfo={fromRevision:REQUEST_MASTER_MIGRATION.from_revision||null,toRevision:REQUEST_MASTER_REVISION,strategy:rule.strategy,legacyCurrent:oldCurrent,legacyTarget:oldTarget,resolved:true};
+    return next.map(o=>({...o,current:done?Math.max(1,Number(o.target)||1):0}))
+  }
+  if(rule.strategy==='count_to_location_checks'){
+    const done=completed||oldCurrent>=oldTarget;
+    const partial=!done&&oldCurrent>0;
+    r.masterMigrationInfo={fromRevision:REQUEST_MASTER_MIGRATION.from_revision||null,toRevision:REQUEST_MASTER_REVISION,strategy:rule.strategy,legacyCurrent:oldCurrent,legacyTarget:oldTarget,resolved:!partial,locationAssignment:partial?'unknown':'resolved'};
+    if(partial)requestAppendMigrationNote(r,`Master更新前にニワトリ ${oldCurrent}/${oldTarget} の進捗記録あり。場所別の完了状況は特定できません。`);
+    return next.map(o=>({...o,current:done?Math.max(1,Number(o.target)||1):0}))
+  }
+  return requestMasterObjectivesWithProgress(m,r.objectives,r.status)
+}
+function requestSyncLinkedMasterRecord(r,m){
+  if(!r||!m)return false;let changed=false;
+  if(!r.reward&&m.reward){r.reward=m.reward;changed=true}
+  const masterSig=requestMasterObjectiveSignature(m),localSig=requestObjectiveSignatureFromObjectives(r.objectives||[]);
+  if(r.masterRevision===REQUEST_MASTER_REVISION){
+    if(r.masterSyncMode==='custom'){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
+    if(r.masterSyncMode==='canonical'){
+      if(localSig===masterSig){if(requestStampMasterSync(r,m,'canonical'))changed=true}
+      else if(requestStampMasterSync(r,m,'custom'))changed=true;
+      return changed
+    }
+    if(requestStampMasterSync(r,m,localSig===masterSig?'canonical':'custom'))changed=true;
+    return changed
+  }
+  if(r.masterSyncMode==='custom'){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
+  const from=REQUEST_MASTER_MIGRATION.from_revision||null,legacyEligible=!r.masterRevision||r.masterRevision===from;
+  if(!legacyEligible){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
+  const rule=REQUEST_MASTER_MIGRATION.rules?.[r.masterId]||null,expected=rule?.legacy_objectives||m.objectives||[];
+  if(!requestObjectivesEqualOnFields(r.objectives||[],expected)){
+    if(requestStampMasterSync(r,m,'custom'))changed=true;
+    return changed
+  }
+  const next=rule?.mode==='special'?requestApplySpecialMigration(r,m,rule):requestMasterObjectivesWithProgress(m,r.objectives,r.status);
+  if(JSON.stringify(r.objectives||[])!==JSON.stringify(next)){r.objectives=next;changed=true}
+  if(requestStampMasterSync(r,m,'canonical'))changed=true;
+  return changed
+}
 function syncLinkedRequestMasterDetails(){
   let changed=false;
   for(const r of requestsState()){
-    if(!r.masterId)continue;
-    const m=requestMasterById.get(r.masterId);if(!m)continue;
-    if(!(r.objectives||[]).length&&(m.objectives||[]).length){
-      r.objectives=r.status==='completed'?requestMasterCompletedObjectives(m):requestMasterCloneObjectives(m);
-      changed=true
-    }
-    if(!r.reward&&m.reward){r.reward=m.reward;changed=true}
+    if(!r.masterId)continue;const m=requestMasterById.get(r.masterId);if(!m)continue;
+    if(requestSyncLinkedMasterRecord(r,m))changed=true
   }
   return changed
 }
