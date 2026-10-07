@@ -1020,38 +1020,6 @@ function openGoalSheet(id,origin=null){
   $('#sheetReopenGoal')?.addEventListener('click',async()=>{await withUndo('計画の再開を元に戻せます',()=>{g.status='active'});openGoalSheet(id,GOAL_RETURN_CONTEXT);toast('計画を再開しました')});
   bindDerivedActions()
 }
-function showGoal(id){
-  GOAL_RETURN_CONTEXT='plan';DETAIL_CONTEXT='plan';
-  const g=state.goals.find(x=>x.id===id);if(!g)return;touchRecent('goal',id);
-  const kind=planKind(g),rs=state.requirements[id]||[],acts=state.actions.filter(a=>a.goalId===id).sort((a,b)=>Number(a.done)-Number(b.done)),isDone=g.status==='done';
-  const isRequest=kind==='request',isBazaar=isBazaarGoal(g),statusLabel={active:'進行中',someday:'いつか',blocked:'止まっている',done:'完了'}[g.status]||'進行中';
-  const reqTitle=isBazaar?'出品予定':'必要なもの';
-  $('#detail').innerHTML=`<button class="back" id="backBtn">‹ 計画</button>
-    <div class="hero"><div class="row between"><div><h1 style="margin:0">🎯 ${esc(g.title)}</h1><p>${esc(statusLabel)}</p></div><div class="stack" style="gap:5px"><button class="btn secondary smallbtn" id="editGoal">編集</button>${g.sourceRecipeId?'<button class="btn secondary smallbtn" id="editRecipeQtyBtn">個数</button>':''}${isDone?'<button class="btn secondary smallbtn" id="reopenGoal">再開</button>':''}</div></div>${isDone?'':`<div class="goalCompleteBox"><button class="btn goalCompleteAction" id="completeGoal"><span class="goalCompleteIcon">✓</span>この計画を完了する</button></div>`}</div>
-    ${isBazaar?`<div class="card" style="margin-bottom:12px"><div class="tiny muted">関連</div><div class="small strong" style="margin-top:4px">🎪 ${esc(bazaarRelationLabel(goalBazaar(g)))}</div></div>`:''}
-    ${isRequest&&g.requestContent?`<div class="notice" style="margin-bottom:12px"><b>お願い内容</b><br>${esc(g.requestContent)}${g.reward?`<div class="small" style="margin-top:8px"><b>報酬：</b>${esc(g.reward)}</div>`:''}</div>`:''}
-    ${g.blocker?`<div class="notice" style="margin-bottom:12px">${esc(g.blocker)}</div>`:''}
-    <div class="section"><div class="section-head"><h2>${reqTitle}</h2>${isDone?'':'<button class="btn secondary smallbtn" id="addReq">＋追加</button>'}</div><div class="card">${rs.length?rs.map((r,i)=>`<div class="req"><div class="row between"><div class="grow clickable reqEdit" data-i="${i}"><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="countPair"><span>現在 <b>${r.have}</b></span><span>${isBazaar?'目標':'必要'} <b>${r.need}</b></span></div></div><div class="stepper"><button data-req="${i}" data-d="-1">−</button><button data-req="${i}" data-d="1">＋</button></div></div></div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
-    <div class="section"><div class="section-head"><h2>やること</h2>${isDone?'':'<button class="btn secondary smallbtn" id="addGoalAction">＋追加</button>'}</div><div class="card">${acts.length?acts.map(a=>`<div class="actionrow ${a.done?'done':''}"><input class="check actionCheck" type="checkbox" data-id="${a.id}" ${a.done?'checked':''}><div class="grow clickable actionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div></div>${a.done?'':`<button class="iconAction pin ${a.pinned?'active':''}" data-pin="${a.id}">★</button>`}</div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
-    <div class="section"><div class="section-head"><h2>メモ</h2></div><div class="card"><div class="field"><textarea id="goalMemo" placeholder="この計画について残しておきたいこと">${esc(g.memo||'')}</textarea></div><div class="tiny muted" style="margin-top:6px">自動保存</div></div></div>
-    ${recipeReverseSection(g,rs)}`;
-  show('detail');
-  $('#backBtn').onclick=()=>{show('plan');plan()};
-  $('#editGoal').onclick=()=>openGoal(id);
-  if(g.sourceRecipeId)$('#editRecipeQtyBtn').onclick=()=>openRecipeGoalQty(id);
-  $('#completeGoal')?.addEventListener('click',async()=>{await withUndo('計画の完了を元に戻せます',()=>{g.status='done'});show('plan');plan();toast('計画を完了しました')});
-  $('#reopenGoal')?.addEventListener('click',async()=>{await withUndo('計画の再開を元に戻せます',()=>{g.status='active'});showGoal(id);toast('計画を再開しました')});
-  $('#addReq')?.addEventListener('click',()=>openReq(id));
-  $('#addGoalAction')?.addEventListener('click',()=>openAction(id));
-  $$('.reqEdit').forEach(b=>b.onclick=()=>openReq(id,+b.dataset.i));
-  $$('[data-req]').forEach(b=>b.onclick=async()=>{const r=state.requirements[id][+b.dataset.req];r.have=Math.max(0,Math.min(r.need,r.have+Number(b.dataset.d)));await save();showGoal(id)});
-  $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked,id));
-  $$('.actionEdit').forEach(x=>x.onclick=()=>openAction(id,x.dataset.id));
-  $$('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();showGoal(id)});
-  bindAutosave([$('#goalMemo')],async()=>{g.memo=$('#goalMemo').value;await save()});
-  bindDerivedActions();
-}
-
 function openGoal(id=null){
   if(id){const g=state.goals.find(x=>x.id===id);if(g&&planKind(g)==='request'){openRequestPlan(id);return}}
   openGeneralPlan(id);
