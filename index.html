@@ -917,14 +917,14 @@ function showCrop(id){
     if($('#cropQuickGrowing'))$('#cropQuickGrowing').textContent=p.growing?(p.growingCount!=null?`${p.growingCount}個`:'数未入力'):'なし'
   };
   const refreshLocation=()=>{if(selectedStatus==='processing'&&fac){selectedLocation=fac;$('#locationSelect').value=selectedLocation;$('#locationSelect').disabled=true;$('#facilityBox').innerHTML=`加工中のため場所は <b>${locationLabel(selectedLocation)}</b> に自動設定されます`}else{$('#locationSelect').disabled=false;$('#facilityBox').textContent='保管中は倉庫・各風車から選べます'}};
-  const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
+  const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
   refreshLocation();refreshOverview();
-  $('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
-  $('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
-  $('.stateBtn').forEach(b=>b.onclick=async()=>{selectedStatus=b.dataset.status;$('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));refreshLocation();await persistCrop()});
+  $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
+  $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
+  $$('.stateBtn').forEach(b=>b.onclick=async()=>{selectedStatus=b.dataset.status;$$('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));refreshLocation();await persistCrop()});
   $('#locationSelect').onchange=async e=>{selectedLocation=e.target.value;await persistCrop()};
   $('#growing').onchange=persistCrop;
-  $('.detailQ').forEach(b=>b.onclick=()=>adjustQuality(id,b.dataset.key,Number(b.dataset.delta)));
+  $$('.detailQ').forEach(b=>b.onclick=()=>adjustQuality(id,b.dataset.key,Number(b.dataset.delta)));
   bindAutosave([$('#seedCount'),$('#growingCount'),$('#cropNote')],persistCrop);
   if(isCustom)$('#deleteCustomCrop').onclick=()=>confirmDelete('このカスタム品目を削除しますか？ 保存した品質・数・メモも削除されます。',async()=>{state.knownEntities=state.knownEntities.filter(x=>x!==id);state.customEntities=state.customEntities.filter(x=>x.id!==id);state.ui.seedOrder=(state.ui.seedOrder||[]).filter(x=>x!==id);delete state.playerState[id];await save();show('crops');crops();toast('カスタム品目を削除しました')})
 }
