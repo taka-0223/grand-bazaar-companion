@@ -161,7 +161,7 @@ function qtext(v){return v==null?'未設定':`★${Number(v).toFixed(Number(v)%1
 function seasonClass(s){return s==='春'?'spring':s==='夏'?'summer':s==='秋'?'autumn':'winter'}function seasonBadge(s){return `<span class="badge ${seasonClass(s)}">${s==='春'?'🌸':s==='夏'?'☀️':s==='秋'?'🍂':'❄️'} ${s}</span>`}function setSeasonSelectClass(){const e=$('#seasonSelect');e.classList.remove('spring','summer','autumn','winter');if(state.season)e.classList.add(seasonClass(state.season))}
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1500)}
 function showUndo(label,snapshot){undoSnapshot=snapshot;const u=$('#undo');$('#undoText').textContent=label;u.classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{u.classList.remove('show');undoSnapshot=null},5000)}async function withUndo(label,fn){const before=clone(state);fn();await save();showUndo(label,before)}$('#undoBtn').onclick=async()=>{if(!undoSnapshot)return;state=undoSnapshot;undoSnapshot=null;$('#undo').classList.remove('show');await save();render();toast('元に戻しました')}
-function show(id){const current=$('.screen.active')?.id||null;$('.screen').forEach(x=>x.classList.toggle('active',x.id===id));$('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.nav===id));$('#quickAdd')?.classList.toggle('hidden',id==='detail');if(current!==id)window.scrollTo({top:0,behavior:'instant'})}
+function show(id){const current=$('.screen.active')?.id||null;$$('.screen').forEach(x=>x.classList.toggle('active',x.id===id));$$('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.nav===id));$('#quickAdd')?.classList.toggle('hidden',id==='detail');if(current!==id)window.scrollTo({top:0,behavior:'instant'})}
 function openHomeNav(dest){show(dest);if(dest==='plan')plan();else if(dest==='inbox')inbox();else if(dest==='crops')crops();else if(dest==='recipes')recipesScreen()}
 const CAL_SEASONS=['春','夏','秋','冬'],CAL_WEEKDAYS=['日','月','火','水','木','金','土'];
 const CAL_BIRTHDAYS={
@@ -1029,7 +1029,7 @@ function inbox(){
   $$('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
   $$('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
   bindInlineSubMemoEditing($('#inbox'));
-  $('.capMenu').forEach(b=>b.onclick=e=>{e.stopPropagation();openCaptureActions(b.dataset.id)})
+  $$('.capMenu').forEach(b=>b.onclick=e=>{e.stopPropagation();openCaptureActions(b.dataset.id)})
 }
 
 function openCaptureActions(id){
