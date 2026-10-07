@@ -204,7 +204,7 @@ function openResidentCard(name,backDay=null){
 }
 function openResidentEdit(name,backDay=null){
   const x=residentProfile(name),bd=residentBirthday(name);
-  modal(`<h3>👤 ${esc(name)}の住人情報</h3>
+  modal(`<h3>👤 ${esc(name)}の住人情報</h3><div class="editorSaveHint">変更は自動保存されます</div>
     <div class="tiny muted" style="margin-bottom:10px">誕生日：${bd?`${bd.season}の月 ${bd.day}日`:'未確認'}（カレンダーから自動）</div>
     <div class="field"><label>好きな色</label><input id="residentColor" value="${esc(x.color||'')}" placeholder="ゲーム内の表記どおり"></div>
     <div class="field" style="margin-top:8px"><label>好きなもの</label><textarea id="residentLikes" placeholder="ゲーム内「住人情報」の文言">${esc(x.likes||'')}</textarea></div>
@@ -546,7 +546,7 @@ function bindRequestsHome(){
 function openRequestRecord(id=null){
   const r=id?requestsState().find(x=>x.id===id):{title:'',requester:'',status:'active',note:'',objectives:[],reward:'',masterId:null};if(id&&!r)return;
   let selectedMasterId=r.masterId||null;
-  modal(`<h3>${id?'お願いを編集':'お願いを登録'}</h3>
+  modal(`<h3>${id?'お願いを編集':'お願いを登録'}</h3>${id?'<div class="editorSaveHint">変更は自動保存されます</div>':''}
     <div class="field"><label>お願いタイトル</label><input id="requestTitle" value="${esc(r.title)}" placeholder="ゲーム内のタイトル" autocomplete="off"><div class="tiny muted" style="margin-top:4px">Masterは裏で照合します。依頼人なしの部分一致では、未来のお願い名は表示しません。</div></div>
     <div id="requestMasterSuggestions"></div>
     <div id="requestMasterPreview"></div>
@@ -684,7 +684,7 @@ function showRequestRecord(id){
 function openRequestObjective(requestId,idx=null){
   const r=requestsState().find(x=>x.id===requestId);if(!r)return;
   const o=idx==null?{type:'item_quantity',label:'',target:1,current:0}:r.objectives[idx],editing=idx!=null;
-  modal(`<h3>${editing?'達成条件を編集':'達成条件を追加'}</h3>
+  modal(`<h3>${editing?'達成条件を編集':'達成条件を追加'}</h3>${editing?'<div class="editorSaveHint">変更は自動保存されます</div>':''}
     <div class="field"><label>種類</label><select id="requestObjectiveType"><option value="item_quantity" ${o.type==='item_quantity'?'selected':''}>品物</option><option value="action_count" ${o.type==='action_count'?'selected':''}>回数</option><option value="money_amount" ${o.type==='money_amount'?'selected':''}>金額</option><option value="check" ${o.type==='check'?'selected':''}>その他</option></select></div>
     <div class="field" style="margin-top:8px"><label>内容</label><input id="requestObjectiveLabel" value="${esc(o.label||'')}" placeholder="例：お風呂に入る"></div>
     <div id="requestObjectiveNumbers" class="grid2" style="margin-top:8px"><div class="field"><label>目標</label><input id="requestObjectiveTarget" type="number" min="1" value="${Math.max(1,Number(o.target)||1)}"></div><div class="field"><label>現在</label><input id="requestObjectiveCurrent" type="number" min="0" value="${Math.max(0,Number(o.current)||0)}"></div></div>
