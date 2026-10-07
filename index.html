@@ -602,6 +602,14 @@ function requestObjectivesEqualOnFields(a,b,fields=null){
 function requestClearMasterObjectiveMetadata(o){
   if(!o)return;delete o.quality;delete o.category;delete o.alternatives
 }
+function requestClearConflictingMasterMetadata(r,m){
+  const local=Array.isArray(r?.objectives)?r.objectives:[],canonical=Array.isArray(m?.objectives)?m.objectives:[];let changed=false;
+  for(let i=0;i<Math.min(local.length,canonical.length);i++){
+    if(requestObjectivesEqualOnFields([local[i]],[canonical[i]],['type','label','target']))continue;
+    for(const key of ['quality','category','alternatives'])if(Object.prototype.hasOwnProperty.call(local[i],key)){delete local[i][key];changed=true}
+  }
+  return changed
+}
 function requestMarkCustom(r,o=null){
   if(!r?.masterId)return false;const m=requestMasterById.get(r.masterId);if(!m)return false;
   if(o)requestClearMasterObjectiveMetadata(o);
@@ -654,17 +662,19 @@ function requestSyncLinkedMasterRecord(r,m){
     if(r.masterSyncMode==='custom'){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
     if(r.masterSyncMode==='canonical'){
       if(localSig===masterSig){if(requestStampMasterSync(r,m,'canonical'))changed=true}
-      else if(requestStampMasterSync(r,m,'custom'))changed=true;
+      else{if(requestClearConflictingMasterMetadata(r,m))changed=true;if(requestStampMasterSync(r,m,'custom'))changed=true}
       return changed
     }
+    if(localSig!==masterSig&&requestClearConflictingMasterMetadata(r,m))changed=true;
     if(requestStampMasterSync(r,m,localSig===masterSig?'canonical':'custom'))changed=true;
     return changed
   }
   if(r.masterSyncMode==='custom'){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
   const from=REQUEST_MASTER_MIGRATION.from_revision||null,legacyEligible=!r.masterRevision||r.masterRevision===from;
-  if(!legacyEligible){if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
+  if(!legacyEligible){if(requestClearConflictingMasterMetadata(r,m))changed=true;if(requestStampMasterSync(r,m,'custom'))changed=true;return changed}
   const rule=REQUEST_MASTER_MIGRATION.rules?.[r.masterId]||null,expected=rule?.legacy_objectives||m.objectives||[];
   if(!requestObjectivesEqualOnFields(r.objectives||[],expected)){
+    if(requestClearConflictingMasterMetadata(r,m))changed=true;
     if(requestStampMasterSync(r,m,'custom'))changed=true;
     return changed
   }
