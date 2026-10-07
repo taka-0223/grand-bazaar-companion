@@ -1090,7 +1090,7 @@ function bindSheetDrag(){
   let dragging=false,startY=0,startAt=0,pointerId=null,lastY=0;
   const clearStyles=()=>{sheet.classList.remove('dragging','settling');m.classList.remove('dragging');sheet.style.transform='';m.style.backgroundColor=''};
   const snapBack=()=>{sheet.classList.remove('dragging');sheet.classList.add('settling');m.classList.remove('dragging');sheet.style.transform='translateY(0)';m.style.backgroundColor='rgba(25,30,24,.38)';setTimeout(()=>{if(m.classList.contains('open'))clearStyles()},190)};
-  const dismiss=(dy=0)=>{sheet.classList.remove('dragging');sheet.classList.add('settling');m.classList.remove('dragging');sheet.style.transform=`translateY(${Math.max(sheet.offsetHeight,dy)+28}px)`;m.style.backgroundColor='rgba(25,30,24,0)';setTimeout(()=>closeModal(),170)};
+  const dismiss=(dy=0)=>{sheet.classList.remove('dragging');sheet.classList.add('settling');m.classList.remove('dragging');sheet.style.transform=`translateY(${Math.max(sheet.offsetHeight,dy)+28}px)`;m.style.backgroundColor='rgba(25,30,24,0)';setTimeout(()=>dismissModalContextually(),170)};
   handle.onpointerdown=e=>{if(e.pointerType==='mouse'&&e.button!==0)return;dragging=true;pointerId=e.pointerId;startY=e.clientY;lastY=e.clientY;startAt=performance.now();sheet.classList.add('dragging');m.classList.add('dragging');handle.setPointerCapture?.(pointerId)};
   handle.onpointermove=e=>{if(!dragging||e.pointerId!==pointerId)return;const dy=Math.max(0,e.clientY-startY);lastY=e.clientY;const progress=Math.min(1,dy/Math.max(240,sheet.offsetHeight*.5));sheet.style.transform=`translateY(${dy}px)`;m.style.backgroundColor=`rgba(25,30,24,${(.38*(1-progress)).toFixed(3)})`};
   const finish=e=>{if(!dragging||e.pointerId!==pointerId)return;dragging=false;const dy=Math.max(0,lastY-startY),dt=Math.max(1,performance.now()-startAt),velocity=dy/dt;try{handle.releasePointerCapture?.(pointerId)}catch(_){}pointerId=null;if(dy>=96||velocity>=.62)dismiss(dy);else snapBack()};
@@ -1098,7 +1098,14 @@ function bindSheetDrag(){
 }
 function modal(content){const sheet=$('#modalSheet');sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
 window.closeModal=()=>{const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling');sheet.style.transform=''}}
-$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+function dismissModalContextually(){
+  const sheet=$('#modalSheet');if(!sheet){closeModal();return}
+  const selectors=['#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#cancelCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit'];
+  const target=selectors.map(q=>sheet.querySelector(q)).find(Boolean);
+  if(target){target.click();return}
+  closeModal()
+}
+$('#modal').addEventListener('click',e=>{if(e.target.id==='modal')dismissModalContextually()});
 async function storageHealth(){
   let persisted=false,usage=null,quota=null,idbOk=false,localOk=false;
   try{persisted=await navigator.storage?.persisted?.()||false;const e=await navigator.storage?.estimate?.();usage=e?.usage??null;quota=e?.quota??null}catch(_){}
