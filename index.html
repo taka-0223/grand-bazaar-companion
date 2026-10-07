@@ -603,9 +603,12 @@ function requestClearMasterObjectiveMetadata(o){
   if(!o)return;delete o.quality;delete o.category;delete o.alternatives
 }
 function requestMarkCustom(r,o=null){
-  if(o)requestClearMasterObjectiveMetadata(o);
   if(!r?.masterId)return false;const m=requestMasterById.get(r.masterId);if(!m)return false;
+  if(o)requestClearMasterObjectiveMetadata(o);
   return requestStampMasterSync(r,m,'custom')
+}
+function requestClearMasterSyncFields(r){
+  if(!r)return;delete r.masterRevision;delete r.masterObjectiveSignature;delete r.masterSyncMode;delete r.masterMigrationInfo
 }
 function requestMasterCloneObjectives(m){
   const structured=clone(m?.objectives||[]).map(o=>({...o,current:0}));
@@ -697,6 +700,7 @@ function applyEarlierRequestHistory(m,now){
         existing.inferredAt=now;
         existing.updatedAt=now;
         for(const o of existing.objectives||[])o.current=Math.max(1,Number(o.target)||1);
+        requestSyncLinkedMasterRecord(existing,prior);
         changed++
       }
       continue
@@ -712,6 +716,7 @@ function applyEarlierRequestHistory(m,now){
       note:'',
       reward:prior.reward||'',
       masterId:prior.id,
+      ...requestMasterSyncFields(prior,'canonical'),
       objectives:requestMasterCompletedObjectives(prior),
       createdAt:now,
       updatedAt:now
@@ -790,9 +795,13 @@ function openRequestRecord(id=null){
     selectedMasterId=m.id;
     r.title=m.title;
     r.requester=m.requester;
+    if(r.masterId!==m.id)requestClearMasterSyncFields(r);
     r.masterId=m.id;
     r.reward=m.reward||r.reward||'';
-    if(!(r.objectives||[]).length)r.objectives=requestMasterCloneObjectives(m);
+    if(!(r.objectives||[]).length){
+      r.objectives=r.status==='completed'?requestMasterCompletedObjectives(m):requestMasterCloneObjectives(m);
+      Object.assign(r,requestMasterSyncFields(m,'canonical'))
+    }else requestSyncLinkedMasterRecord(r,m);
     r.updatedAt=new Date().toISOString();
     await save()
   };
@@ -838,20 +847,21 @@ function openRequestRecord(id=null){
 
   if(id){
     $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();if(activeScreenId()==='plan')plan();else home()});
-    const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.status=$('#requestStatus').value;r.masterId=selectedMasterId||null;if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
+    const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.status=$('#requestStatus').value;const nextMasterId=selectedMasterId||null;if(r.masterId!==nextMasterId){r.masterId=nextMasterId;if(!nextMasterId)requestClearMasterSyncFields(r)}if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
     bindAutosave([$('#requestTitle'),$('#requestRequester'),$('#requestStatus')],persist)
   }else{
     $('#createRequest').onclick=async()=>{
       const title=$('#requestTitle').value.trim();if(!title)return;
-      const m=selected(),now=new Date().toISOString(),nr={
+      const m=selected(),now=new Date().toISOString(),status=$('#requestStatus').value,nr={
         id:'rq'+Date.now(),
         title:m?.title||title,
         requester:m?.requester||$('#requestRequester').value.trim(),
-        status:$('#requestStatus').value,
+        status,
         note:'',
         reward:m?.reward||'',
         masterId:m?.id||null,
-        objectives:m?requestMasterCloneObjectives(m):[],
+        ...(m?requestMasterSyncFields(m,'canonical'):{}),
+        objectives:m?(status==='completed'?requestMasterCompletedObjectives(m):requestMasterCloneObjectives(m)):[],
         createdAt:now,
         updatedAt:now
       };
@@ -908,7 +918,7 @@ function showRequestRecord(id,origin=null){
 }
 function openRequestObjective(requestId,idx=null){
   const r=requestsState().find(x=>x.id===requestId);if(!r)return;
-  const o=idx==null?{type:'item_quantity',label:'',target:1,current:0}:r.objectives[idx],editing=idx!=null;
+  const o=idx==null?{type:'item_quantity',label:'',target:1,current:0}:r.objectives[idx],editing=idx!=null,baseline=editing?{type:o.type,label:o.label,target:Math.max(1,Number(o.target)||1)}:null;
   modal(`<h3>${editing?'達成条件を編集':'達成条件を追加'}</h3>${editing?'<div class="editorSaveHint">変更は自動保存されます</div>':''}
     <div class="field"><label>種類</label><select id="requestObjectiveType"><option value="item_quantity" ${o.type==='item_quantity'?'selected':''}>品物</option><option value="action_count" ${o.type==='action_count'?'selected':''}>回数</option><option value="money_amount" ${o.type==='money_amount'?'selected':''}>金額</option><option value="check" ${o.type==='check'?'selected':''}>その他</option></select></div>
     <div class="field" style="margin-top:8px"><label>内容</label><input id="requestObjectiveLabel" value="${esc(o.label||'')}" placeholder="例：お風呂に入る"></div>
@@ -918,11 +928,22 @@ function openRequestObjective(requestId,idx=null){
   refresh();$('#requestObjectiveType').onchange=refresh;
   $('#closeRequestObjective').onclick=()=>showRequestRecord(requestId);
   if(editing){
-    $('#deleteRequestObjective').onclick=()=>confirmDelete('この達成条件を削除しますか？',async()=>{r.objectives.splice(idx,1);r.updatedAt=new Date().toISOString();await save();showRequestRecord(requestId)});
-    const persist=async()=>{const label=$('#requestObjectiveLabel').value.trim();if(label)o.label=label;o.type=$('#requestObjectiveType').value;if(o.type==='check'){o.target=1;o.current=requestObjectiveProgress(o)>0?1:0}else{o.target=Math.max(1,+$('#requestObjectiveTarget').value||1);o.current=Math.max(0,Math.min(o.target,+$('#requestObjectiveCurrent').value||0))}r.updatedAt=new Date().toISOString();await save()};
+    $('#deleteRequestObjective').onclick=()=>confirmDelete('この達成条件を削除しますか？',async()=>{requestMarkCustom(r);r.objectives.splice(idx,1);r.updatedAt=new Date().toISOString();await save();showRequestRecord(requestId)});
+    const persist=async()=>{
+      const label=$('#requestObjectiveLabel').value.trim();if(label)o.label=label;
+      o.type=$('#requestObjectiveType').value;
+      if(o.type==='check'){o.target=1;o.current=requestObjectiveProgress(o)>0?1:0}
+      else{o.target=Math.max(1,+$('#requestObjectiveTarget').value||1);o.current=Math.max(0,Math.min(o.target,+$('#requestObjectiveCurrent').value||0))}
+      if(!requestObjectivesEqualOnFields([o],[baseline],['type','label','target']))requestMarkCustom(r,o);
+      r.updatedAt=new Date().toISOString();await save()
+    };
     bindAutosave([$('#requestObjectiveType'),$('#requestObjectiveLabel'),$('#requestObjectiveTarget'),$('#requestObjectiveCurrent')],persist)
   }else{
-    $('#addRequestObjectiveRecord').onclick=async()=>{const label=$('#requestObjectiveLabel').value.trim();if(!label)return;const type=$('#requestObjectiveType').value,target=type==='check'?1:Math.max(1,+$('#requestObjectiveTarget').value||1),current=type==='check'?0:Math.max(0,Math.min(target,+$('#requestObjectiveCurrent').value||0));r.objectives.push({id:'rqo'+Date.now(),type,label,target,current});r.updatedAt=new Date().toISOString();await save();showRequestRecord(requestId)}
+    $('#addRequestObjectiveRecord').onclick=async()=>{
+      const label=$('#requestObjectiveLabel').value.trim();if(!label)return;
+      const type=$('#requestObjectiveType').value,target=type==='check'?1:Math.max(1,+$('#requestObjectiveTarget').value||1),current=type==='check'?0:Math.max(0,Math.min(target,+$('#requestObjectiveCurrent').value||0));
+      r.objectives.push({id:'rqo'+Date.now(),type,label,target,current});requestMarkCustom(r);r.updatedAt=new Date().toISOString();await save();showRequestRecord(requestId)
+    }
   }
 }
 
@@ -1538,7 +1559,7 @@ async function exportJson(){
   const payload={format:'grand-bazaar-companion-backup',formatVersion:1,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),state};
   const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`grand-bazaar-backup-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);toast('バックアップを書き出しました')
 }
-function importJson(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const raw=JSON.parse(r.result);const x=migrate(raw?.state||raw);if(!x)throw Error('schema');state=x;state.ui=state.ui||{};await save();closeModal();render();toast('バックアップを読み込みました')}catch(e){alert('対応しているバックアップとして読み込めませんでした')}};r.readAsText(f)}
+function importJson(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const raw=JSON.parse(r.result);const x=migrate(raw?.state||raw);if(!x)throw Error('schema');state=x;state.ui=state.ui||{};syncLinkedRequestMasterDetails();await save();closeModal();render();toast('バックアップを読み込みました')}catch(e){alert('対応しているバックアップとして読み込めませんでした')}};r.readAsText(f)}
 function activeScreenId(){return $('.screen.active')?.id||'home'}
 function openQuickAdd(){
   const raw=activeScreenId(),screen=raw==='detail'?(DETAIL_CONTEXT||'home'):raw;
