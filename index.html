@@ -816,7 +816,7 @@ function homeProgressItems(){
     const objs=r.objectives||[],ready=objs.length>0&&objs.every(requestObjectiveDone);
     return{kind:'request',id:r.id,title:r.title,priority:ready?0:2,meta:ready?'✓ 条件達成・報告待ち':(r.requester?`お願い ・ ${r.requester}`:'お願い')}
   });
-  const goalItems=(state.goals||[]).filter(g=>g.status!=='done'&&planKind(g)!=='request').map(g=>{
+  const goalItems=(state.goals||[]).filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request').map(g=>{
     const rs=state.requirements[g.id]||[],done=rs.filter(r=>r.have>=r.need).length,acts=state.actions.filter(a=>a.goalId===g.id&&!a.done).length;
     const status=g.status==='blocked'?'止まっている':g.status==='someday'?'あとで':'目標';
     const bits=[status];if(rs.length)bits.push(`必要 ${done}/${rs.length}`);if(acts)bits.push(`やること ${acts}`);
@@ -830,7 +830,7 @@ function homeProgressHtml(){
   return `<div class="section"><div class="section-head"><h2>進行中</h2>${all.length>xs.length?`<button class="miniLink homeNav" data-dest="plan">すべて見る</button>`:''}</div><div class="homeProgressList">${xs.map(x=>`<div class="homeProgressRow"><div class="homeProgressMain clickable homeProgressOpen" data-kind="${x.kind}" data-id="${x.id}"><div class="homeProgressTitle">${x.kind==='request'?'🙏':'🎯'} ${esc(x.title)}</div><div class="homeProgressMeta">${esc(x.meta)}</div></div><div class="homeProgressActions">${x.kind==='request'?`<button class="requestQuickDone homeRequestDone" data-id="${x.id}" aria-label="お願いを完了">✓</button>`:''}<span>›</span></div></div>`).join('')}</div></div>`
 }
 function home(){
-  const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>g.status!=='done'&&planKind(g)!=='request'),short=[],memos=state.captures.filter(c=>captureStatus(c)==='active');
+  const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request'),short=[],memos=state.captures.filter(c=>captureStatus(c)==='active');
   for(const g of goals)for(const r of state.requirements[g.id]||[])if(r.have<r.need)short.push({...r,goal:g.title,goalId:g.id});
   const pinnedView=pinned.slice(0,4),memoView=memos.slice(0,3);
   $('#home').innerHTML=`${todayStripHtml()}${seasonReminderBannerHtml()}
