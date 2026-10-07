@@ -1060,7 +1060,7 @@ function showRecipe(id){
   CURRENT_RECIPE_ID=id;const r=recipeData(id);if(!r)return;touchRecent('recipe',id);
   const goal=recipeGoalFor(id),meta=recipeMetaFor(id),mult=Math.max(1,goal?.targetQty||1),ings=countIngredients(r.ingredient||[]).map(x=>({...x,qty:x.qty*mult})),price=recipePrice(r);
   modal(`<div class="row between" style="align-items:flex-start"><div class="grow"><div class="tiny muted">${esc(recipeCategory(r.category))}${price!=null?` ・ 価格 ${recipePriceLabel(r)}`:''}${goal?` ・ ×${mult}`:''}</div><h3 style="margin:3px 0 0">${esc(rname(id))}</h3></div><div class="row" style="gap:5px"><button class="favStar ${meta.favorite?'active':''}" id="favoriteRecipe">${meta.favorite?'⭐':'☆'}</button><button class="iconAction" id="closeRecipeSheet" aria-label="閉じる">×</button></div></div>
-    ${goal?'<div class="badge accent" style="margin:8px 0 4px">計画あり</div>':''}
+    ${goal?'<div class="badge accent" style="margin:8px 0 4px">目標あり</div>':''}
     <div class="section" style="margin-top:14px"><div class="section-head"><h2>必要なもの</h2></div><div class="card">${ings.map(x=>ingredientHtml(x,goal)).join('')}</div></div>
     <div class="notice">加工品は、ゲーム内で確認済みの加工方法だけ経路表示します。</div>
     <div class="stack" style="margin-top:12px">${goal?'<button class="btn" id="openRecipeGoal">この料理の目標を開く</button>':'<button class="btn" id="makeRecipeGoal">作りたい → 目標に追加</button>'}<button class="btn secondary" id="archiveRecipe">${meta.archived?'アーカイブから戻す':'アーカイブ'}</button></div>
