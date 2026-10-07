@@ -876,6 +876,7 @@ function cropStatusSummary(p){if(p.status==='processing')return `加工中・${l
 function cropStockDecision(e,p,lab){
   const seasons=effectiveSeasons(e);
   if(!seasons.length)return{tone:'neutral',title:'植え時は未確認',text:'季節情報が分かると、今季に使えるかここで判断できます。'};
+  if(!state.season)return{tone:'neutral',title:'現在の季節は未選択',text:`植え時：${seasons.join('・')}`};
   if(state.season&&!seasons.includes(state.season))return{tone:'off',title:`今季（${state.season}）は植え時ではありません`,text:`植え時：${seasons.join('・')}`};
   if(p.seedCount==null)return{tone:'neutral',title:`${lab.noun}在庫は未追跡`,text:'在庫数を入れると、今季の補充判断をここで確認できます。'};
   if(p.seedCount===0)return{tone:'warn',title:`${lab.noun}在庫 0・補充候補`,text:'今季使う予定があるなら、購入・作成などで補充を検討。'};
