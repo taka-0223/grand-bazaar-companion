@@ -1,19 +1,23 @@
 {
-  "version": "0.11.2",
-  "summary": "Request Master v2へ既存お願いを安全に再同期し、進捗・custom編集を保持するmigrationを追加",
+  "version": "0.11.3",
+  "summary": "種管理の詳細を1タップのフルハイト・ボトムシートへ移し、一覧へすぐ戻れる導線に改善",
   "notes": [
-    "masterId付き既存お願いをplayer_state_migration manifestに従ってMaster v2へ安全に再同期",
-    "64件のcompatible migrationでcurrentをindexごとに保持し、v2のlabel・quality・category・alternativesを採用",
-    "「店の傷を直すデス！」の旧binary checkを3素材objectiveへ安全に変換",
-    "「逃げ出した動物を探せ！」の1/3・2/3は地点を推定せず、旧進捗をnoteとmigration情報へ保持",
-    "legacy canonical / customを旧canonical shapeで判定し、custom objectiveはMasterで上書きしない",
-    "Master由来requestへrevision・objective signature・sync modeを保存",
-    "objective追加・削除・type/label/target変更でcustom化し、current変更だけではcanonicalを維持",
-    "JSONバックアップ読込時にも保存前に同じMaster同期を適用",
-    "migrationはrevision/signatureで冪等化し、UI・Master定義・schemaVersionは変更なし"
+    "種一覧から1タップで、従来の詳細内容そのものをフルハイト寄りボトムシートとして表示",
+    "中間の簡易シートは追加せず、在庫・品質・育成・保管・メモなど既存機能をそのまま維持",
+    "一覧画面を背面に残し、閉じたときに元のスクロール位置へ復帰",
+    "詳細上部に固定のタイトル・閉じるボタンを置き、長くスクロールした後もすぐ閉じられるよう改善",
+    "詳細最上部では従来どおり下スワイプで閉じられ、固定ツールバーからの下スワイプは途中スクロール位置でも閉じられるよう対応",
+    "品質変更で詳細を再描画する場合もシート内スクロール位置を保持",
+    "閉じる・背景タップ・スワイプ閉じ時に入力中の種情報を保存",
+    "schemaVersion・Master・Player State形式は変更なし"
   ],
-  "releasedAt": "2026-10-07",
+  "releasedAt": "2026-10-08",
   "history": [
+    {
+      "version": "0.11.2",
+      "summary": "Request Master v2へ既存お願いを安全に再同期し、進捗・custom編集を保持するmigrationを追加",
+      "releasedAt": "2026-10-07"
+    },
     {
       "version": "0.11.1",
       "summary": "ホームの密度と完了操作を磨き、チェックUI・季節ヘッダー・FABを実機向けに調整",
