@@ -70,6 +70,21 @@
 .requestCompactActions{gap:6px}
 .requestCompactArrow{font-size:16px}
 
+
+.sheet.cropDetailSheet{height:94dvh;max-height:94dvh;padding-top:0;scroll-padding-top:72px}
+.cropDetailSheet .sheetGrabber{position:sticky;top:0;z-index:8;height:24px;margin:0 -4px;background:rgba(255,253,248,.97);backdrop-filter:blur(10px);pointer-events:auto}
+.cropSheetToolbar{position:sticky;top:24px;z-index:7;display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 -2px 10px;padding:7px 2px 10px;background:rgba(255,253,248,.97);backdrop-filter:blur(10px);border-bottom:1px solid #eee8dc}
+.cropSheetToolbarText{min-width:0}
+.cropSheetEyebrow{font-size:9px;color:var(--muted);font-weight:800}
+.cropSheetName{font-size:19px;line-height:1.25;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.cropDetailSheet .cropDetailHead{padding:0 2px 10px}
+.cropDetailSheet .cropDetailMeta{margin-top:0}
+.cropDetailSheet .section{margin-bottom:16px}
+.cropDetailSheet .card{margin-bottom:7px}
+.cropDetailSheet .cropDecision{margin-bottom:13px}
+.cropSheetBottomActions{padding-bottom:4px}
+@media(max-height:680px){.sheet.cropDetailSheet{height:96dvh;max-height:96dvh}}
+
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -89,7 +104,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.2';
+const APP_VERSION='0.11.3';
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -1094,7 +1109,7 @@ function cropRow(e){
   return `<div><div class="cropCompact cropOpen clickable" data-id="${e.id}"><div class="cropMain"><div class="cropname">${iconFor(e)} ${esc(name(e.id))}${p.growing?' <span class="compactSub">●育成</span>':''}</div><div class="seasonDots">${dots}${summary?`<span class="compactSub" style="margin-left:5px">${esc(summary)}</span>`:''}</div></div><div class="compactVal ${p.seedQuality==null?'muted':''}">${p.seedQuality==null?'—':qtext(p.seedQuality)}</div><div class="compactVal ${p.seedCount==null?'muted':p.seedCount===0?'stockZero':''}">${p.seedCount==null?'—':p.seedCount}</div><div class="compactState ${stClass}">${esc(st)}</div></div>${edit?`<div class="cropEdit"><div class="tiny muted">一覧から品質だけ調整</div><div class="miniStep"><button class="qAdjust" data-id="${e.id}" data-delta="-0.5">−</button><div class="qval">${qtext(p.seedQuality)}</div><button class="qAdjust" data-id="${e.id}" data-delta="0.5">＋</button></div></div>`:''}</div>`
 }
 function qStepper(id,key,label,value){return `<div class="field"><label>${label}</label><div class="qstep"><button type="button" class="detailQ" data-id="${id}" data-key="${key}" data-delta="-0.5">−</button><div class="qval ${value==null?'unset':''}">${qtext(value)}</div><button type="button" class="detailQ" data-id="${id}" data-key="${key}" data-delta="0.5">＋</button></div></div>`}
-function renderCurrentCropView(id){if($('#detail').classList.contains('active'))showCrop(id);else crops()}
+function renderCurrentCropView(id){const sheet=$('#modalSheet'),open=$('#modal')?.classList.contains('open');if(open&&sheet?.dataset.cropDetailId===String(id)){showCrop(id,{refresh:true,sheetScroll:sheet.scrollTop});return}if($('#detail').classList.contains('active'))showCrop(id);else crops()}
 function cropStatusSummary(p){if(p.status==='processing')return `加工中・${locationLabel(p.location)}`;if(p.status==='stored')return `保管中・${locationLabel(p.location)}`;if(p.location)return locationLabel(p.location);return'未設定'}
 function cropStockDecision(e,p,lab){
   const seasons=effectiveSeasons(e);
@@ -1106,11 +1121,17 @@ function cropStockDecision(e,p,lab){
   return{tone:'good',title:`${lab.noun}在庫 ${p.seedCount}・今季使えます`,text:'在庫あり。必要数は作付け計画に応じて確認。'}
 }
 function cropDecisionHtml(d){return `<div class="cropDecisionTitle">${esc(d.title)}</div><div class="cropDecisionText">${esc(d.text)}</div>`}
-function showCrop(id){
-  DETAIL_CONTEXT='crops';touchRecent('crop',id);
+function showCrop(id,opts={}){
+  DETAIL_CONTEXT='crops';
+  const priorSheet=$('#modalSheet'),refresh=!!opts.refresh&&$('#modal')?.classList.contains('open')&&priorSheet?.dataset.cropDetailId===String(id);
+  const origin=opts.origin||(refresh?priorSheet.dataset.cropOrigin:activeScreenId()),returnScroll=Number(opts.returnScroll??(refresh?priorSheet.dataset.cropReturnScroll:window.scrollY))||0,sheetScroll=Number(opts.sheetScroll??(refresh?priorSheet.scrollTop:0))||0;
+  if(!refresh)touchRecent('crop',id);
   const e=ent(id),p=player(id),lab=plantLabels(e),fac=facilityFor(e),isCustom=!baseById.has(id)&&customById().has(id),facts=knownFacts().filter(f=>f.output===id||(f.inputs||[]).some(x=>x.entity===id)),masterSeasons=masterSeasonsForId(id),seasons=effectiveSeasons(e),growSummary=cultivationSummary(e)||'未確認',decision=cropStockDecision(e,p,lab);
-  $('#detail').innerHTML=`<button class="back" id="backBtn">‹ 種管理</button>
-    <div class="cropDetailHead"><div class="cropDetailTitle"><div><div class="tiny muted">${esc(kindLabelForEntity(e).replace(/^[^ ]+ /,''))}</div><h1>${iconFor(e)} ${esc(name(id))}</h1><div class="cropDetailMeta">${seasons.length?seasons.map(s=>`<span class="badge ${seasonClass(s)}">${esc(s)}</span>`).join(''):'<span class="pill">季節未確認</span>'}<span class="pill">${esc(growSummary)}</span>${p.growing?'<span class="pill green">育成中</span>':''}</div></div></div></div>
+  modal(`<div class="cropSheetToolbar">
+      <div class="cropSheetToolbarText"><div class="cropSheetEyebrow">${esc(kindLabelForEntity(e).replace(/^[^ ]+ /,''))}</div><div class="cropSheetName">${iconFor(e)} ${esc(name(id))}</div></div>
+      <button class="iconAction" id="closeCropSheet" aria-label="種詳細を閉じる">×</button>
+    </div>
+    <div class="cropDetailHead"><div class="cropDetailMeta">${seasons.length?seasons.map(s=>`<span class="badge ${seasonClass(s)}">${esc(s)}</span>`).join(''):'<span class="pill">季節未確認</span>'}<span class="pill">${esc(growSummary)}</span>${p.growing?'<span class="pill green">育成中</span>':''}</div></div>
     <div id="cropStockDecision" class="cropDecision ${decision.tone}">${cropDecisionHtml(decision)}</div>
     <div class="section"><div class="section-head"><h2>在庫・品質</h2><span class="tiny">自動保存</span></div><div class="card cropQuickCard stack">
       <div class="cropQuickGrid">
@@ -1128,9 +1149,9 @@ function showCrop(id){
     <div class="section"><div class="section-head"><h2>育成・収穫</h2></div><div class="card stack"><div class="switchline"><div><div class="strong small">育成中</div><div class="tiny">植えているものがある時だけON</div></div><label class="switch"><input id="growing" type="checkbox" ${p.growing?'checked':''}><span class="slider"></span></label></div><div class="field"><label>育成中の数（任意）</label><input id="growingCount" type="number" min="0" inputmode="numeric" value="${p.growingCount??''}" placeholder="空欄でもOK"></div>${qStepper(id,'harvestQuality','収穫作物の品質（必要な時だけ）',p.harvestQuality)}</div></div>
     <div class="section"><div class="section-head"><h2>メモ</h2></div><div class="card"><div class="field"><textarea id="cropNote" placeholder="必要なことだけ">${esc(p.note||'')}</textarea></div></div></div>
     ${facts.length?`<div class="section"><div class="section-head"><h2>自分が知っている加工</h2></div>${facts.map(factCard).join('')}</div>`:''}
-    ${isCustom?'<button class="btn danger" id="deleteCustomCrop" style="width:100%">このカスタム品目を削除</button>':''}`;
-  show('detail');
-  $('#backBtn').onclick=()=>{show('crops');crops()};
+    ${isCustom?'<button class="btn danger" id="deleteCustomCrop" style="width:100%">このカスタム品目を削除</button>':''}
+    <div class="sheet-actions cropSheetBottomActions"><button class="btn" id="cropSheetCloseBottom">閉じる</button></div>`);
+  const sheet=$('#modalSheet');sheet.classList.add('cropDetailSheet');sheet.dataset.cropDetailId=String(id);sheet.dataset.cropOrigin=origin||'';sheet.dataset.cropReturnScroll=String(returnScroll);sheet.scrollTop=sheetScroll;
   let selectedStatus=p.status||'',selectedLocation=p.location||'';
   $('#locationSelect').value=selectedLocation;
   const refreshOverview=()=>{
@@ -1141,7 +1162,12 @@ function showCrop(id){
   };
   const refreshLocation=()=>{if(selectedStatus==='processing'&&fac){selectedLocation=fac;$('#locationSelect').value=selectedLocation;$('#locationSelect').disabled=true;$('#facilityBox').innerHTML=`加工中のため場所は <b>${locationLabel(selectedLocation)}</b> に自動設定されます`}else{$('#locationSelect').disabled=false;$('#facilityBox').textContent='保管中は倉庫・各風車から選べます'}};
   const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
+  const closeCrop=async()=>{
+    await persistCrop();closeModal();
+    if(origin==='crops'){const y=returnScroll;crops();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}))}
+  };
   refreshLocation();refreshOverview();
+  $('#closeCropSheet').onclick=closeCrop;$('#cropSheetCloseBottom').onclick=closeCrop;
   $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
   $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
   $$('.stateBtn').forEach(b=>b.onclick=async()=>{selectedStatus=b.dataset.status;$$('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));refreshLocation();await persistCrop()});
@@ -1149,7 +1175,7 @@ function showCrop(id){
   $('#growing').onchange=persistCrop;
   $$('.detailQ').forEach(b=>b.onclick=()=>adjustQuality(id,b.dataset.key,Number(b.dataset.delta)));
   bindAutosave([$('#seedCount'),$('#growingCount'),$('#cropNote')],persistCrop);
-  if(isCustom)$('#deleteCustomCrop').onclick=()=>confirmDelete('このカスタム品目を削除しますか？ 保存した品質・数・メモも削除されます。',async()=>{state.knownEntities=state.knownEntities.filter(x=>x!==id);state.customEntities=state.customEntities.filter(x=>x.id!==id);state.ui.seedOrder=(state.ui.seedOrder||[]).filter(x=>x!==id);delete state.playerState[id];await save();show('crops');crops();toast('カスタム品目を削除しました')})
+  if(isCustom)$('#deleteCustomCrop').onclick=()=>confirmDelete('このカスタム品目を削除しますか？ 保存した品質・数・メモも削除されます。',async()=>{state.knownEntities=state.knownEntities.filter(x=>x!==id);state.customEntities=state.customEntities.filter(x=>x.id!==id);state.ui.seedOrder=(state.ui.seedOrder||[]).filter(x=>x!==id);delete state.playerState[id];await save();closeModal();if(origin==='crops'){const y=returnScroll;crops();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}))}else if(origin==='home')home();toast('カスタム品目を削除しました')})
 }
 function intOrNull(v){return v===''?null:Math.max(0,parseInt(v,10)||0)}function factCard(f){return `<div class="card"><div class="small strong">${esc(f.type==='process'?'加工':'情報')}</div><div class="tiny muted">${esc((f.inputs||[]).map(x=>name(x.entity)).join(' + '))} → ${esc(name(f.output))}</div></div>`}
 function kindLabelForEntity(e){if(!e)return'';if(isMushroom(e))return'🍄 きのこ';if(e.kind==='fruit'||e.kind==='seedling')return'🌳 果樹';if(isFlower(e))return'🌼 花';if(e.kind==='crop'||e.kind==='seed')return'🌱 作物';return'📦 その他'}
@@ -1420,15 +1446,16 @@ function bindSheetDrag(){
   const snapBack=()=>{sheet.classList.remove('dragging');sheet.classList.add('settling');m.classList.remove('dragging');sheet.style.transform='translateY(0)';m.style.backgroundColor='rgba(25,30,24,.38)';setTimeout(()=>{if(m.classList.contains('open'))clearStyles()},190)};
   const dismiss=(dy=0)=>{sheet.classList.remove('dragging');sheet.classList.add('settling');m.classList.remove('dragging');sheet.style.transform=`translateY(${Math.max(sheet.offsetHeight,dy)+28}px)`;m.style.backgroundColor='rgba(25,30,24,0)';setTimeout(()=>dismissModalContextually(),170)};
   const nestedScrollable=(target)=>{let el=target instanceof Element?target:null;while(el&&el!==sheet){const cs=getComputedStyle(el),canScroll=/(auto|scroll)/.test(cs.overflowY)&&el.scrollHeight>el.clientHeight+2;if(canScroll)return el;el=el.parentElement}return null};
+  let forceDismissGesture=false;
   sheet.ontouchstart=e=>{
-    if(e.touches.length!==1)return;const t=e.touches[0];tracking=true;dragging=false;startY=lastY=t.clientY;startX=t.clientX;startAt=performance.now();startScroll=sheet.scrollTop;
+    if(e.touches.length!==1)return;const t=e.touches[0];forceDismissGesture=!!(e.target instanceof Element&&e.target.closest('.cropSheetToolbar,.cropDetailSheet .sheetGrabber'));tracking=true;dragging=false;startY=lastY=t.clientY;startX=t.clientX;startAt=performance.now();startScroll=sheet.scrollTop;
   };
   sheet.ontouchmove=e=>{
     if(!tracking||e.touches.length!==1)return;const t=e.touches[0],dy=t.clientY-startY,dx=t.clientX-startX;lastY=t.clientY;
     if(!dragging){
       if(Math.abs(dx)>Math.abs(dy)||Math.abs(dy)<8)return;
-      if(dy<=0||startScroll>0||sheet.scrollTop>0){tracking=false;return}
-      const nested=nestedScrollable(e.target);if(nested&&nested.scrollTop>0){tracking=false;return}
+      if(dy<=0||(!forceDismissGesture&&(startScroll>0||sheet.scrollTop>0))){tracking=false;return}
+      const nested=nestedScrollable(e.target);if(!forceDismissGesture&&nested&&nested.scrollTop>0){tracking=false;return}
       dragging=true;sheet.classList.add('dragging');m.classList.add('dragging')
     }
     if(!dragging)return;e.preventDefault();
@@ -1440,14 +1467,14 @@ function bindSheetDrag(){
   };
   sheet.ontouchend=finish;sheet.ontouchcancel=finish;
   // Mouse / pen: anywhere on the sheet, while preserving normal clicks.
-  let pointerId=null,pointerDragging=false,pStartY=0,pStartX=0,pLastY=0,pStartAt=0,pStartScroll=0;
-  sheet.onpointerdown=e=>{if(e.pointerType==='touch'||(e.pointerType==='mouse'&&e.button!==0))return;pointerId=e.pointerId;pointerDragging=false;pStartY=pLastY=e.clientY;pStartX=e.clientX;pStartAt=performance.now();pStartScroll=sheet.scrollTop};
-  sheet.onpointermove=e=>{if(pointerId!==e.pointerId||e.pointerType==='touch')return;const dy=e.clientY-pStartY,dx=e.clientX-pStartX;pLastY=e.clientY;if(!pointerDragging){if(Math.abs(dx)>Math.abs(dy)||Math.abs(dy)<8)return;if(dy<=0||pStartScroll>0||sheet.scrollTop>0){pointerId=null;return}pointerDragging=true;sheet.classList.add('dragging');m.classList.add('dragging');sheet.setPointerCapture?.(pointerId)}if(pointerDragging){const pull=Math.max(0,dy),progress=Math.min(1,pull/Math.max(240,sheet.offsetHeight*.5));sheet.style.transform=`translateY(${pull}px)`;m.style.backgroundColor=`rgba(25,30,24,${(.38*(1-progress)).toFixed(3)})`}};
+  let pointerId=null,pointerDragging=false,pStartY=0,pStartX=0,pLastY=0,pStartAt=0,pStartScroll=0,pForceDismiss=false;
+  sheet.onpointerdown=e=>{if(e.pointerType==='touch'||(e.pointerType==='mouse'&&e.button!==0))return;pForceDismiss=!!(e.target instanceof Element&&e.target.closest('.cropSheetToolbar,.cropDetailSheet .sheetGrabber'));pointerId=e.pointerId;pointerDragging=false;pStartY=pLastY=e.clientY;pStartX=e.clientX;pStartAt=performance.now();pStartScroll=sheet.scrollTop};
+  sheet.onpointermove=e=>{if(pointerId!==e.pointerId||e.pointerType==='touch')return;const dy=e.clientY-pStartY,dx=e.clientX-pStartX;pLastY=e.clientY;if(!pointerDragging){if(Math.abs(dx)>Math.abs(dy)||Math.abs(dy)<8)return;if(dy<=0||(!pForceDismiss&&(pStartScroll>0||sheet.scrollTop>0))){pointerId=null;return}pointerDragging=true;sheet.classList.add('dragging');m.classList.add('dragging');sheet.setPointerCapture?.(pointerId)}if(pointerDragging){const pull=Math.max(0,dy),progress=Math.min(1,pull/Math.max(240,sheet.offsetHeight*.5));sheet.style.transform=`translateY(${pull}px)`;m.style.backgroundColor=`rgba(25,30,24,${(.38*(1-progress)).toFixed(3)})`}};
   const pFinish=e=>{if(pointerId!==e.pointerId)return;const id=pointerId;pointerId=null;if(!pointerDragging)return;pointerDragging=false;const dy=Math.max(0,pLastY-pStartY),dt=Math.max(1,performance.now()-pStartAt),velocity=dy/dt;try{sheet.releasePointerCapture?.(id)}catch(_){}if(dy>=96||velocity>=.62)dismiss(dy);else snapBack()};
   sheet.onpointerup=pFinish;sheet.onpointercancel=pFinish
 }
-function modal(content){const sheet=$('#modalSheet');sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
-window.closeModal=()=>{const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling');sheet.style.transform=''}}
+function modal(content){const sheet=$('#modalSheet');sheet.classList.remove('cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
+window.closeModal=()=>{const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling','cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.style.transform=''}}
 function dismissModalContextually(){
   const sheet=$('#modalSheet');if(!sheet){closeModal();return}
   const selectors=['#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeCropSheet','#cropSheetCloseBottom','#closeRecipeSheet','#recipeSheetCloseBottom','#cancelRecipeGoal','#backRevealProcess','#cancelRecipeQty','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#cancelCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit'];
