@@ -111,7 +111,7 @@
 <button class="navbtn active" data-nav="home"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg>ホーム</button>
 <button class="navbtn" data-nav="crops"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V10"/><path d="M12 13c-4.5 0-7-2.3-7-6 4.6 0 7 2.1 7 6Z"/><path d="M12 10c4.5 0 7-2.3 7-6-4.6 0-7 2.1-7 6Z"/></svg>種管理</button>
 <button class="navbtn" data-nav="recipes"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 11h14"/><path d="M6.5 11a5.5 5.5 0 0 1 11 0"/><path d="M4 11v2a7 7 0 0 0 16 0v-2"/><path d="M12 3v2"/></svg>料理</button>
-<button class="navbtn" data-nav="plan"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m8.5 10 1.5 1.5 3-3"/><path d="M8.5 16h7"/></svg>進行中</button>
+<button class="navbtn" data-nav="plan"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4.5V3h6v1.5"/><path d="m8.5 10 1.5 1.5 3-3"/><path d="M8.5 16h7"/></svg>作戦</button>
 <button class="navbtn" data-nav="inbox"><svg class="navIcon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4"/><path d="M9 12h6"/><path d="M9 16h6"/></svg>メモ</button>
 <button class="navAction" id="quickAdd" aria-label="追加"><span class="navActionIcon">＋</span><span class="navActionLabel">追加</span></button>
 </nav></div>
@@ -124,7 +124,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.5';
+const APP_VERSION='0.11.6';
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -1271,7 +1271,7 @@ function openRecipeGoalQty(gid){const g=state.goals.find(x=>x.id===gid);if(!g?.s
 function plan(){
   const rank={blocked:0,active:1,someday:2};
   const goals=state.goals.filter(g=>g.status!=='done'&&planKind(g)!=='request').sort((a,b)=>(rank[a.status]??1)-(rank[b.status]??1)),completed=state.goals.filter(g=>g.status==='done'&&planKind(g)!=='request'),actions=state.actions.filter(a=>!a.done),showCompleted=!!state.ui.planShowCompleted;
-  $('#plan').innerHTML=`<div class="pageHead"><h1>進行中</h1><p>お願い・目標・やることをまとめて管理</p></div>
+  $('#plan').innerHTML=`<div class="pageHead"><h1>作戦</h1><p>お願い・目標・やることをまとめて管理</p></div>
   ${requestsHomeHtml()}
   <div class="section"><div class="section-head"><h2>目標</h2></div>${goals.length?goals.map(goalCard).join(''):'<div class="card empty">まだありません</div>'}${completed.length?`<button class="miniLink" id="toggleCompletedGoals" style="margin:5px 2px 0">${showCompleted?'完了した目標を閉じる':`完了した目標 ${completed.length}件`}</button>`:''}</div>
   ${showCompleted&&completed.length?`<div class="section"><div class="section-head"><h2>完了した目標</h2></div>${completed.map(goalCard).join('')}</div>`:''}
@@ -1627,7 +1627,7 @@ function openQuickAdd(){
   const actions=screen==='plan'
     ?[['🙏','お願いを登録','request'],['🎯','目標を追加','goal'],['✓','やることを追加','action']]
     :[['✓','やることを追加','action'],['🎯','目標を追加','goal'],['🙏','お願いを登録','request'],['📝','メモを残す','memo']];
-  const label=screen==='plan'?'進行中に追加':'ホームから追加';
+  const label=screen==='plan'?'作戦に追加':'ホームから追加';
   modal(`<h3>＋ ${label}</h3><div class="stack" style="margin-top:10px">${actions.map(([icon,title,type],i)=>`<button class="btn ${i===0?'':'secondary'} quickRelated" data-type="${type}" style="width:100%;text-align:left">${icon} ${title}</button>`).join('')}</div><div class="sheet-actions"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`);
   $$('.quickRelated').forEach(b=>b.onclick=()=>{const type=b.dataset.type;closeModal();if(type==='goal')openGeneralPlan();else if(type==='action')openAction(null,null,screen==='home'?'home':'plan');else if(type==='request')openRequestRecord();else if(type==='memo')openCapture()})
 }
