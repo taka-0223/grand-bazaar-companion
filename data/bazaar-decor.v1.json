@@ -1,0 +1,4905 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "bazaar_decor",
+    "status": "audited_structured_v1",
+    "target_game_version": "1.5.0",
+    "verified_on": "2026-10-10",
+    "scope": "Base-game 159 bazaar decorations. DLC-only additions excluded, item provenance tracked by GameWith list index.",
+    "scope_exclusions": [
+      "DLC-only ninjutsu items (GameWith index >= 160)",
+      "cosmetic costumes not usable as Bazaar decor"
+    ],
+    "naming": "name_ja is the Japanese title reported by GameWith; name_en is a separate StratsWiki title and should not be used as an ID. IDs are stable strings derived from English labels, or verified Japanese rosette names.",
+    "sources": {
+      "official_manual": "https://www.marv.jp/onlinemnl/kaze/jp/ps5/03/",
+      "strats_series": "https://stratswiki.com/sos-gb/guides/bazaar-decor-series/",
+      "strats_effects": "https://stratswiki.com/sos-gb/guides/bazaar-decor-effects/",
+      "strats_catalog": "https://stratswiki.com/sos-gb/items/bazaar-decor/",
+      "strats_rebecca": "https://stratswiki.com/sos-gb/shops/rebeccas-decor/",
+      "gamewith_catalog": "https://gamewith.jp/bokumono-grabaza/515009",
+      "kokorogu": "https://kokorogu.com/bokumono-objects"
+    },
+    "source_policy": "Official manual governs tent-series activation. StratsWiki enumerates 159 base decorations, effects and levels. GameWith provides Japanese labels and item acquisition. StratsWiki Rebecca inventory validates price/rank where it agrees; disagreements stay explicit.",
+    "item_count": 159,
+    "series_count": 9,
+    "discovery_policy": "Never enumerate undiscovered decor items, series members, acquisition requirements or bonuses in the client. Player inventory/installation/discovery live exclusively in Player State.",
+    "audit_flags": [
+      "5-item Cheer Gauge bonus: StratsWiki=10% vs kokorogu=20%, numeric value unresolved.",
+      "GameWith lists honey balloons as Bug series; StratsWiki lists them as Forager. Preserve conflict; do not assert set bonus from these items as verified.",
+      "Egg Tower base price GameWith=21,000G vs StratsWiki Rebecca=2,100G; leave numeric price unresolved.",
+      "Seasonal trend wagons GameWith=4,800,000G vs kokorogu=5,600,000G; leave numeric price unresolved.",
+      "Several windmill decor material recipes differ between GameWith and StratsWiki; craft recipes deferred to separately verified table.",
+      "English/Japanese cooking utensil decoration grades have different label wording; grade linked by effect level, never a translated adjective.",
+      "Challenger Beetle Battle Toy reward location: GameWith cites Kagetsu, StratsWiki cites Lloyd, but canonical Request Master reward for Kagetsu is mushroom spores. Do not auto-link."
+    ]
+  },
+  "rules": {
+    "category_slots": {
+      "tent": 1,
+      "counter": 3,
+      "small": 4,
+      "large": 3
+    },
+    "max_equipped_total": 11,
+    "placement_rule": "Only placed (not merely owned) decoration items contribute effects.",
+    "tentative_rank_slot_limit_note": "Total slots increase as Bazaar rank rises, maximum 11 at rank 6 (kokorogu). Exact intermediate slot increments are not modeled.",
+    "series_activation": "equipped_tent_series_only",
+    "series_thresholds": [
+      3,
+      5,
+      7
+    ],
+    "count_equipped_tent_in_series_total": true,
+    "series_effects_add_to_individual": true,
+    "individual_effect_stacking": "sum_levels_then_cap"
+  },
+  "effect_types": [
+    {
+      "id": "bulk_sale",
+      "name_ja": "販売数UP",
+      "max_level": 9,
+      "max_level_effect": {
+        "additional_items": 9
+      }
+    },
+    {
+      "id": "price_up",
+      "name_ja": "販売価格UP",
+      "max_level": 9,
+      "max_level_effect": {
+        "sale_price_bonus_pct": 30
+      }
+    },
+    {
+      "id": "quality_up",
+      "name_ja": "品質UP",
+      "max_level": 3,
+      "max_level_effect": {
+        "quality_increase_stars": 3
+      },
+      "note": "How this interacts with star quality ceilings is not modeled."
+    },
+    {
+      "id": "freshness_up",
+      "name_ja": "鮮度UP",
+      "max_level": 6,
+      "max_level_effect": {
+        "freshness_points": 30
+      }
+    },
+    {
+      "id": "trend_effects_up",
+      "name_ja": "トレンド効果UP",
+      "max_level": 3,
+      "max_level_effect": {
+        "trend_bonus_increase_pct": 50
+      }
+    },
+    {
+      "id": "happy_energy_gain",
+      "name_ja": "ハッピーエナジー獲得量UP",
+      "max_level": 6,
+      "max_level_effect": {
+        "happy_energy_bonus_pct": 30
+      }
+    },
+    {
+      "id": "cheer_gauge_gain",
+      "name_ja": "おうえんゲージ獲得量UP",
+      "max_level": 4,
+      "max_level_effect": {
+        "cheer_gauge_bonus_pct": 30
+      }
+    },
+    {
+      "id": "popularity_up",
+      "name_ja": "売れやすさUP",
+      "max_level": 2,
+      "max_level_effect": {
+        "activation_pct": 100
+      }
+    },
+    {
+      "id": "big_spenders_up",
+      "name_ja": "富豪客出現率UP",
+      "max_level": 6,
+      "max_level_effect": {
+        "additional_rich_customers": 12
+      }
+    }
+  ],
+  "series": [
+    {
+      "id": "farmer",
+      "name_ja": "ファーム",
+      "applies_to": "crops",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "florist",
+      "name_ja": "花",
+      "applies_to": "flowers",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "rancher",
+      "name_ja": "どうぶつ",
+      "applies_to": "animal_products",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "bug",
+      "name_ja": "虫",
+      "applies_to": "bugs",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "forager",
+      "name_ja": "山の恵み",
+      "applies_to": "honey_mushrooms",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "fish",
+      "name_ja": "川の恵み",
+      "applies_to": "fish",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "chef",
+      "name_ja": "レストラン",
+      "applies_to": "cooking",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "windmill",
+      "name_ja": "風車",
+      "applies_to": "processed_goods",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    },
+    {
+      "id": "nature_sprite",
+      "name_ja": "コロボックル",
+      "applies_to": "foraged_items",
+      "requires_equipped_tent_same_series": true,
+      "bonus_tiers": [
+        {
+          "min_equipped": 3,
+          "effect_id": "series_happy_energy",
+          "bonus_pct": 20,
+          "confidence": "confirmed"
+        },
+        {
+          "min_equipped": 5,
+          "effect_id": "series_cheer_gauge",
+          "bonus_pct": null,
+          "candidate_bonus_pct": [
+            10,
+            20
+          ],
+          "confidence": "source_conflict"
+        },
+        {
+          "min_equipped": 7,
+          "effect_id": "series_sale_price",
+          "bonus_pct": 10,
+          "confidence": "confirmed"
+        }
+      ]
+    }
+  ],
+  "items": [
+    {
+      "id": "decor_windmill_tent",
+      "index": 1,
+      "name_ja": "風車柄のテント",
+      "name_en": "Windmill Tent",
+      "slot": "tent",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "red",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_windmill_churn",
+      "index": 2,
+      "name_ja": "発酵タンク",
+      "name_en": "Windmill Churn",
+      "slot": "small",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "red",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_jewelry_stand",
+      "index": 3,
+      "name_ja": "アクセサリー台",
+      "name_en": "Jewelry Stand",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "red",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_windmill_tent",
+      "index": 4,
+      "name_ja": "いい風車柄のテント",
+      "name_en": "Good Windmill Tent",
+      "slot": "tent",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "blue",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_white_windmill_churn",
+      "index": 5,
+      "name_ja": "純白の発酵タンク",
+      "name_en": "White Windmill Churn",
+      "slot": "small",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "blue",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_sparkling_jewelry_stand",
+      "index": 6,
+      "name_ja": "ぴかぴかなアクセサリー台",
+      "name_en": "Sparkling Jewelry Stand",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "blue",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_windmill_tent",
+      "index": 7,
+      "name_ja": "みごとな風車柄のテント",
+      "name_en": "Excellent Windmill Tent",
+      "slot": "tent",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "yellow",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_glittering_windmill_churn",
+      "index": 8,
+      "name_ja": "きらめく発酵タンク",
+      "name_en": "Glittering Windmill Churn",
+      "slot": "small",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "yellow",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_glittering_jewelry_stand",
+      "index": 9,
+      "name_ja": "きらきらなアクセサリー台",
+      "name_en": "Glittering Jewelry Stand",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "windmill_craft",
+        "windmill": "yellow",
+        "recipe_status": "needs_material_crosscheck"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_sunshade_tent",
+      "index": 10,
+      "name_ja": "サンシェードテント",
+      "name_en": "Sunshade Tent",
+      "slot": "tent",
+      "series_id": null,
+      "effect": null,
+      "acquisition": {
+        "method": "event_reward",
+        "event_id": "tutorial_bazaar"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_canopy_tent",
+      "index": 11,
+      "name_ja": "ダイナテント",
+      "name_en": "Canopy Tent",
+      "slot": "tent",
+      "series_id": null,
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "event_reward",
+        "event_id": "bazaar_decor_unlocked",
+        "requires_request_id": "rqm_gw_120",
+        "note": "Receive from Rebecca after opening her shop; event wording differs."
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_farmer_tent",
+      "index": 12,
+      "name_ja": "ファームテント",
+      "name_en": "Farmer Tent",
+      "slot": "tent",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_farmer_tent",
+      "index": 13,
+      "name_ja": "いいファームテント",
+      "name_en": "Good Farmer Tent",
+      "slot": "tent",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_farmer_tent",
+      "index": 14,
+      "name_ja": "みごとなファームテント",
+      "name_en": "Excellent Farmer Tent",
+      "slot": "tent",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_florist_tent",
+      "index": 15,
+      "name_ja": "花柄のテント",
+      "name_en": "Florist Tent",
+      "slot": "tent",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_florist_tent",
+      "index": 16,
+      "name_ja": "いい花柄のテント",
+      "name_en": "Good Florist Tent",
+      "slot": "tent",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_florist_tent",
+      "index": 17,
+      "name_ja": "みごと花柄のテント",
+      "name_en": "Excellent Florist Tent",
+      "slot": "tent",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_rancher_tent",
+      "index": 18,
+      "name_ja": "どうぶつ柄のテント",
+      "name_en": "Rancher Tent",
+      "slot": "tent",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_rancher_tent",
+      "index": 19,
+      "name_ja": "いいどうぶつ柄のテント",
+      "name_en": "Good Rancher Tent",
+      "slot": "tent",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_rancher_tent",
+      "index": 20,
+      "name_ja": "みごとなどうぶつ柄のテント",
+      "name_en": "Excellent Rancher Tent",
+      "slot": "tent",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_bug_tent",
+      "index": 21,
+      "name_ja": "虫柄のテント",
+      "name_en": "Bug Tent",
+      "slot": "tent",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_bug_tent",
+      "index": 22,
+      "name_ja": "いい虫柄のテント",
+      "name_en": "Good Bug Tent",
+      "slot": "tent",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_bug_tent",
+      "index": 23,
+      "name_ja": "みごとな虫柄のテント",
+      "name_en": "Excellent Bug Tent",
+      "slot": "tent",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_forager_tent",
+      "index": 24,
+      "name_ja": "山柄のテント",
+      "name_en": "Forager Tent",
+      "slot": "tent",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_forager_tent",
+      "index": 25,
+      "name_ja": "いい山柄のテント",
+      "name_en": "Good Forager Tent",
+      "slot": "tent",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_forager_tent",
+      "index": 26,
+      "name_ja": "みごとな山柄のテント",
+      "name_en": "Excellent Forager Tent",
+      "slot": "tent",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fish_tent",
+      "index": 27,
+      "name_ja": "魚柄のテント",
+      "name_en": "Fish Tent",
+      "slot": "tent",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_fish_tent",
+      "index": 28,
+      "name_ja": "いい魚柄のテント",
+      "name_en": "Good Fish Tent",
+      "slot": "tent",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_fish_tent",
+      "index": 29,
+      "name_ja": "みごとな魚柄のテント",
+      "name_en": "Excellent Fish Tent",
+      "slot": "tent",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_chef_tent",
+      "index": 30,
+      "name_ja": "レストランテント",
+      "name_en": "Chef Tent",
+      "slot": "tent",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 4200,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_chef_tent",
+      "index": 31,
+      "name_ja": "いいレストランテント",
+      "name_en": "Good Chef Tent",
+      "slot": "tent",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 33600,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_chef_tent",
+      "index": 32,
+      "name_ja": "みごとなレストランテント",
+      "name_en": "Excellent Chef Tent",
+      "slot": "tent",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 168000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_short_counter",
+      "index": 33,
+      "name_ja": "ショートなカウンター",
+      "name_en": "Short Counter",
+      "slot": "counter",
+      "series_id": null,
+      "effect": null,
+      "acquisition": {
+        "method": "event_reward",
+        "event_id": "tutorial_bazaar"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_long_counter",
+      "index": 34,
+      "name_ja": "ワイドなカウンター",
+      "name_en": "Long Counter",
+      "slot": "counter",
+      "series_id": null,
+      "effect": null,
+      "acquisition": {
+        "method": "rank_auto",
+        "rank_min": 2,
+        "replaces": "decor_short_counter"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_farmer_counter",
+      "index": 35,
+      "name_ja": "ファームカウンター",
+      "name_en": "Farmer Counter",
+      "slot": "counter",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_farmer_counter",
+      "index": 36,
+      "name_ja": "いいファームカウンター",
+      "name_en": "Good Farmer Counter",
+      "slot": "counter",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_farmer_counter",
+      "index": 37,
+      "name_ja": "みごとなファームカウンター",
+      "name_en": "Excellent Farmer Counter",
+      "slot": "counter",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_florist_counter",
+      "index": 38,
+      "name_ja": "花柄のカウンター",
+      "name_en": "Florist Counter",
+      "slot": "counter",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_florist_counter",
+      "index": 39,
+      "name_ja": "いい花柄のカウンター",
+      "name_en": "Good Florist Counter",
+      "slot": "counter",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_florist_counter",
+      "index": 40,
+      "name_ja": "みごとな花柄のカウンター",
+      "name_en": "Excellent Florist Counter",
+      "slot": "counter",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_rancher_counter",
+      "index": 41,
+      "name_ja": "どうぶつ柄のカウンター",
+      "name_en": "Rancher Counter",
+      "slot": "counter",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_rancher_counter",
+      "index": 42,
+      "name_ja": "いいどうぶつ柄のカウンター",
+      "name_en": "Good Rancher Counter",
+      "slot": "counter",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_rancher_counter",
+      "index": 43,
+      "name_ja": "みごとなどうぶつ柄のカウンター",
+      "name_en": "Excellent Rancher Counter",
+      "slot": "counter",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_bug_counter",
+      "index": 44,
+      "name_ja": "虫柄のカウンター",
+      "name_en": "Bug Counter",
+      "slot": "counter",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_bug_counter",
+      "index": 45,
+      "name_ja": "いい虫柄のカウンター",
+      "name_en": "Good Bug Counter",
+      "slot": "counter",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_bug_counter",
+      "index": 46,
+      "name_ja": "みごとな虫柄のカウンター",
+      "name_en": "Excellent Bug Counter",
+      "slot": "counter",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_forager_counter",
+      "index": 47,
+      "name_ja": "山柄のカウンター",
+      "name_en": "Forager Counter",
+      "slot": "counter",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_forager_counter",
+      "index": 48,
+      "name_ja": "いい山柄のカウンター",
+      "name_en": "Good Forager Counter",
+      "slot": "counter",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_forager_counter",
+      "index": 49,
+      "name_ja": "みごとな山柄のカウンター",
+      "name_en": "Excellent Forager Counter",
+      "slot": "counter",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fish_counter",
+      "index": 50,
+      "name_ja": "魚柄のカウンター",
+      "name_en": "Fish Counter",
+      "slot": "counter",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_fish_counter",
+      "index": 51,
+      "name_ja": "いい魚柄のカウンター",
+      "name_en": "Good Fish Counter",
+      "slot": "counter",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_fish_counter",
+      "index": 52,
+      "name_ja": "みごとな魚柄のカウンター",
+      "name_en": "Excellent Fish Counter",
+      "slot": "counter",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_chef_counter",
+      "index": 53,
+      "name_ja": "レストランカウンター",
+      "name_en": "Chef Counter",
+      "slot": "counter",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_chef_counter",
+      "index": 54,
+      "name_ja": "いいレストランカウンター",
+      "name_en": "Good Chef Counter",
+      "slot": "counter",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_chef_counter",
+      "index": 55,
+      "name_ja": "みごとなレストランカウンター",
+      "name_en": "Excellent Chef Counter",
+      "slot": "counter",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_windmill_counter",
+      "index": 56,
+      "name_ja": "風車柄のカウンター",
+      "name_en": "Windmill Counter",
+      "slot": "counter",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2800,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_good_windmill_counter",
+      "index": 57,
+      "name_ja": "いい風車柄のカウンター",
+      "name_en": "Good Windmill Counter",
+      "slot": "counter",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 22400,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_excellent_windmill_counter",
+      "index": 58,
+      "name_ja": "みごとな風車柄のカウンター",
+      "name_en": "Excellent Windmill Counter",
+      "slot": "counter",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 89600,
+        "stock_limit_per_save": 3,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_farmer_signboard",
+      "index": 59,
+      "name_ja": "作物のサインボード",
+      "name_en": "Farmer Signboard",
+      "slot": "small",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "農作人"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_florist_signboard",
+      "index": 60,
+      "name_ja": "花のサインボード",
+      "name_en": "Florist Signboard",
+      "slot": "small",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_gw_030"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_rancher_signboard",
+      "index": 61,
+      "name_ja": "どうぶつのサインボード",
+      "name_en": "Rancher Signboard",
+      "slot": "small",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "飼育人"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_bug_signboard",
+      "index": 62,
+      "name_ja": "虫のサインボード",
+      "name_en": "Bug Signboard",
+      "slot": "small",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_kevin_01"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_forager_signboard",
+      "index": 63,
+      "name_ja": "山の幸のサインボード",
+      "name_en": "Forager Signboard",
+      "slot": "small",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "きのこ好き"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fish_signboard",
+      "index": 64,
+      "name_ja": "魚のサインボード",
+      "name_en": "Fish Signboard",
+      "slot": "small",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "釣り人"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_chef_signboard",
+      "index": 65,
+      "name_ja": "料理のサインボード",
+      "name_en": "Chef Signboard",
+      "slot": "small",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "楽しくお料理"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_windmill_signboard",
+      "index": 66,
+      "name_ja": "風車のサインボード",
+      "name_en": "Windmill Signboard",
+      "slot": "small",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "popularity_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_gw_064"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_vegetable_assortment",
+      "index": 67,
+      "name_ja": "野菜の詰め合わせ",
+      "name_en": "Vegetable Assortment",
+      "slot": "small",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_great_vegetable_assortment",
+      "index": 68,
+      "name_ja": "おいしい野菜の詰め合わせ",
+      "name_en": "Great Vegetable Assortment",
+      "slot": "small",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_delicious_vegetable_assortment",
+      "index": 69,
+      "name_ja": "デリシャスな野菜の詰め合わせ",
+      "name_en": "Delicious Vegetable Assortment",
+      "slot": "small",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_miguel_04"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_flower_basket",
+      "index": 70,
+      "name_ja": "お花のバスケット",
+      "name_en": "Flower Basket",
+      "slot": "small",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_cute_flower_basket",
+      "index": 71,
+      "name_ja": "かわいいお花のバスケット",
+      "name_en": "Cute Flower Basket",
+      "slot": "small",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_gorgeous_flower_basket",
+      "index": 72,
+      "name_ja": "うっとりなお花のバスケット",
+      "name_en": "Gorgeous Flower Basket",
+      "slot": "small",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "お店のVIP"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_egg_tower",
+      "index": 73,
+      "name_ja": "タマゴタワー",
+      "name_en": "Egg Tower",
+      "slot": "small",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": null,
+        "price_candidates_g": [
+          2100,
+          21000
+        ],
+        "price_confidence": "source_conflict",
+        "stock_limit_per_save": 1
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "decor_golden_egg_tower",
+      "index": 74,
+      "name_ja": "金のタマゴタワー",
+      "name_en": "Golden Egg Tower",
+      "slot": "small",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_priceless_egg_tower",
+      "index": 75,
+      "name_ja": "貴重なタマゴタワー",
+      "name_en": "Priceless Egg Tower",
+      "slot": "small",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_gw_110"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_bug_cage",
+      "index": 76,
+      "name_ja": "虫かご",
+      "name_en": "Bug Cage",
+      "slot": "small",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_rare_bug_cage",
+      "index": 77,
+      "name_ja": "愛らしい虫かご",
+      "name_en": "Rare Bug Cage",
+      "slot": "small",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_mystical_bug_cage",
+      "index": 78,
+      "name_ja": "神秘的な虫かご",
+      "name_en": "Mystical Bug Cage",
+      "slot": "small",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_kevin_04"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_beehive_lamp",
+      "index": 79,
+      "name_ja": "ハチの巣ライト",
+      "name_en": "Beehive Lamp",
+      "slot": "small",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_invigorating_beehive_lamp",
+      "index": 80,
+      "name_ja": "さわやかなハチの巣ライト",
+      "name_en": "Invigorating Beehive Lamp",
+      "slot": "small",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_mellow_beehive_lamp",
+      "index": 81,
+      "name_ja": "まろやかなハチの巣ライト",
+      "name_en": "Mellow Beehive Lamp",
+      "slot": "small",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_gw_040"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fishing_set",
+      "index": 82,
+      "name_ja": "川釣りセット",
+      "name_en": "Fishing Set",
+      "slot": "small",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_pro_fishing_set",
+      "index": 83,
+      "name_ja": "プロの川釣りセット",
+      "name_en": "Pro Fishing Set",
+      "slot": "small",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_legendary_fishing_set",
+      "index": 84,
+      "name_ja": "伝説の川釣りセット",
+      "name_en": "Legendary Fishing Set",
+      "slot": "small",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "レジェンドフィッシャー"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_cooking_utensils",
+      "index": 85,
+      "name_ja": "調理セット",
+      "name_en": "Cooking Utensils",
+      "slot": "small",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 2,
+        "currency": "G",
+        "price_g": 2100,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_noble_cooking_utensils",
+      "index": 86,
+      "name_ja": "ロイヤルな調整セット",
+      "name_en": "Noble Cooking Utensils",
+      "slot": "small",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 5,
+        "currency": "G",
+        "price_g": 42000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "GameWith Japanese lists ロイヤルな調整セット, while StratsWiki English uses Noble Cooking Utensils; preserve original Japanese source wording."
+      }
+    },
+    {
+      "id": "decor_royal_cooking_utensils",
+      "index": 87,
+      "name_ja": "ノーブルな調理セット",
+      "name_en": "Royal Cooking Utensils",
+      "slot": "small",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "レインボーシェフ"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_crops_cart",
+      "index": 88,
+      "name_ja": "ベジタブルカート",
+      "name_en": "Crops Cart",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_sturdy_crops_cart",
+      "index": 89,
+      "name_ja": "頑丈なベジタブルカート",
+      "name_en": "Sturdy Crops Cart",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "熟練ファーマー"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_speedy_crops_cart",
+      "index": 90,
+      "name_ja": "駆けるベジタブルカート",
+      "name_en": "Speedy Crops Cart",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_flower_display",
+      "index": 91,
+      "name_ja": "フラワーテーブル",
+      "name_en": "Flower Display",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_lovely_flower_display",
+      "index": 92,
+      "name_ja": "すてきなフラワーテーブル",
+      "name_en": "Lovely Flower Display",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "ムシエンペラー"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_gorgeous_flower_display",
+      "index": 93,
+      "name_ja": "華やかなフラワーテーブル",
+      "name_en": "Gorgeous Flower Display",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_milk_can",
+      "index": 94,
+      "name_ja": "ミルク缶",
+      "name_en": "Milk Can",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_white_milk_can",
+      "index": 95,
+      "name_ja": "ミルク缶ホワイト",
+      "name_en": "White Milk Can",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "豊かなふれあい"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_golden_milk_can",
+      "index": 96,
+      "name_ja": "ミルク缶ゴールド",
+      "name_en": "Golden Milk Can",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_beetle_battle_toy",
+      "index": 97,
+      "name_ja": "昆虫相撲のおもちゃ",
+      "name_en": "Beetle Battle Toy",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_challenger_beetle_battle_toy",
+      "index": 98,
+      "name_ja": "昆虫相撲のおもちゃ大関",
+      "name_en": "Challenger Beetle Battle Toy",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "source_conflict",
+        "request_candidates": [
+          {
+            "request_id": "rqm_gw_061",
+            "source": "GameWith catalog",
+            "master_reward_mismatch": true
+          },
+          {
+            "request_id": "rqm_gw_026",
+            "source": "StratsWiki catalog",
+            "master_reward_unverified": true
+          }
+        ],
+        "note": "Do not auto-unlock from any request until cross-source reward inconsistency is resolved."
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "unresolved",
+        "conflict": "GameWith says Kagetsu's vegetable request gives this decoration, but canonical Request Master rqm_gw_061 rewards mushroom spores. StratsWiki says Lloyd's wool-related request; needs game-state confirmation."
+      }
+    },
+    {
+      "id": "decor_champion_beetle_battle_toy",
+      "index": 99,
+      "name_ja": "昆虫相撲のおもちゃ横綱",
+      "name_en": "Champion Beetle Battle Toy",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_mushroom_stand",
+      "index": 100,
+      "name_ja": "きのこスタンド",
+      "name_en": "Mushroom Stand",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_pop_mushroom_stand",
+      "index": 101,
+      "name_ja": "ポップなきのこスタンド",
+      "name_en": "Pop Mushroom Stand",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "きのこマスター"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_mysterious_mushroom_stand",
+      "index": 102,
+      "name_ja": "不思議なきのこスタンド",
+      "name_en": "Mysterious Mushroom Stand",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fish_pool",
+      "index": 103,
+      "name_ja": "魚プール",
+      "name_en": "Fish Pool",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_large_fish_pool",
+      "index": 104,
+      "name_ja": "大きい魚プール",
+      "name_en": "Large Fish Pool",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_gw_039"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_guardian_fish_pool",
+      "index": 105,
+      "name_ja": "ヌシのプール",
+      "name_en": "Guardian Fish Pool",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_outdoor_kitchen",
+      "index": 106,
+      "name_ja": "アウトドアキッチン",
+      "name_en": "Outdoor Kitchen",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 3,
+        "currency": "G",
+        "price_g": 7000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_pro_outdoor_kitchen",
+      "index": 107,
+      "name_ja": "プロのアウトドアキッチン",
+      "name_en": "Pro Outdoor Kitchen",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "request_reward",
+        "request_id": "rqm_sania_02"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_elegant_outdoor_kitchen",
+      "index": 108,
+      "name_ja": "渋いアウトドアキッチン",
+      "name_en": "Elegant Outdoor Kitchen",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "freshness_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 6,
+        "currency": "G",
+        "price_g": 84000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fruit_tree",
+      "index": 109,
+      "name_ja": "フルーツツリー",
+      "name_en": "Fruit Tree",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_lush_fruit_tree",
+      "index": 110,
+      "name_ja": "グリーンフルーツツリー",
+      "name_en": "Lush Fruit Tree",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "レインボーファーマー"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_holy_fruit_tree",
+      "index": 111,
+      "name_ja": "聖なるフルーツツリー",
+      "name_en": "Holy Fruit Tree",
+      "slot": "large",
+      "series_id": "farmer",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "世界が認める農作人"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_flower_balloons",
+      "index": 112,
+      "name_ja": "フラワーバルーン",
+      "name_en": "Flower Balloons",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_vibrant_flower_balloons",
+      "index": 113,
+      "name_ja": "鮮やかなフラワーバルーン",
+      "name_en": "Vibrant Flower Balloons",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "養蜂畑の園"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_glossy_flower_balloons",
+      "index": 114,
+      "name_ja": "つやつやなフラワーバルーン",
+      "name_en": "Glossy Flower Balloons",
+      "slot": "large",
+      "series_id": "florist",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "みんなの味方"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_animal_balloons",
+      "index": 115,
+      "name_ja": "どうぶつバルーン",
+      "name_en": "Animal Balloons",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_colorful_animal_balloons",
+      "index": 116,
+      "name_ja": "カラフルなどうぶつバルーン",
+      "name_en": "Colorful Animal Balloons",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "輝かしい飼育人"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_lucky_animal_balloons",
+      "index": 117,
+      "name_ja": "ラッキーなどうぶつバルーン",
+      "name_en": "Lucky Animal Balloons",
+      "slot": "large",
+      "series_id": "rancher",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "極上ブランドの主"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_bug_flag",
+      "index": 118,
+      "name_ja": "虫のぼり",
+      "name_en": "Bug Flag",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_stylish_bug_flag",
+      "index": 119,
+      "name_ja": "イカした虫のぼり",
+      "name_en": "Stylish Bug Flag",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "虫コレクター"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_wonderful_bug_flag",
+      "index": 120,
+      "name_ja": "ワンダフル虫のぼり",
+      "name_en": "Wonderful Bug Flag",
+      "slot": "large",
+      "series_id": "bug",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "果てなき探求者"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_honey_balloons",
+      "index": 121,
+      "name_ja": "はちみつバルーン",
+      "name_en": "Honey Balloons",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable",
+        "conflict": "GameWith lists honey balloons in Bug series; StratsWiki series, effect and shop catalog place them in Forager."
+      }
+    },
+    {
+      "id": "decor_invigorating_honey_balloons",
+      "index": 122,
+      "name_ja": "さわやかはちみつバルーン",
+      "name_en": "Invigorating Honey Balloons",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "虫コレクター"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable",
+        "conflict": "GameWith lists honey balloons in Bug series; StratsWiki series, effect and shop catalog place them in Forager."
+      }
+    },
+    {
+      "id": "decor_mellow_honey_balloons",
+      "index": 123,
+      "name_ja": "まろやかはちみつバルーン",
+      "name_en": "Mellow Honey Balloons",
+      "slot": "large",
+      "series_id": "forager",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "果てなき探求者"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable",
+        "conflict": "GameWith lists honey balloons in Bug series; StratsWiki series, effect and shop catalog place them in Forager."
+      }
+    },
+    {
+      "id": "decor_fish_windsock",
+      "index": 124,
+      "name_ja": "鯉のぼり",
+      "name_en": "Fish Windsock",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_light_fish_windsock",
+      "index": 125,
+      "name_ja": "淡い鯉のぼり",
+      "name_en": "Light Fish Windsock",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "魚博士"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_dazzling_fish_windsock",
+      "index": 126,
+      "name_ja": "きらびやかな鯉のぼり",
+      "name_en": "Dazzling Fish Windsock",
+      "slot": "large",
+      "series_id": "fish",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "マスター・オブ・サカナ"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_cooking_balloons",
+      "index": 127,
+      "name_ja": "クッキングバルーン",
+      "name_en": "Cooking Balloons",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 4,
+        "currency": "G",
+        "price_g": 28000,
+        "stock_limit_per_save": 1,
+        "price_confidence": "crosschecked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_fun_cooking_balloons",
+      "index": 128,
+      "name_ja": "楽しいクッキングバルーン",
+      "name_en": "Fun Cooking Balloons",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "魚博士"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_elegant_cooking_balloons",
+      "index": 129,
+      "name_ja": "エレガントクッキングバルーン",
+      "name_en": "Elegant Cooking Balloons",
+      "slot": "large",
+      "series_id": "chef",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "三ツ星シェフ"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_red_windmill_model",
+      "index": 130,
+      "name_ja": "赤いミニ風車",
+      "name_en": "Red Windmill Model",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "レッドマスター"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_blue_windmill_model",
+      "index": 131,
+      "name_ja": "青いミニ風車",
+      "name_en": "Blue Windmill Model",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "ブルーマスター"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_yellow_windmill_model",
+      "index": 132,
+      "name_ja": "黄色いミニ風車",
+      "name_en": "Yellow Windmill Model",
+      "slot": "large",
+      "series_id": "windmill",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "伝説の風使い"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_spring_display_wagon",
+      "index": 133,
+      "name_ja": "春のポカポカワゴン",
+      "name_en": "Spring Display Wagon",
+      "slot": "large",
+      "series_id": null,
+      "effect": {
+        "effect_id": "trend_effects_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "title_reward",
+        "title_ja": "グランドバザール"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_summer_display_wagon",
+      "index": 134,
+      "name_ja": "夏のトロピカルワゴン",
+      "name_en": "Summer Display Wagon",
+      "slot": "large",
+      "series_id": null,
+      "effect": {
+        "effect_id": "trend_effects_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 7,
+        "currency": "G",
+        "price_g": null,
+        "price_candidates_g": [
+          4800000,
+          5600000
+        ],
+        "price_confidence": "source_conflict",
+        "requires_title_ja": "グランドバザール",
+        "stock_limit_per_save": 1
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "decor_autumn_display_wagon",
+      "index": 135,
+      "name_ja": "秋のスイートワゴン",
+      "name_en": "Autumn Display Wagon",
+      "slot": "large",
+      "series_id": null,
+      "effect": {
+        "effect_id": "trend_effects_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 7,
+        "currency": "G",
+        "price_g": null,
+        "price_candidates_g": [
+          4800000,
+          5600000
+        ],
+        "price_confidence": "source_conflict",
+        "requires_title_ja": "グランドバザール",
+        "stock_limit_per_save": 1
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "decor_winter_display_wagon",
+      "index": 136,
+      "name_ja": "冬のハッピーワゴン",
+      "name_en": "Winter Display Wagon",
+      "slot": "large",
+      "series_id": null,
+      "effect": {
+        "effect_id": "trend_effects_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "shop_purchase",
+        "shop_id": "shop_rebecca",
+        "rank_min": 7,
+        "currency": "G",
+        "price_g": null,
+        "price_candidates_g": [
+          4800000,
+          5600000
+        ],
+        "price_confidence": "source_conflict",
+        "requires_title_ja": "グランドバザール",
+        "stock_limit_per_save": 1
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "decor_animal_show_bronze_decor",
+      "index": 137,
+      "name_ja": "銅のどうぶつ賞盃",
+      "name_en": "Animal Show Bronze Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "animal",
+        "medal": "bronze"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_animal_show_silver_decor",
+      "index": 138,
+      "name_ja": "銀のどうぶつ賞盃",
+      "name_en": "Animal Show Silver Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "animal",
+        "medal": "silver"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_animal_show_gold_decor",
+      "index": 139,
+      "name_ja": "金のどうぶつ賞盃",
+      "name_en": "Animal Show Gold Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "animal",
+        "medal": "gold"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_crops_show_bronze_decor",
+      "index": 140,
+      "name_ja": "銅のさくもつ賞盃",
+      "name_en": "Crops Show Bronze Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "crop",
+        "medal": "bronze"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_crops_show_silver_decor",
+      "index": 141,
+      "name_ja": "銀のさくもつ賞盃",
+      "name_en": "Crops Show Silver Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "crop",
+        "medal": "silver"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_crops_show_gold_decor",
+      "index": 142,
+      "name_ja": "金のさくもつ賞盃",
+      "name_en": "Crops Show Gold Decor",
+      "slot": "small",
+      "series_id": null,
+      "effect": {
+        "effect_id": "big_spenders_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "contest_reward",
+        "contest_type": "crop",
+        "medal": "gold"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_kakaporo_rosette",
+      "index": 143,
+      "name_ja": "カカポロのロゼット",
+      "name_en": null,
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "cheer_gauge_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 560000,
+        "required_sprite_share_level": "max"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "English field intentionally omitted: sprite names differ between Japanese and English localizations."
+      }
+    },
+    {
+      "id": "decor_kikiporo_rosette",
+      "index": 144,
+      "name_ja": "キキポロのロゼット",
+      "name_en": null,
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "cheer_gauge_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 560000,
+        "required_sprite_share_level": "max"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "English field intentionally omitted: sprite names differ between Japanese and English localizations."
+      }
+    },
+    {
+      "id": "decor_kukuporo_rosette",
+      "index": 145,
+      "name_ja": "ククポロのロゼット",
+      "name_en": null,
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "cheer_gauge_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 560000,
+        "required_sprite_share_level": "max"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "English field intentionally omitted: sprite names differ between Japanese and English localizations."
+      }
+    },
+    {
+      "id": "decor_kekeporo_rosette",
+      "index": 146,
+      "name_ja": "ケケポロのロゼット",
+      "name_en": null,
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "cheer_gauge_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 560000,
+        "required_sprite_share_level": "max"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "English field intentionally omitted: sprite names differ between Japanese and English localizations."
+      }
+    },
+    {
+      "id": "decor_kokoporo_rosette",
+      "index": 147,
+      "name_ja": "ココポロのロゼット",
+      "name_en": null,
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "cheer_gauge_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 560000,
+        "required_sprite_share_level": "max"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed",
+        "note": "English field intentionally omitted: sprite names differ between Japanese and English localizations."
+      }
+    },
+    {
+      "id": "decor_leaf_tent",
+      "index": 148,
+      "name_ja": "はっぱテント",
+      "name_en": "Leaf Tent",
+      "slot": "tent",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 6000,
+        "rank_min": 2
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_sprouting_leaf_tent",
+      "index": 149,
+      "name_ja": "いいはっぱテント",
+      "name_en": "Sprouting Leaf Tent",
+      "slot": "tent",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 30000,
+        "rank_min": 4,
+        "requires_purchased_item_id": "decor_leaf_tent"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_flourishing_leaf_tent",
+      "index": 150,
+      "name_ja": "みごとなはっぱテント",
+      "name_en": "Flourishing Leaf Tent",
+      "slot": "tent",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "bulk_sale",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 150000,
+        "rank_min": 6,
+        "requires_purchased_item_id": "decor_sprouting_leaf_tent"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_leaf_counter",
+      "index": 151,
+      "name_ja": "はっぱカウンター",
+      "name_en": "Leaf Counter",
+      "slot": "counter",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 5000,
+        "rank_min": 2
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_sprouting_leaf_counter",
+      "index": 152,
+      "name_ja": "いいはっぱカウンター",
+      "name_en": "Sprouting Leaf Counter",
+      "slot": "counter",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 20000,
+        "rank_min": 3,
+        "requires_purchased_item_id": "decor_leaf_counter"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_flourishing_leaf_counter",
+      "index": 153,
+      "name_ja": "みごとなはっぱカウンター",
+      "name_en": "Flourishing Leaf Counter",
+      "slot": "counter",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "price_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 80000,
+        "rank_min": 5,
+        "requires_purchased_item_id": "decor_sprouting_leaf_counter"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_nature_sprite_gift",
+      "index": 154,
+      "name_ja": "コロボックルのおくりもの",
+      "name_en": "Nature Sprite Gift",
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "happy_energy_gain",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 4500,
+        "rank_min": 2
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_wonderful_nature_sprite_gift",
+      "index": 155,
+      "name_ja": "コロボックルのすてきなおくりもの",
+      "name_en": "Wonderful Nature Sprite Gift",
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "happy_energy_gain",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 20000,
+        "rank_min": 4,
+        "requires_purchased_item_id": "decor_nature_sprite_gift"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_happy_nature_sprite_gift",
+      "index": 156,
+      "name_ja": "コロボックルのハッピーなおくりもの",
+      "name_en": "Happy Nature Sprite Gift",
+      "slot": "small",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "happy_energy_gain",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 100000,
+        "rank_min": 6,
+        "requires_purchased_item_id": "decor_wonderful_nature_sprite_gift"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_tree_stump_house",
+      "index": 157,
+      "name_ja": "きりかぶハウス",
+      "name_en": "Tree Stump House",
+      "slot": "large",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 1
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 8000,
+        "rank_min": 3
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_cozy_tree_stump_house",
+      "index": 158,
+      "name_ja": "あたたかなきりかぶハウス",
+      "name_en": "Cozy Tree Stump House",
+      "slot": "large",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 2
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 40000,
+        "rank_min": 5,
+        "requires_purchased_item_id": "decor_tree_stump_house"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "decor_comfy_tree_stump_house",
+      "index": 159,
+      "name_ja": "くつろぎきりかぶハウス",
+      "name_en": "Comfy Tree Stump House",
+      "slot": "large",
+      "series_id": "nature_sprite",
+      "effect": {
+        "effect_id": "quality_up",
+        "level": 3
+      },
+      "acquisition": {
+        "method": "sprite_exchange",
+        "shop_id": "shop_sprite",
+        "currency": "happy_energy",
+        "cost": 200000,
+        "rank_min": 7,
+        "requires_purchased_item_id": "decor_cozy_tree_stump_house"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_catalog",
+          "strats_series",
+          "strats_effects"
+        ],
+        "verified_on": "2026-10-10",
+        "confidence": "confirmed"
+      }
+    }
+  ]
+}

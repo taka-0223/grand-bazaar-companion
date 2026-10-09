@@ -1,0 +1,34 @@
+name: Bazaar decor Master integrity
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'data/bazaar-decor.v1.json'
+      - 'data/bazaar-decor-crafting.v1.json'
+      - 'data/bazaar-shops.v1.json'
+      - 'lib/bazaar-decor-read-model.mjs'
+      - 'tools/validate-bazaar-decor.mjs'
+      - '.github/workflows/bazaar-decor-integrity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/bazaar-decor.v1.json'
+      - 'data/bazaar-decor-crafting.v1.json'
+      - 'data/bazaar-shops.v1.json'
+      - 'lib/bazaar-decor-read-model.mjs'
+      - 'tools/validate-bazaar-decor.mjs'
+      - '.github/workflows/bazaar-decor-integrity.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bazaar decor, crafting, series, price uncertainty, and spoiler guard
+        run: node tools/validate-bazaar-decor.mjs
+      - name: Regression test Bazaar shops and facilities
+        run: node tools/validate-bazaar-master.mjs
+      - name: Regression test linked Request Master
+        run: node tools/validate-request-master.mjs
