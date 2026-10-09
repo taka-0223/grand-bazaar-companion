@@ -119,6 +119,13 @@
 .calWindBadge.strong{background:#f6ead8;color:#80551d}
 .calWindBadge.storm{background:#f1e4e1;color:#8c4d45}
 
+
+:root{--keyboard-inset:0px}
+.modal{bottom:var(--keyboard-inset)}
+.modal .sheet{max-height:min(90dvh,calc(100% - 8px))}
+.sheet.cropDetailSheet{height:min(94dvh,calc(100% - 4px));max-height:min(94dvh,calc(100% - 4px))}
+.imeSafeActions{position:sticky;bottom:0;z-index:9;background:linear-gradient(to bottom,rgba(255,253,248,.9),var(--surface) 28%);padding-bottom:calc(8px + env(safe-area-inset-bottom));margin-left:-2px;margin-right:-2px}
+
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -139,7 +146,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.7';
+const APP_VERSION='0.11.8';
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -1213,8 +1220,21 @@ function showCrop(id,opts={}){
   $('#closeCropSheet').onclick=closeCrop;$('#cropSheetCloseBottom').onclick=closeCrop;
   $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
   $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
-  $$('.stateBtn').forEach(b=>b.onclick=async()=>{selectedStatus=b.dataset.status;$$('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));refreshLocation();await persistCrop()});
-  $('#locationSelect').onchange=async e=>{selectedLocation=e.target.value;await persistCrop()};
+  $('.stateBtn').forEach(b=>b.onclick=async()=>{
+    selectedStatus=b.dataset.status;
+    if(!selectedStatus){selectedLocation='';$('#locationSelect').value=''}
+    $('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));
+    refreshLocation();await persistCrop()
+  });
+  $('#locationSelect').onchange=async e=>{
+    selectedLocation=e.target.value;
+    if(!selectedLocation){
+      selectedStatus='';
+      $('.stateBtn').forEach(x=>x.classList.toggle('active',x.dataset.status===''));
+      refreshLocation()
+    }
+    await persistCrop()
+  };
   $('#growing').onchange=persistCrop;
   $$('.detailQ').forEach(b=>b.onclick=()=>adjustQuality(id,b.dataset.key,Number(b.dataset.delta)));
   bindAutosave([$('#seedCount'),$('#growingCount'),$('#cropNote')],persistCrop);
@@ -1222,7 +1242,7 @@ function showCrop(id,opts={}){
 }
 function intOrNull(v){return v===''?null:Math.max(0,parseInt(v,10)||0)}function factCard(f){return `<div class="card"><div class="small strong">${esc(f.type==='process'?'加工':'情報')}</div><div class="tiny muted">${esc((f.inputs||[]).map(x=>name(x.entity)).join(' + '))} → ${esc(name(f.output))}</div></div>`}
 function kindLabelForEntity(e){if(!e)return'';if(isMushroom(e))return'🍄 きのこ';if(e.kind==='fruit'||e.kind==='seedling')return'🌳 果樹';if(isFlower(e))return'🌼 花';if(e.kind==='crop'||e.kind==='seed')return'🌱 作物';return'📦 その他'}
-function openAddKnown(){modal(`<h3>新しく知ったものを登録</h3><p class="small muted">名前を入力するとMasterと照合して種類・季節を自動判定します。</p><div class="field"><label>ゲーム内の名前</label><input id="knownName" autocomplete="off" autofocus></div><div id="knownDetect" class="notice" style="margin-top:8px">名前を入力すると判定します。</div><div id="knownKindWrap" class="field" style="margin-top:8px;display:none"><label>Masterに無い場合だけ種類を選択</label><select id="knownKind"><option value="crop">作物</option><option value="fruit">果樹</option><option value="flower">花</option><option value="custom">きのこ・その他</option></select></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerKnown">登録</button></div>`);
+function openAddKnown(){modal(`<h3>新しく知ったものを登録</h3><p class="small muted">名前を入力するとMasterと照合して種類・季節を自動判定します。</p><div class="field"><label>ゲーム内の名前</label><input id="knownName" autocomplete="off" autofocus></div><div id="knownDetect" class="notice" style="margin-top:8px">名前を入力すると判定します。</div><div id="knownKindWrap" class="field" style="margin-top:8px;display:none"><label>Masterに無い場合だけ種類を選択</label><select id="knownKind"><option value="crop">作物</option><option value="fruit">果樹</option><option value="flower">花</option><option value="custom">きのこ・その他</option></select></div><div class="sheet-actions imeSafeActions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerKnown">登録</button></div>`);
 const refresh=()=>{const n=$('#knownName').value.trim(),e=n?findByName(n):null,box=$('#knownDetect'),fallback=$('#knownKindWrap');if(!n){box.textContent='名前を入力すると判定します。';fallback.style.display='none';return}if(e){const ms=masterSeasonsForId(e.id);box.innerHTML=`<b>${esc(kindLabelForEntity(e))}</b>${ms.length?` / ${esc(ms.join('・'))}`:''}<div class="tiny muted" style="margin-top:3px">Master照合済み</div>`;fallback.style.display='none'}else{box.innerHTML='<b>Masterに一致しません</b><div class="tiny muted" style="margin-top:3px">種類だけ手動で選んで登録できます。</div>';fallback.style.display='flex'}};$('#knownName').oninput=refresh;setTimeout(()=>$('#knownName')?.focus(),50);
 $('#registerKnown').onclick=async()=>{const n=$('#knownName').value.trim();if(!n)return;let e=findByName(n);if(e&&state.knownEntities.includes(e.id)&&state.playerState[e.id]){modal(`<h3>すでに登録されています</h3><div class="notice">${esc(name(e.id))}</div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">閉じる</button><button class="btn" id="openExisting">既存データを開く</button></div>`);$('#openExisting').onclick=()=>{closeModal();showCrop(e.id)};return}if(!e){const id='user_'+Date.now();e={id,name_ja:n,kind:$('#knownKind').value,attributes:{},provenance:{source:'user'}};state.customEntities.push(e)}if(!state.knownEntities.includes(e.id))state.knownEntities.push(e.id);const p=player(e.id),ms=masterSeasonsForId(e.id);if(!(p.knownSeasons||[]).length&&ms.length)p.knownSeasons=ms;p.updatedAt=new Date().toISOString();await save();closeModal();crops();toast(`登録しました：${name(e.id)} / ${kindLabelForEntity(e)}`)}}
 
@@ -1517,6 +1537,17 @@ function bindSheetDrag(){
   sheet.onpointermove=e=>{if(pointerId!==e.pointerId||e.pointerType==='touch')return;const dy=e.clientY-pStartY,dx=e.clientX-pStartX;pLastY=e.clientY;if(!pointerDragging){if(Math.abs(dx)>Math.abs(dy)||Math.abs(dy)<8)return;if(dy<=0||(!pForceDismiss&&(pStartScroll>0||sheet.scrollTop>0))){pointerId=null;return}pointerDragging=true;sheet.classList.add('dragging');m.classList.add('dragging');sheet.setPointerCapture?.(pointerId)}if(pointerDragging){const pull=Math.max(0,dy),progress=Math.min(1,pull/Math.max(240,sheet.offsetHeight*.5));sheet.style.transform=`translateY(${pull}px)`;m.style.backgroundColor=`rgba(25,30,24,${(.38*(1-progress)).toFixed(3)})`}};
   const pFinish=e=>{if(pointerId!==e.pointerId)return;const id=pointerId;pointerId=null;if(!pointerDragging)return;pointerDragging=false;const dy=Math.max(0,pLastY-pStartY),dt=Math.max(1,performance.now()-pStartAt),velocity=dy/dt;try{sheet.releasePointerCapture?.(id)}catch(_){}if(dy>=96||velocity>=.62)dismiss(dy);else snapBack()};
   sheet.onpointerup=pFinish;sheet.onpointercancel=pFinish
+}
+function syncKeyboardInset(){
+  const vv=window.visualViewport;if(!vv){document.documentElement.style.setProperty('--keyboard-inset','0px');return}
+  const inset=Math.max(0,Math.round(window.innerHeight-vv.height-vv.offsetTop));
+  document.documentElement.style.setProperty('--keyboard-inset',inset+'px')
+}
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',syncKeyboardInset);
+  window.visualViewport.addEventListener('scroll',syncKeyboardInset);
+  window.addEventListener('orientationchange',()=>setTimeout(syncKeyboardInset,120));
+  syncKeyboardInset()
 }
 function modal(content){const sheet=$('#modalSheet');sheet.classList.remove('cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
 window.closeModal=()=>{const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling','cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.style.transform=''}}
