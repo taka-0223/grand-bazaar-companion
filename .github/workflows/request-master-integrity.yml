@@ -1,0 +1,22 @@
+name: Request Master integrity
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tools/validate-request-master.mjs'
+      - '.github/workflows/request-master-integrity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'tools/validate-request-master.mjs'
+      - '.github/workflows/request-master-integrity.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate all 128 request records and reference bindings
+        run: node tools/validate-request-master.mjs
