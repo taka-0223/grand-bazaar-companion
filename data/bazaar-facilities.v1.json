@@ -1,0 +1,1037 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "bazaar_facilities",
+    "status": "audited_v1",
+    "verified_on": "2026-10-09",
+    "target_game_version": "1.5.0",
+    "scope": "バザールで購入・発注する恒久設備38件（ウィルバー20／ゴラン12／アラタ6）。装飾品・テントは別ドメイン。",
+    "name_policy": "name_ja は正確なゲーム内名称を確認した場合のみ記録。それ以外は利用目的を示す label_ja を付与し、日本語は説明用ラベルとする。",
+    "pricing_policy": "price_gは購入・発注時のG額。必要材料の有無を裏付けできなかった設備について材料ゼロを意味しない。",
+    "unlock_policy": "rank_minは入手条件の一要素。ショップの開店・既存設備の施工と、プレイヤー側の発見・進捗を別に管理する。7を超えるpostgameランクも正規のrank_minとして保持。",
+    "sources": {
+      "wilbur": "https://stratswiki.com/sos-gb/shops/wilburs-workshop/",
+      "garon": "https://stratswiki.com/sos-gb/shops/garons-construction/",
+      "arata": "https://stratswiki.com/sos-gb/shops/heavy-lifters/",
+      "farmland": "https://stratswiki.com/sos-gb/guides/farm-upgrades/",
+      "gamewith_farm": "https://gamewith.jp/bokumono-grabaza/517157",
+      "appmedia_farm": "https://appmedia.jp/bokumono_grabaza/79239401",
+      "gamewith_utensil": "https://gamewith.jp/bokumono-grabaza/517705",
+      "gamewith_storage": "https://gamewith.jp/bokumono-grabaza/515381",
+      "gamewith_bees": "https://gamewith.jp/bokumono-grabaza/515019",
+      "strats_utensil": "https://stratswiki.com/sos-gb/items/utensils/"
+    },
+    "conflicts": [
+      {
+        "id": "field_3_rank",
+        "selected_rank": 4,
+        "alternate_rank": 3,
+        "source_a": "GameWith 畑拡張／StratsWiki Farm Upgradesは都市ランク4",
+        "source_b": "StratsWiki Wilbur inventory表はランク3",
+        "status": "resolved_preferring_two_detailed_guides"
+      },
+      {
+        "id": "barn_2_rank",
+        "selected_rank": 5,
+        "alternate_rank": 4,
+        "source_a": "GameWith 畑と小屋／AppMedia 畑・小屋／StratsWiki Garon shopは地方ランク5",
+        "source_b": "StratsWiki Farm Upgradesはランク4",
+        "status": "resolved_preferring_three_sources"
+      },
+      {
+        "id": "garon_soil2_rank",
+        "selected_rank": 4,
+        "alternate_rank": 3,
+        "source_a": "StratsWiki Farm Upgradesはランク4",
+        "source_b": "StratsWiki Garon shopはdefault条件",
+        "status": "probable",
+        "note": "通常rank3到達直後の在庫条件との矛盾。rank4を採用するがゲーム内要再確認。"
+      },
+      {
+        "id": "arata_mushroom_unlock",
+        "source_a": "Resource Masterは開店準備Requestおよび施工費10000Gを登録済み",
+        "source_b": "GameWith は拡張50,000G/200,000G・施工2日と記載",
+        "status": "aligned"
+      },
+      {
+        "id": "kitchen_utensil_timing",
+        "source_a": "StratsWiki Cooking Utensilsは購入時に即時設置",
+        "source_b": "StratsWiki Garon shopは工事一般に約1日の時間を記載",
+        "status": "resolved_utensils_immediate"
+      }
+    ]
+  },
+  "facility_upgrades": [
+    {
+      "id": "fac_wilbur_bag_1",
+      "shop_id": "shop_wilbur",
+      "label_ja": "カバンを広げる",
+      "name_ja": "カバンを広げる",
+      "name_en": "Bag Expansion",
+      "kind": "bag_capacity",
+      "price_g": 5000,
+      "unlock": {
+        "rank_min": 1,
+        "required_facility_ids": []
+      },
+      "result": {
+        "from_slots": 16,
+        "to_slots": 32
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_1",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを広げる工事",
+      "name_ja": "そうこを広げる工事",
+      "name_en": "Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 5000,
+      "unlock": {
+        "rank_min": 1,
+        "required_facility_ids": []
+      },
+      "result": {
+        "from_slots": 24,
+        "to_slots": 48
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_field_2",
+      "shop_id": "shop_wilbur",
+      "label_ja": "畑を2面に拡張",
+      "name_ja": null,
+      "name_en": "Field Expansion",
+      "kind": "farmland",
+      "price_g": 20000,
+      "unlock": {
+        "rank_min": 2,
+        "required_facility_ids": []
+      },
+      "result": {
+        "field_count": 2
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_bag_2",
+      "shop_id": "shop_wilbur",
+      "label_ja": "カバンをさらに拡張",
+      "name_ja": null,
+      "name_en": "Bigger Bag Expansion",
+      "kind": "bag_capacity",
+      "price_g": 30000,
+      "unlock": {
+        "rank_min": 2,
+        "required_facility_ids": [
+          "fac_wilbur_bag_1"
+        ]
+      },
+      "result": {
+        "from_slots": 32,
+        "to_slots": 40
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_2",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを72枠に拡張",
+      "name_ja": null,
+      "name_en": "Minor Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 20000,
+      "unlock": {
+        "rank_min": 2,
+        "required_facility_ids": [
+          "fac_wilbur_storage_1"
+        ]
+      },
+      "result": {
+        "from_slots": 48,
+        "to_slots": 72
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_pasture_2",
+      "shop_id": "shop_wilbur",
+      "label_ja": "牧草地を拡張",
+      "name_ja": null,
+      "name_en": "Pasture Expansion",
+      "kind": "pasture",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "pasture_level": 2
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_3",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを96枠に拡張",
+      "name_ja": null,
+      "name_en": "Small Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 40000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": [
+          "fac_wilbur_storage_2"
+        ]
+      },
+      "result": {
+        "from_slots": 72,
+        "to_slots": 96
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_field_3",
+      "shop_id": "shop_wilbur",
+      "label_ja": "畑を3面に拡張",
+      "name_ja": null,
+      "name_en": "Extra Field Expansion",
+      "kind": "farmland",
+      "price_g": 100000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_wilbur_field_2"
+        ]
+      },
+      "result": {
+        "field_count": 3
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_bed_double",
+      "shop_id": "shop_wilbur",
+      "label_ja": "ダブルベッドに拡張",
+      "name_ja": null,
+      "name_en": "Double Bed Upgrade",
+      "kind": "bed",
+      "price_g": 10000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": []
+      },
+      "result": {
+        "bed_type": "double"
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_4",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを120枠に拡張",
+      "name_ja": null,
+      "name_en": "Modest Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 80000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_wilbur_storage_3"
+        ]
+      },
+      "result": {
+        "from_slots": 96,
+        "to_slots": 120
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_5",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを144枠に拡張",
+      "name_ja": null,
+      "name_en": "Moderate Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 100000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_wilbur_storage_4"
+        ]
+      },
+      "result": {
+        "from_slots": 120,
+        "to_slots": 144
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_cellar",
+      "shop_id": "shop_wilbur",
+      "label_ja": "地下室を建設",
+      "name_ja": null,
+      "name_en": "Cellar Construction",
+      "kind": "cellar",
+      "price_g": 1000000,
+      "unlock": {
+        "rank_min": 6,
+        "required_facility_ids": [
+          "fac_wilbur_field_3"
+        ]
+      },
+      "result": {
+        "cellar_unlocked": true
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_6",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを168枠に拡張",
+      "name_ja": null,
+      "name_en": "Big Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 150000,
+      "unlock": {
+        "rank_min": 6,
+        "required_facility_ids": [
+          "fac_wilbur_storage_5"
+        ]
+      },
+      "result": {
+        "from_slots": 144,
+        "to_slots": 168
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_7",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを192枠に拡張",
+      "name_ja": null,
+      "name_en": "Huge Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 200000,
+      "unlock": {
+        "rank_min": 6,
+        "required_facility_ids": [
+          "fac_wilbur_storage_6"
+        ]
+      },
+      "result": {
+        "from_slots": 168,
+        "to_slots": 192
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_8",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを216枠に拡張",
+      "name_ja": null,
+      "name_en": "Grand Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 300000,
+      "unlock": {
+        "rank_min": 6,
+        "required_facility_ids": [
+          "fac_wilbur_storage_7"
+        ]
+      },
+      "result": {
+        "from_slots": 192,
+        "to_slots": 216
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_9",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを240枠に拡張",
+      "name_ja": null,
+      "name_en": "Massive Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 500000,
+      "unlock": {
+        "rank_min": 6,
+        "required_facility_ids": [
+          "fac_wilbur_storage_8"
+        ]
+      },
+      "result": {
+        "from_slots": 216,
+        "to_slots": 240
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_bed_deluxe",
+      "shop_id": "shop_wilbur",
+      "label_ja": "ベッドをさらに改良",
+      "name_ja": null,
+      "name_en": "Deluxe Bed Upgrade",
+      "kind": "bed",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_wilbur_bed_double"
+        ],
+        "required_player_flags": [
+          "married"
+        ]
+      },
+      "result": {
+        "bed_type": "deluxe"
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_10",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを265枠に拡張",
+      "name_ja": null,
+      "name_en": "Gigantic Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 1000000,
+      "unlock": {
+        "rank_min": 10,
+        "required_facility_ids": [
+          "fac_wilbur_storage_9"
+        ]
+      },
+      "result": {
+        "from_slots": 240,
+        "to_slots": 265
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_11",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを288枠に拡張",
+      "name_ja": null,
+      "name_en": "Extreme Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 2000000,
+      "unlock": {
+        "rank_min": 30,
+        "required_facility_ids": [
+          "fac_wilbur_storage_10"
+        ]
+      },
+      "result": {
+        "from_slots": 265,
+        "to_slots": 288
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_wilbur_storage_12",
+      "shop_id": "shop_wilbur",
+      "label_ja": "そうこを312枠に拡張",
+      "name_ja": null,
+      "name_en": "Max Storage Expansion",
+      "kind": "storage_capacity",
+      "price_g": 3000000,
+      "unlock": {
+        "rank_min": 50,
+        "required_facility_ids": [
+          "fac_wilbur_storage_11"
+        ]
+      },
+      "result": {
+        "from_slots": 288,
+        "to_slots": 312
+      },
+      "provenance": {
+        "sources": [
+          "wilbur"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_soil_1",
+      "shop_id": "shop_garon",
+      "label_ja": "土の品質を向上（1段階目）",
+      "name_ja": null,
+      "name_en": "Good-Quality Soil",
+      "kind": "soil_quality",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "quality_tier": 1
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_soil_2",
+      "shop_id": "shop_garon",
+      "label_ja": "土の品質を向上（2段階目）",
+      "name_ja": null,
+      "name_en": "High-Quality Soil",
+      "kind": "soil_quality",
+      "price_g": 100000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_garon_soil_1"
+        ]
+      },
+      "result": {
+        "quality_tier": 2
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "fac_garon_frying_pan",
+      "shop_id": "shop_garon",
+      "label_ja": "キッチンにフライパンを設置",
+      "name_ja": "キッチンにフライパンを設置",
+      "name_en": "Frying Pan",
+      "kind": "cooking_utensil",
+      "price_g": 10000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "ref": {
+          "domain": "cooking_utensils",
+          "id": "frying_pan"
+        }
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_cooking_pot",
+      "shop_id": "shop_garon",
+      "label_ja": "キッチンに鍋を設置",
+      "name_ja": "キッチンに鍋を設置",
+      "name_en": "Cooking Pot",
+      "kind": "cooking_utensil",
+      "price_g": 30000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "ref": {
+          "domain": "cooking_utensils",
+          "id": "cooking_pot"
+        }
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_oven",
+      "shop_id": "shop_garon",
+      "label_ja": "キッチンにオーブンを設置",
+      "name_ja": "キッチンにオーブンを設置",
+      "name_en": "Oven",
+      "kind": "cooking_utensil",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "ref": {
+          "domain": "cooking_utensils",
+          "id": "oven"
+        }
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_storage_fresh_1",
+      "shop_id": "shop_garon",
+      "label_ja": "そうこの鮮度保持を改善（1段階目）",
+      "name_ja": null,
+      "name_en": "Minor Storage Power-Up",
+      "kind": "storage_freshness",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": []
+      },
+      "result": {
+        "freshness_tier": 1
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_storage_fresh_2",
+      "shop_id": "shop_garon",
+      "label_ja": "そうこの鮮度保持を改善（2段階目）",
+      "name_ja": null,
+      "name_en": "Decent Storage Power-Up",
+      "kind": "storage_freshness",
+      "price_g": 100000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_garon_storage_fresh_1"
+        ]
+      },
+      "result": {
+        "freshness_tier": 2
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_bathtub",
+      "shop_id": "shop_garon",
+      "label_ja": "お風呂の回復効果を強化",
+      "name_ja": null,
+      "name_en": "Bathtub Power-Up",
+      "kind": "bathtub",
+      "price_g": 112600,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": []
+      },
+      "result": {
+        "stamina_recovery": "increased"
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_barn_2",
+      "shop_id": "shop_garon",
+      "label_ja": "2つめの動物小屋を建設",
+      "name_ja": null,
+      "name_en": "Extra Barn",
+      "kind": "barn",
+      "price_g": 100000,
+      "unlock": {
+        "rank_min": 5,
+        "required_facility_ids": [
+          "fac_wilbur_pasture_2"
+        ]
+      },
+      "result": {
+        "barn_count": 2,
+        "capacity_small": 6,
+        "capacity_large": 6
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_storage_fresh_3",
+      "shop_id": "shop_garon",
+      "label_ja": "そうこの鮮度保持を改善（3段階目）",
+      "name_ja": null,
+      "name_en": "Good Storage Power-Up",
+      "kind": "storage_freshness",
+      "price_g": 500000,
+      "unlock": {
+        "rank_min": 5,
+        "required_facility_ids": [
+          "fac_garon_storage_fresh_2"
+        ]
+      },
+      "result": {
+        "freshness_tier": 3
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_soil_3",
+      "shop_id": "shop_garon",
+      "label_ja": "土の品質を向上（3段階目）",
+      "name_ja": null,
+      "name_en": "Top-Quality Soil",
+      "kind": "soil_quality",
+      "price_g": 1000000,
+      "unlock": {
+        "rank_min": 20,
+        "required_facility_ids": [
+          "fac_garon_soil_2"
+        ]
+      },
+      "result": {
+        "quality_tier": 3
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_garon_storage_fresh_max",
+      "shop_id": "shop_garon",
+      "label_ja": "そうこの鮮度を最大強化",
+      "name_ja": null,
+      "name_en": "Max Storage Power-Up",
+      "kind": "storage_freshness",
+      "price_g": 5000000,
+      "unlock": {
+        "rank_min": 60,
+        "required_facility_ids": [
+          "fac_garon_storage_fresh_3"
+        ]
+      },
+      "result": {
+        "freshness_tier": 4,
+        "prevents_rot": true
+      },
+      "provenance": {
+        "sources": [
+          "garon",
+          "farmland"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_beekeeping_1",
+      "shop_id": "shop_arata",
+      "label_ja": "養蜂畑を建設",
+      "name_ja": null,
+      "name_en": "Beekeeping Field",
+      "kind": "beekeeping",
+      "price_g": 10000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "beekeeping_tier": 1
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_mushroom_1",
+      "shop_id": "shop_arata",
+      "label_ja": "きのこの原木を設置",
+      "name_ja": null,
+      "name_en": "Mushroom Log",
+      "kind": "mushroom_cultivation",
+      "price_g": 10000,
+      "unlock": {
+        "rank_min": 3,
+        "required_facility_ids": []
+      },
+      "result": {
+        "log_count": 1
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_beekeeping_2",
+      "shop_id": "shop_arata",
+      "label_ja": "養蜂畑を拡張（1回目）",
+      "name_ja": null,
+      "name_en": "Beekeeping Expansion",
+      "kind": "beekeeping",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_arata_beekeeping_1"
+        ]
+      },
+      "result": {
+        "beekeeping_tier": 2
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_mushroom_2",
+      "shop_id": "shop_arata",
+      "label_ja": "きのこの原木を増設（2本目）",
+      "name_ja": null,
+      "name_en": "Second Mushroom Log",
+      "kind": "mushroom_cultivation",
+      "price_g": 50000,
+      "unlock": {
+        "rank_min": 4,
+        "required_facility_ids": [
+          "fac_arata_mushroom_1"
+        ]
+      },
+      "result": {
+        "log_count": 2
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_beekeeping_3",
+      "shop_id": "shop_arata",
+      "label_ja": "養蜂畑を拡張（2回目）",
+      "name_ja": null,
+      "name_en": "Bigger Beekeeping Expansion",
+      "kind": "beekeeping",
+      "price_g": 200000,
+      "unlock": {
+        "rank_min": 5,
+        "required_facility_ids": [
+          "fac_arata_beekeeping_2"
+        ]
+      },
+      "result": {
+        "beekeeping_tier": 3
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "fac_arata_mushroom_3",
+      "shop_id": "shop_arata",
+      "label_ja": "きのこの原木を増設（3本目）",
+      "name_ja": null,
+      "name_en": "Third Mushroom Log",
+      "kind": "mushroom_cultivation",
+      "price_g": 200000,
+      "unlock": {
+        "rank_min": 5,
+        "required_facility_ids": [
+          "fac_arata_mushroom_2"
+        ]
+      },
+      "result": {
+        "log_count": 3
+      },
+      "provenance": {
+        "sources": [
+          "arata",
+          "gamewith_bees"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    }
+  ]
+}
