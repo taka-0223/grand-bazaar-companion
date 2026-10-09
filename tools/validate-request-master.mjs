@@ -112,7 +112,7 @@ function validateRequestMaster(master) {
   if(kevin?.entityId!=='reqref_insect_c75ca848'||ref.aliases?.['ショウリュウバッタ']!=='ショウリョウバッタ')fail('Kevin bug name alias/reference regressed');
   const sherene=byId.get('rqm_gw_114');
   if(sherene?.provenance?.confidence!=='probable')warnings.push('Sherene #114 was reclassified; recheck conflicting evidence');
-  return {ok:errors.length===0,summary:{requests:req.length,requesters:new Set(req.map(x=>x.requester)).size,objectives:Object.values(objTypes).reduce((a,b)=>a+b,0),objectiveTypes:objTypes,alternativesObjectives:altCount,qualityObjectives:qualityCount,itemReferenceBindings:nBound,linkedAlternatives:nAltsBound,internalReferenceEntities:entity.size,referenceCategories:cat.size,confirmed:req.filter(x=>x.provenance?.confidence==='confirmed').length,probable:req.filter(x=>x.provenance?.confidence==='probable').length},errors,warnings};
+  return {ok:errors.length===0,summary:{requests:req.length,requesters:new Set(req.map(x=>x.requester)).size,objectives:Object.values(objTypes).reduce((a,b)=>a+b,0),objectiveTypes:objTypes,alternativesObjectives:altCount,topLevelQualityObjectives:qualityCount,alternativeOnlyQualityObjectives:req.flatMap(r=>r.objectives).filter(o=>o.quality===undefined&&(o.alternatives||[]).some(a=>a.quality!==undefined)).length,itemReferenceBindings:nBound,linkedAlternatives:nAltsBound,internalReferenceEntities:entity.size,referenceCategories:cat.size,confirmed:req.filter(x=>x.provenance?.confidence==='confirmed').length,probable:req.filter(x=>x.provenance?.confidence==='probable').length},errors,warnings};
 }
 
 const input=process.argv[2]||'index.html';
