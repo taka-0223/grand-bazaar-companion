@@ -1220,17 +1220,17 @@ function showCrop(id,opts={}){
   $('#closeCropSheet').onclick=closeCrop;$('#cropSheetCloseBottom').onclick=closeCrop;
   $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
   $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
-  $('.stateBtn').forEach(b=>b.onclick=async()=>{
+  document.querySelectorAll('.stateBtn').forEach(b=>b.onclick=async()=>{
     selectedStatus=b.dataset.status;
     if(!selectedStatus){selectedLocation='';$('#locationSelect').value=''}
-    $('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));
+    document.querySelectorAll('.stateBtn').forEach(x=>x.classList.toggle('active',x===b));
     refreshLocation();await persistCrop()
   });
   $('#locationSelect').onchange=async e=>{
     selectedLocation=e.target.value;
     if(!selectedLocation){
       selectedStatus='';
-      $('.stateBtn').forEach(x=>x.classList.toggle('active',x.dataset.status===''));
+      document.querySelectorAll('.stateBtn').forEach(x=>x.classList.toggle('active',x.dataset.status===''));
       refreshLocation()
     }
     await persistCrop()
