@@ -30,7 +30,8 @@
       "Egg Tower base price GameWith=21,000G vs StratsWiki Rebecca=2,100G; leave numeric price unresolved.",
       "Seasonal trend wagons GameWith=4,800,000G vs kokorogu=5,600,000G; leave numeric price unresolved.",
       "Several windmill decor material recipes differ between GameWith and StratsWiki; craft recipes deferred to separately verified table.",
-      "English/Japanese cooking utensil decoration grades have different label wording; grade linked by effect level, never a translated adjective."
+      "English/Japanese cooking utensil decoration grades have different label wording; grade linked by effect level, never a translated adjective.",
+      "Challenger Beetle Battle Toy reward location: GameWith cites Kagetsu, StratsWiki cites Lloyd, but canonical Request Master reward for Kagetsu is mushroom spores. Do not auto-link."
     ]
   },
   "rules": {
@@ -747,7 +748,7 @@
     {
       "id": "decor_excellent_farmer_tent",
       "index": 14,
-      "name_ja": "みごとファームテント",
+      "name_ja": "みごとなファームテント",
       "name_en": "Excellent Farmer Tent",
       "slot": "tent",
       "series_id": "farmer",
@@ -1287,7 +1288,7 @@
     {
       "id": "decor_excellent_chef_tent",
       "index": 32,
-      "name_ja": "みごとレストランテント",
+      "name_ja": "みごとなレストランテント",
       "name_en": "Excellent Chef Tent",
       "slot": "tent",
       "series_id": "chef",
@@ -3176,8 +3177,20 @@
         "level": 2
       },
       "acquisition": {
-        "method": "request_reward",
-        "request_id": "rqm_gw_061"
+        "method": "source_conflict",
+        "request_candidates": [
+          {
+            "request_id": "rqm_gw_061",
+            "source": "GameWith catalog",
+            "master_reward_mismatch": true
+          },
+          {
+            "request_id": "rqm_gw_026",
+            "source": "StratsWiki catalog",
+            "master_reward_unverified": true
+          }
+        ],
+        "note": "Do not auto-unlock from any request until cross-source reward inconsistency is resolved."
       },
       "provenance": {
         "sources": [
@@ -3186,7 +3199,8 @@
           "strats_effects"
         ],
         "verified_on": "2026-10-10",
-        "confidence": "confirmed"
+        "confidence": "unresolved",
+        "conflict": "GameWith says Kagetsu's vegetable request gives this decoration, but canonical Request Master rqm_gw_061 rewards mushroom spores. StratsWiki says Lloyd's wool-related request; needs game-state confirmation."
       }
     },
     {
