@@ -1,0 +1,38 @@
+name: Known economy Master adapter
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'lib/known-economy.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'tests/economy-fixture.mjs'
+      - 'tests/grand-bazaar-master-fixture.mjs'
+      - 'tests/known-economy.test.mjs'
+      - 'tests/grand-bazaar-adapter.test.mjs'
+      - 'tests/actual-master-smoke.test.mjs'
+      - '.github/workflows/known-economy-master.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'lib/known-economy.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'tests/economy-fixture.mjs'
+      - 'tests/grand-bazaar-master-fixture.mjs'
+      - 'tests/known-economy.test.mjs'
+      - 'tests/grand-bazaar-adapter.test.mjs'
+      - 'tests/actual-master-smoke.test.mjs'
+      - '.github/workflows/known-economy-master.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run deterministic accounting and disclosure tests, including live Master smoke
+        run: node --test tests/known-economy.test.mjs tests/grand-bazaar-adapter.test.mjs tests/actual-master-smoke.test.mjs
+      - name: Produce worked comparison scenarios
+        run: node tests/demo-master-adapter.mjs
