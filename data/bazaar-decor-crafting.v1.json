@@ -1,0 +1,502 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "bazaar_decor_crafting",
+    "status": "audited_v1_with_material_source_disagreements",
+    "target_game_version": "1.5.0",
+    "verified_on": "2026-10-10",
+    "scope": "Nine windmill-crafted decorations. The base Windmill Master excluded bazaar objects by scope.",
+    "source_policy": "GameWith latest Japanese object list as primary for ingredient names/quantities, StratsWiki individual detail for base craft duration. Divergent ingredient entries retained in conflict list.",
+    "sources": {
+      "gamewith": "https://gamewith.jp/bokumono-grabaza/515009",
+      "strats_list": "https://stratswiki.com/sos-gb/items/bazaar-decor/",
+      "strats_windmill": "https://stratswiki.com/sos-gb/items/bazaar-decor/windmill-tent/",
+      "strats_ultimate": "https://stratswiki.com/sos-gb/items/bazaar-decor/excellent-windmill-tent/"
+    },
+    "conflicts": [
+      {
+        "decor_index": 1,
+        "item": "風車柄のテント",
+        "field": "鉄鉱石の数量",
+        "chosen": 20,
+        "alternative": 10,
+        "source_chosen": "GameWith",
+        "source_alternative": "StratsWiki",
+        "confidence": "source_conflict"
+      },
+      {
+        "decor_index": 6,
+        "item": "ぴかぴかなアクセサリー台",
+        "field": "構成する木材",
+        "chosen": "頑丈な木材×5",
+        "alternative": "石材×5",
+        "source_chosen": "GameWith",
+        "source_alternative": "StratsWiki",
+        "confidence": "source_conflict"
+      },
+      {
+        "decor_index": 7,
+        "item": "みごとな風車柄のテント",
+        "field": "2番目の材料",
+        "chosen": "最高級の木材×10",
+        "alternative": "アダマンタイト×10 (StratsWiki listing; individual item lists Ultimate Lumber)",
+        "source_chosen": "GameWith and StratsWiki individual",
+        "source_alternative": "StratsWiki listing",
+        "confidence": "confirmed_by_individual"
+      },
+      {
+        "decor_index": 9,
+        "item": "きらきらなアクセサリー台",
+        "field": "基本木材",
+        "chosen": "最高級の木材×10",
+        "alternative": "頑丈な石材×10",
+        "source_chosen": "GameWith",
+        "source_alternative": "StratsWiki",
+        "confidence": "source_conflict"
+      },
+      {
+        "decor_index": null,
+        "field": "crafting time",
+        "chosen": "Individual StratsWiki item pages (windmill tents 24h, churns 12h, jewelry stands 8h)",
+        "alternative": "StratsWiki processed-goods aggregate often lists half these hours",
+        "confidence": "source_conflict_resolved"
+      }
+    ]
+  },
+  "recipes": [
+    {
+      "id": "decorcraft_001",
+      "decor_id": "decor_windmill_tent",
+      "windmill": "red",
+      "base_processing_minutes": 1440,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_e51a3d16",
+            "name_ja": "石材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_31e0a9ef",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_624bbf30",
+            "name_ja": "あたたかいカラー"
+          },
+          "quantity": 3
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "source_conflict",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_002",
+      "decor_id": "decor_windmill_churn",
+      "windmill": "red",
+      "base_processing_minutes": 720,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_e51a3d16",
+            "name_ja": "石材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_31e0a9ef",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 30
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_003",
+      "decor_id": "decor_jewelry_stand",
+      "windmill": "red",
+      "base_processing_minutes": 480,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_69fc61fb",
+            "name_ja": "黒いネックレス"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_9c25836e",
+            "name_ja": "黄緑のブローチ"
+          },
+          "quantity": 1
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_004",
+      "decor_id": "decor_good_windmill_tent",
+      "windmill": "blue",
+      "base_processing_minutes": 1440,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_dbe39d49",
+            "name_ja": "頑丈な石材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_842c099f",
+            "name_ja": "銀"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_624bbf30",
+            "name_ja": "あたたかいカラー"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_7a6f7aab",
+            "name_ja": "自然なカラー"
+          },
+          "quantity": 5
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_005",
+      "decor_id": "decor_white_windmill_churn",
+      "windmill": "blue",
+      "base_processing_minutes": 720,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_dbe39d49",
+            "name_ja": "頑丈な石材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_842c099f",
+            "name_ja": "銀"
+          },
+          "quantity": 10
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_006",
+      "decor_id": "decor_sparkling_jewelry_stand",
+      "windmill": "blue",
+      "base_processing_minutes": 480,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_e9a78b7e",
+            "name_ja": "紫のネックレス"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_223c9df9",
+            "name_ja": "黄色のブローチ"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_176d3c10",
+            "name_ja": "緑のブローチ"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d3a761ba",
+            "name_ja": "紫のブローチ"
+          },
+          "quantity": 2
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "source_conflict",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_007",
+      "decor_id": "decor_excellent_windmill_tent",
+      "windmill": "yellow",
+      "base_processing_minutes": 1440,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8294cb4a",
+            "name_ja": "最高級の石材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_24aae523",
+            "name_ja": "すずしいカラー"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_736f3eb2",
+            "name_ja": "優雅なカラー"
+          },
+          "quantity": 10
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_008",
+      "decor_id": "decor_glittering_windmill_churn",
+      "windmill": "yellow",
+      "base_processing_minutes": 720,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8294cb4a",
+            "name_ja": "最高級の石材"
+          },
+          "quantity": 30
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_31e0a9ef",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 30
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_5df6270f",
+            "name_ja": "ダイヤモンド"
+          },
+          "quantity": 5
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "confirmed",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    },
+    {
+      "id": "decorcraft_009",
+      "decor_id": "decor_glittering_jewelry_stand",
+      "windmill": "yellow",
+      "base_processing_minutes": 480,
+      "output_quantity": 1,
+      "materials": [
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_e4b65248",
+            "name_ja": "紫のブレスレット"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_0411b8da",
+            "name_ja": "緑のブレスレット"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_3943ea21",
+            "name_ja": "赤いネックレス"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_612807d3",
+            "name_ja": "赤いブローチ"
+          },
+          "quantity": 3
+        }
+      ],
+      "needs_purple_wonderstone": false,
+      "material_confidence": "source_conflict",
+      "provenance": {
+        "sources": [
+          "gamewith",
+          "strats_list"
+        ],
+        "verified_on": "2026-10-10"
+      }
+    }
+  ]
+}
