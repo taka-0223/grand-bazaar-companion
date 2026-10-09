@@ -1,0 +1,32 @@
+name: Bazaar Master integrity
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'data/bazaar-shops.v1.json'
+      - 'data/bazaar-facilities.v1.json'
+      - 'data/bazaar-offers.v1.json'
+      - 'lib/bazaar-master-plan.mjs'
+      - 'tools/validate-bazaar-master.mjs'
+      - '.github/workflows/bazaar-master-integrity.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/bazaar-shops.v1.json'
+      - 'data/bazaar-facilities.v1.json'
+      - 'data/bazaar-offers.v1.json'
+      - 'lib/bazaar-master-plan.mjs'
+      - 'tools/validate-bazaar-master.mjs'
+      - '.github/workflows/bazaar-master-integrity.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bazaar catalogs against embedded Request/Cooking/Resource Master
+        run: node tools/validate-bazaar-master.mjs
+      - name: Check linked Request Master integrity
+        run: node tools/validate-request-master.mjs
