@@ -1,0 +1,850 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "bazaar_shops",
+    "status": "audited_v1",
+    "verified_on": "2026-10-09",
+    "target_game_version": "1.5.0",
+    "scope": "全21バザール店舗・常設2店舗・ストーリー進行のバザール7ランク。商品別在庫は別カタログで段階的に管理する。",
+    "source_policy": "GameWith現行日本語一覧を正本候補に、AppMedia日本語店舗一覧とStratsWiki 21ショップ一覧で照合。依頼IDはembedded Request Masterのrewardと突き合わせる。",
+    "spoiler_policy": "内部には全店を保持するが、UIではユーザーが訪問・解放した店舗のみ一覧化。rank/reqから潜在的に開く店を自動列挙しない。",
+    "sources": {
+      "gamewith_shops": "https://gamewith.jp/bokumono-grabaza/515261",
+      "gamewith_bazaar": "https://gamewith.jp/bokumono-grabaza/515278",
+      "gamewith_ranks": "https://gamewith.jp/bokumono-grabaza/514651",
+      "appmedia_shops": "https://appmedia.jp/bokumono_grabaza/79199948",
+      "stratswiki_shops": "https://stratswiki.com/sos-gb/shops/",
+      "official_bazaar": "https://www.storyofseasons.com/grandbazaar/manuals/xbox/03/"
+    },
+    "known_conflicts": [
+      {
+        "field": "shops.shop_ailes.owner_ja",
+        "source_a": "GameWith店舗一覧は「ディアナ」",
+        "source_b": "AppMedia店舗一覧／Request Master『サロンの出店準備』は「カリーナ」",
+        "selected": "カリーナ",
+        "confidence": "confirmed",
+        "reason": "独立した日本語2ソースが一致。GameWith表の人物誤記と判断。"
+      },
+      {
+        "field": "shops.shop_lottery.name_ja",
+        "source_a": "GameWithは「レアクジ引き屋レアロット」",
+        "source_b": "AppMediaは「クジ引き屋ロット」",
+        "selected": "レアクジ引き屋レアロット",
+        "reason": "GameWith現行日本語を正本候補、AppMediaを別名として保持。"
+      },
+      {
+        "field": "shops.shop_ronaldo.unlock.request_id",
+        "source_a": "GameWith店舗一覧は「ロナルドの店の開店準備」",
+        "source_b": "Request Master id=rqm_gw_122 は「ロナルドの開店準備」",
+        "selected": "rqm_gw_122",
+        "reason": "店の出店報酬『ザッカ・パラダイス』との一意一致を優先。"
+      },
+      {
+        "field": "shops.shop_warm.unlock.request_id",
+        "source_a": "GameWithは「逃げ出したどうぶつを探せ！」",
+        "source_b": "Request Masterは「逃げ出した動物を探せ！」",
+        "selected": "rqm_gw_125",
+        "reason": "タイトル文字列は正規化せず報酬・依頼IDで接続。"
+      }
+    ]
+  },
+  "bazaars": {
+    "weekday": "土曜日",
+    "trading_shifts": [
+      {
+        "start": "10:00",
+        "end": "13:59"
+      },
+      {
+        "start": "15:00",
+        "end": "18:59"
+      }
+    ],
+    "note": "通常の土曜営業。祭りによる振替は現行AppのfestivalMap/isBazaarDateに委譲。これは一般営業時間でありリアルタイム開店判定ではない。"
+  },
+  "ranks": [
+    {
+      "rank": 1,
+      "name_ja": "広場のバザール",
+      "sales_goal_g": 0,
+      "invited_shops_required": 0
+    },
+    {
+      "rank": 2,
+      "name_ja": "村のバザール",
+      "sales_goal_g": 1000,
+      "invited_shops_required": 0
+    },
+    {
+      "rank": 3,
+      "name_ja": "町のバザール",
+      "sales_goal_g": 50000,
+      "invited_shops_required": 2
+    },
+    {
+      "rank": 4,
+      "name_ja": "都市のバザール",
+      "sales_goal_g": 200000,
+      "invited_shops_required": 5
+    },
+    {
+      "rank": 5,
+      "name_ja": "地方のバザール",
+      "sales_goal_g": 500000,
+      "invited_shops_required": 8
+    },
+    {
+      "rank": 6,
+      "name_ja": "国のバザール",
+      "sales_goal_g": 1000000,
+      "invited_shops_required": 12
+    },
+    {
+      "rank": 7,
+      "name_ja": "世界のバザール",
+      "sales_goal_g": 2000000,
+      "invited_shops_required": 16
+    }
+  ],
+  "shops": [
+    {
+      "id": "shop_miguel_town",
+      "name_ja": "SHOP・ミゲール",
+      "owner_ja": "ミゲル",
+      "location": "town",
+      "hours": {
+        "days": [
+          "日",
+          "月",
+          "火",
+          "水",
+          "木"
+        ],
+        "start": "08:00",
+        "end": "21:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "seeds",
+        "ingredients",
+        "sell_items"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_melina_town",
+      "name_ja": "カフェ・メリナ",
+      "owner_ja": "メリーニ",
+      "location": "town",
+      "hours": {
+        "days": [
+          "日",
+          "月",
+          "火",
+          "水",
+          "金"
+        ],
+        "start": "09:00",
+        "end": "21:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "cooked_dishes",
+        "recipe_discovery"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_felix",
+      "name_ja": "フェリックズ",
+      "owner_ja": "フェリックス",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "techniques",
+        "food_items"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_miguel_bazaar",
+      "name_ja": "SHOP・ミゲミゲール",
+      "owner_ja": "ミゲル",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "seeds",
+        "fertilizer",
+        "animal_food"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_wilbur",
+      "name_ja": "ウィルバー工務店",
+      "owner_ja": "ウィルバー",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "facility_upgrades"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_ramon",
+      "name_ja": "SHOP・ラモラモーン",
+      "owner_ja": "ラモン",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "default",
+        "rank_min": 1
+      },
+      "services": [
+        "animals",
+        "pets",
+        "breeding"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_sprite",
+      "name_ja": "ポロポロ屋",
+      "owner_ja": "コロボックル",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "rank_auto",
+        "rank_min": 2
+      },
+      "services": [
+        "happy_energy_exchange",
+        "decor"
+      ],
+      "currency": "happy_energy",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_rebecca",
+      "name_ja": "レベッカ・オブジェ",
+      "owner_ja": "レベッカ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 2,
+        "request_id": "rqm_gw_120"
+      },
+      "services": [
+        "decor"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_ailes",
+      "name_ja": "エールダンジュ出張店",
+      "owner_ja": "カリーナ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 2,
+        "request_id": "rqm_gw_121"
+      },
+      "services": [
+        "clothing"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "appmedia_shops",
+          "gamewith_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed",
+        "note": "GameWith店舗一覧の店主『ディアナ』は既存Request MasterとAppMediaに反するため不採用"
+      },
+      "aliases_ja": []
+    },
+    {
+      "id": "shop_warm",
+      "name_ja": "ぬくもりセラピー",
+      "owner_ja": "マルー",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 2,
+        "request_id": "rqm_gw_125"
+      },
+      "services": [
+        "animal_rehome",
+        "pet_rehome"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_wrap",
+      "name_ja": "ラッピング屋ラピ",
+      "owner_ja": "リボン",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 3,
+        "request_id": "rqm_gw_126"
+      },
+      "services": [
+        "gift_wrapping"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_lloyd",
+      "name_ja": "鉱石流光",
+      "owner_ja": "ロイド",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 3,
+        "request_id": "rqm_gw_029"
+      },
+      "services": [
+        "ore",
+        "gemstones",
+        "sell_items"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_arata",
+      "name_ja": "運び屋ちからもち",
+      "owner_ja": "アラタ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 3,
+        "request_id": "rqm_gw_042"
+      },
+      "services": [
+        "facility_upgrades"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_garon",
+      "name_ja": "ゴラン大工屋",
+      "owner_ja": "ゴラン",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 3,
+        "request_id": "rqm_gw_124"
+      },
+      "services": [
+        "facility_upgrades"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_melina_bazaar",
+      "name_ja": "オープンカフェ・メリナ",
+      "owner_ja": "メリーニ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 4,
+        "request_id": "rqm_merini_shop"
+      },
+      "services": [
+        "cooked_dishes",
+        "recipe_discovery"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_ronaldo",
+      "name_ja": "ザッカ・パラダイス",
+      "owner_ja": "ロナルド",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 4,
+        "request_id": "rqm_gw_122"
+      },
+      "services": [
+        "seeds",
+        "mushroom_spores",
+        "ingredients",
+        "sell_items"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_treasure",
+      "name_ja": "トレジャーランド",
+      "owner_ja": "チャールズ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 4,
+        "request_id": "rqm_gw_123"
+      },
+      "services": [
+        "resource_exchange"
+      ],
+      "currency": "recycling_resources",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_taneria",
+      "name_ja": "フルーツ・タネリア",
+      "owner_ja": "シェルファ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 4,
+        "request_id": "rqm_gw_047"
+      },
+      "services": [
+        "seedlings"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_claire",
+      "name_ja": "クレア食堂",
+      "owner_ja": "クレア",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 5,
+        "request_id": "rqm_claire_shop"
+      },
+      "services": [
+        "cooked_dishes",
+        "recipe_discovery"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_felipe",
+      "name_ja": "SHOP・フェリフェリーペ",
+      "owner_ja": "フェリペ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 5,
+        "request_id": "rqm_gw_119"
+      },
+      "services": [
+        "wonderstones",
+        "seedlings",
+        "fodder"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_lottery",
+      "name_ja": "レアクジ引き屋レアロット",
+      "owner_ja": "ロッティ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 5,
+        "request_id": "rqm_gw_127"
+      },
+      "services": [
+        "medal_lottery"
+      ],
+      "currency": "medal",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      },
+      "aliases_ja": [
+        "クジ引き屋ロット"
+      ]
+    },
+    {
+      "id": "shop_bimi",
+      "name_ja": "リストランテ・ビミ",
+      "owner_ja": "ネリネ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 6,
+        "request_id": "rqm_nerine_shop"
+      },
+      "services": [
+        "cooked_dishes",
+        "recipe_discovery"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "shop_fortune",
+      "name_ja": "占い屋カネヨシ",
+      "owner_ja": "ミライ",
+      "location": "bazaar",
+      "hours": {
+        "days": [
+          "土"
+        ],
+        "start": "10:00",
+        "end": "18:59"
+      },
+      "unlock": {
+        "mode": "request_reward",
+        "rank_min": 6,
+        "request_id": "rqm_gw_128"
+      },
+      "services": [
+        "bazaar_buff"
+      ],
+      "currency": "G",
+      "inventory_coverage": "not_cataloged",
+      "provenance": {
+        "sources": [
+          "gamewith_shops",
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    }
+  ]
+}
