@@ -1,0 +1,1750 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "tool_upgrades",
+    "status": "audited_v1",
+    "target_game_version": "1.5.0",
+    "verified_on": "2026-10-09",
+    "purpose": "道具の段階別強化・必要資材・風車のデータ。アプリに直接全件表示せず既知情報・ネタバレ境界で絞り込む。",
+    "scope": "Upgradeable five tools. Other three base-only tools are referenced through legacy MASTER.entities.",
+    "source_policy": "GameWithの日本語道具一覧・強化時間を主軸としAppMediaの素材表で照合。究極の基準加工時間はStratsWikiを利用。",
+    "sources": {
+      "gamewith_upgrades": "https://gamewith.jp/bokumono-grabaza/515066",
+      "gamewith_tool_catalog": "https://gamewith.jp/bokumono-grabaza/515003",
+      "gamewith_ultimate": "https://gamewith.jp/bokumono-grabaza/518735",
+      "appmedia_tool_catalog": "https://appmedia.jp/bokumono_grabaza/79201388",
+      "stratswiki_ultimate": "https://stratswiki.com/sos-gb/guides/ultimate-tools/",
+      "stratswiki_tool_overview": "https://stratswiki.com/sos-gb/tools/"
+    },
+    "interpretation": {
+      "output_quantity": 1,
+      "base_processing_minutes": "風力や青のすてきによる短縮前の基準時間（究極はStratsWiki記載の5日）。",
+      "inventory_tool": "加工には前段階の道具本体を1個使用する。加工中の道具は装備できない。",
+      "material_join": "ref.domain + ref.id is a stable reference to an existing Master array, not a game-internal item ID.",
+      "discovery_policy": "ユーザーが取得・確認した道具だけを起点とする。未知の強化段階を一覧に自動露出しない。"
+    },
+    "known_conflicts": [
+      {
+        "topic": "orichalcum_hatchet_iron",
+        "status": "resolved",
+        "selected": "鉄鉱石×99",
+        "sources": "GameWith 道具一覧・AppMediaは鉄鉱石。GameWith 強化まとめ表の『鉱石×99』は曖昧表記。"
+      },
+      {
+        "topic": "sickle_base_name",
+        "status": "alias",
+        "selected": "カマ",
+        "sources": "GameWith・AppMediaはカマ。現行MASTER.entitiesの同IDは鎌。どちらも同一sickleとして扱う。"
+      },
+      {
+        "topic": "ultimate_processing_time",
+        "status": "probable",
+        "selected": "5日＝7200分",
+        "sources": "StratsWiki Ultimate Tools。GameWithの集計記事に時間なし。"
+      },
+      {
+        "topic": "normal_upgrade_processing_time",
+        "status": "confirmed_primary",
+        "selected": "GameWith加工時間",
+        "sources": "GameWith強化一覧。別攻略サイトに一部の時間差があるため風力条件の差も考慮して基準値として保持。"
+      }
+    ]
+  },
+  "tools": [
+    {
+      "id": "hoe",
+      "name_ja": "クワ",
+      "initial_name_ja": "クワ",
+      "upgradable": true,
+      "stages": [
+        "copper",
+        "copper_plus",
+        "silver",
+        "silver_plus",
+        "gold",
+        "gold_plus",
+        "orichalcum",
+        "ultimate"
+      ]
+    },
+    {
+      "id": "watering_can",
+      "name_ja": "じょうろ",
+      "initial_name_ja": "じょうろ",
+      "upgradable": true,
+      "stages": [
+        "copper",
+        "copper_plus",
+        "silver",
+        "silver_plus",
+        "gold",
+        "gold_plus",
+        "orichalcum",
+        "ultimate"
+      ]
+    },
+    {
+      "id": "sickle",
+      "name_ja": "カマ",
+      "initial_name_ja": "カマ",
+      "legacy_names_ja": [
+        "鎌"
+      ],
+      "upgradable": true,
+      "stages": [
+        "copper",
+        "copper_plus",
+        "silver",
+        "silver_plus",
+        "gold",
+        "gold_plus",
+        "orichalcum",
+        "ultimate"
+      ]
+    },
+    {
+      "id": "fishing_rod",
+      "name_ja": "釣り竿",
+      "initial_name_ja": "釣り竿",
+      "upgradable": true,
+      "stages": [
+        "copper",
+        "copper_plus",
+        "silver",
+        "silver_plus",
+        "gold",
+        "gold_plus",
+        "orichalcum",
+        "ultimate"
+      ]
+    },
+    {
+      "id": "hatchet",
+      "name_ja": "ハチェット",
+      "initial_name_ja": "ハチェット",
+      "upgradable": true,
+      "stages": [
+        "copper",
+        "silver",
+        "gold",
+        "orichalcum",
+        "ultimate"
+      ]
+    }
+  ],
+  "upgrades": [
+    {
+      "id": "tool_upgrade_hoe_copper",
+      "tool_id": "hoe",
+      "stage": "copper",
+      "order": 1,
+      "name_ja": "銅のクワ",
+      "previous_tool_ref": {
+        "domain": "entities",
+        "id": "hoe",
+        "name_ja": "クワ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 480,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 2
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_copper_plus",
+      "tool_id": "hoe",
+      "stage": "copper_plus",
+      "order": 2,
+      "name_ja": "銅のクワ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_copper",
+        "name_ja": "銅のクワ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 600,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 5
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_silver",
+      "tool_id": "hoe",
+      "stage": "silver",
+      "order": 3,
+      "name_ja": "銀のクワ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_copper_plus",
+        "name_ja": "銅のクワ改"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 720,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 4
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_silver_plus",
+      "tool_id": "hoe",
+      "stage": "silver_plus",
+      "order": 4,
+      "name_ja": "銀のクワ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_silver",
+        "name_ja": "銀のクワ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 840,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_gold",
+      "tool_id": "hoe",
+      "stage": "gold",
+      "order": 5,
+      "name_ja": "金のクワ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_silver_plus",
+        "name_ja": "銀のクワ改"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 960,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 4
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_gold_plus",
+      "tool_id": "hoe",
+      "stage": "gold_plus",
+      "order": 6,
+      "name_ja": "金のクワ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_gold",
+        "name_ja": "金のクワ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 1200,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 8
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_orichalcum",
+      "tool_id": "hoe",
+      "stage": "orichalcum",
+      "order": 7,
+      "name_ja": "オリハルコンのクワ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_gold_plus",
+        "name_ja": "金のクワ改"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 2400,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 6
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 8
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hoe_ultimate",
+      "tool_id": "hoe",
+      "stage": "ultimate",
+      "order": 8,
+      "name_ja": "究極のクワ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hoe_orichalcum",
+        "name_ja": "オリハルコンのクワ"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": true,
+      "base_processing_minutes": 7200,
+      "time_confidence": "probable",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "mithril",
+            "name_ja": "ミスリル"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "adamantite",
+            "name_ja": "アダマンタイト"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 9
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8294cb4a",
+            "name_ja": "最高級の石材"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "stratswiki_ultimate"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_copper",
+      "tool_id": "watering_can",
+      "stage": "copper",
+      "order": 1,
+      "name_ja": "銅のじょうろ",
+      "previous_tool_ref": {
+        "domain": "entities",
+        "id": "watering_can",
+        "name_ja": "じょうろ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 480,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 1
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_copper_plus",
+      "tool_id": "watering_can",
+      "stage": "copper_plus",
+      "order": 2,
+      "name_ja": "銅のじょうろ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_copper",
+        "name_ja": "銅のじょうろ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 600,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 5
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_silver",
+      "tool_id": "watering_can",
+      "stage": "silver",
+      "order": 3,
+      "name_ja": "銀のじょうろ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_copper_plus",
+        "name_ja": "銅のじょうろ改"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 720,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 6
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_silver_plus",
+      "tool_id": "watering_can",
+      "stage": "silver_plus",
+      "order": 4,
+      "name_ja": "銀のじょうろ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_silver",
+        "name_ja": "銀のじょうろ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 840,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_gold",
+      "tool_id": "watering_can",
+      "stage": "gold",
+      "order": 5,
+      "name_ja": "金のじょうろ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_silver_plus",
+        "name_ja": "銀のじょうろ改"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 960,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 6
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_gold_plus",
+      "tool_id": "watering_can",
+      "stage": "gold_plus",
+      "order": 6,
+      "name_ja": "金のじょうろ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_gold",
+        "name_ja": "金のじょうろ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 1200,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 8
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_orichalcum",
+      "tool_id": "watering_can",
+      "stage": "orichalcum",
+      "order": 7,
+      "name_ja": "オリハルコンのじょうろ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_gold_plus",
+        "name_ja": "金のじょうろ改"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 2400,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 12
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_watering_can_ultimate",
+      "tool_id": "watering_can",
+      "stage": "ultimate",
+      "order": 8,
+      "name_ja": "究極のじょうろ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_watering_can_orichalcum",
+        "name_ja": "オリハルコンのじょうろ"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": true,
+      "base_processing_minutes": 7200,
+      "time_confidence": "probable",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "mithril",
+            "name_ja": "ミスリル"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "adamantite",
+            "name_ja": "アダマンタイト"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 15
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "stratswiki_ultimate"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_copper",
+      "tool_id": "sickle",
+      "stage": "copper",
+      "order": 1,
+      "name_ja": "銅のカマ",
+      "previous_tool_ref": {
+        "domain": "entities",
+        "id": "sickle",
+        "name_ja": "カマ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 480,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 2
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_copper_plus",
+      "tool_id": "sickle",
+      "stage": "copper_plus",
+      "order": 2,
+      "name_ja": "銅のカマ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_copper",
+        "name_ja": "銅のカマ"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 600,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 5
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_silver",
+      "tool_id": "sickle",
+      "stage": "silver",
+      "order": 3,
+      "name_ja": "銀のカマ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_copper_plus",
+        "name_ja": "銅のカマ改"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 720,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 1
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_silver_plus",
+      "tool_id": "sickle",
+      "stage": "silver_plus",
+      "order": 4,
+      "name_ja": "銀のカマ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_silver",
+        "name_ja": "銀のカマ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 840,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_gold",
+      "tool_id": "sickle",
+      "stage": "gold",
+      "order": 5,
+      "name_ja": "金のカマ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_silver_plus",
+        "name_ja": "銀のカマ改"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 960,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 2
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_gold_plus",
+      "tool_id": "sickle",
+      "stage": "gold_plus",
+      "order": 6,
+      "name_ja": "金のカマ改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_gold",
+        "name_ja": "金のカマ"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 1200,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 8
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_orichalcum",
+      "tool_id": "sickle",
+      "stage": "orichalcum",
+      "order": 7,
+      "name_ja": "オリハルコンのカマ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_gold_plus",
+        "name_ja": "金のカマ改"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 2400,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 9
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 4
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_sickle_ultimate",
+      "tool_id": "sickle",
+      "stage": "ultimate",
+      "order": 8,
+      "name_ja": "究極のカマ",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_sickle_orichalcum",
+        "name_ja": "オリハルコンのカマ"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": true,
+      "base_processing_minutes": 7200,
+      "time_confidence": "probable",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "mithril",
+            "name_ja": "ミスリル"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "adamantite",
+            "name_ja": "アダマンタイト"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 12
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8294cb4a",
+            "name_ja": "最高級の石材"
+          },
+          "quantity": 15
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "stratswiki_ultimate"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_copper",
+      "tool_id": "fishing_rod",
+      "stage": "copper",
+      "order": 1,
+      "name_ja": "銅の釣り竿",
+      "previous_tool_ref": {
+        "domain": "entities",
+        "id": "fishing_rod",
+        "name_ja": "釣り竿"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 480,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 3
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_copper_plus",
+      "tool_id": "fishing_rod",
+      "stage": "copper_plus",
+      "order": 2,
+      "name_ja": "銅の釣り竿改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_copper",
+        "name_ja": "銅の釣り竿"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 600,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 5
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_silver",
+      "tool_id": "fishing_rod",
+      "stage": "silver",
+      "order": 3,
+      "name_ja": "銀の釣り竿",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_copper_plus",
+        "name_ja": "銅の釣り竿改"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 720,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_silver_plus",
+      "tool_id": "fishing_rod",
+      "stage": "silver_plus",
+      "order": 4,
+      "name_ja": "銀の釣り竿改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_silver",
+        "name_ja": "銀の釣り竿"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 840,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_gold",
+      "tool_id": "fishing_rod",
+      "stage": "gold",
+      "order": 5,
+      "name_ja": "金の釣り竿",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_silver_plus",
+        "name_ja": "銀の釣り竿改"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 960,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 2
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_gold_plus",
+      "tool_id": "fishing_rod",
+      "stage": "gold_plus",
+      "order": 6,
+      "name_ja": "金の釣り竿改",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_gold",
+        "name_ja": "金の釣り竿"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 1200,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 8
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_orichalcum",
+      "tool_id": "fishing_rod",
+      "stage": "orichalcum",
+      "order": 7,
+      "name_ja": "オリハルコンの釣り竿",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_gold_plus",
+        "name_ja": "金の釣り竿改"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 2400,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_fishing_rod_ultimate",
+      "tool_id": "fishing_rod",
+      "stage": "ultimate",
+      "order": 8,
+      "name_ja": "究極の釣り竿",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_fishing_rod_orichalcum",
+        "name_ja": "オリハルコンの釣り竿"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": true,
+      "base_processing_minutes": 7200,
+      "time_confidence": "probable",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "mithril",
+            "name_ja": "ミスリル"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "adamantite",
+            "name_ja": "アダマンタイト"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 6
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 40
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "stratswiki_ultimate"
+      }
+    },
+    {
+      "id": "tool_upgrade_hatchet_copper",
+      "tool_id": "hatchet",
+      "stage": "copper",
+      "order": 1,
+      "name_ja": "銅のハチェット",
+      "previous_tool_ref": {
+        "domain": "entities",
+        "id": "hatchet",
+        "name_ja": "ハチェット"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 480,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "copper",
+            "name_ja": "銅"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 10
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 2
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hatchet_silver",
+      "tool_id": "hatchet",
+      "stage": "silver",
+      "order": 2,
+      "name_ja": "銀のハチェット",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hatchet_copper",
+        "name_ja": "銅のハチェット"
+      },
+      "windmill": "red",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 720,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "silver",
+            "name_ja": "銀"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 20
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_18eadbc5",
+            "name_ja": "木材"
+          },
+          "quantity": 4
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hatchet_gold",
+      "tool_id": "hatchet",
+      "stage": "gold",
+      "order": 3,
+      "name_ja": "金のハチェット",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hatchet_silver",
+        "name_ja": "銀のハチェット"
+      },
+      "windmill": "blue",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 1200,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "gold",
+            "name_ja": "金"
+          },
+          "quantity": 5
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 50
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_d78792ca",
+            "name_ja": "頑丈な木材"
+          },
+          "quantity": 4
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hatchet_orichalcum",
+      "tool_id": "hatchet",
+      "stage": "orichalcum",
+      "order": 4,
+      "name_ja": "オリハルコンのハチェット",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hatchet_gold",
+        "name_ja": "金のハチェット"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": false,
+      "base_processing_minutes": 4800,
+      "time_confidence": "confirmed_primary",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 8
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "iron_ore",
+            "name_ja": "鉄鉱石"
+          },
+          "quantity": 99
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 10
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "gamewith_upgrades"
+      }
+    },
+    {
+      "id": "tool_upgrade_hatchet_ultimate",
+      "tool_id": "hatchet",
+      "stage": "ultimate",
+      "order": 5,
+      "name_ja": "究極のハチェット",
+      "previous_tool_ref": {
+        "domain": "tool_upgrades",
+        "id": "tool_upgrade_hatchet_orichalcum",
+        "name_ja": "オリハルコンのハチェット"
+      },
+      "windmill": "yellow",
+      "requires_purple_wonderstone": true,
+      "base_processing_minutes": 7200,
+      "time_confidence": "probable",
+      "materials": [
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "mithril",
+            "name_ja": "ミスリル"
+          },
+          "quantity": 3
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "adamantite",
+            "name_ja": "アダマンタイト"
+          },
+          "quantity": 1
+        },
+        {
+          "ref": {
+            "domain": "resource_items",
+            "id": "orichalcum",
+            "name_ja": "オリハルコン"
+          },
+          "quantity": 15
+        },
+        {
+          "ref": {
+            "domain": "windmill_items",
+            "id": "wmitem_8466aec9",
+            "name_ja": "最高級の木材"
+          },
+          "quantity": 20
+        }
+      ],
+      "provenance": {
+        "material_sources": [
+          "gamewith_tool_catalog",
+          "appmedia_tool_catalog"
+        ],
+        "time_source": "stratswiki_ultimate"
+      }
+    }
+  ]
+}
