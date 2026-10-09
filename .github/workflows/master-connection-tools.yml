@@ -1,0 +1,30 @@
+name: Master connection and tool catalog
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'data/tool-upgrades.v1.json'
+      - 'lib/tool-upgrade-plan.mjs'
+      - 'tools/validate-tool-upgrades.mjs'
+      - 'tools/audit-master-app-connection.mjs'
+      - '.github/workflows/master-connection-tools.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/tool-upgrades.v1.json'
+      - 'lib/tool-upgrade-plan.mjs'
+      - 'tools/validate-tool-upgrades.mjs'
+      - 'tools/audit-master-app-connection.mjs'
+      - '.github/workflows/master-connection-tools.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tool progression, material references, and discovery guard
+        run: node tools/validate-tool-upgrades.mjs
+      - name: Report current Master to app access (nonblocking)
+        run: node tools/audit-master-app-connection.mjs
