@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "meta": {
+    "id": "bazaar_shop_offers",
+    "status": "curated_partial_v1",
+    "verified_on": "2026-10-09",
+    "target_game_version": "1.5.0",
+    "scope": "店頭商品の全件収集ではなく、攻略判断への影響が大きい固定オファーのみ。",
+    "spoiler_policy": "offerはshopIdが発見済みかつofferIdがゲーム内で発見済みの場合だけ表示。購入済み判定もPlayer State側。",
+    "sources": {
+      "gamewith_felipe": "https://gamewith.jp/bokumono-grabaza/517699",
+      "gamewith_wonderstones": "https://gamewith.jp/bokumono-grabaza/516985",
+      "gamewith_purple": "https://gamewith.jp/bokumono-grabaza/517544",
+      "stratswiki_felipe": "https://stratswiki.com/sos-gb/shops/felipes-fineries/",
+      "stratswiki_wonderstones": "https://stratswiki.com/sos-gb/guides/wonderstones/",
+      "stratswiki_wrap": "https://stratswiki.com/sos-gb/shops/thats-a-wrap/",
+      "appmedia_shops": "https://appmedia.jp/bokumono_grabaza/79199948"
+    },
+    "caveat": "種・苗・料理など季節や進行で在庫が変わるものは意図的に未収録。offer.priceは購入価格であり売価ではない。"
+  },
+  "offers": [
+    {
+      "id": "offer_wind_jewel",
+      "shop_id": "shop_felipe",
+      "name_ja": "ウィンドジュエル",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 210000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "wind_jewel"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_felipe",
+          "stratswiki_felipe"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      },
+      "item_ref": {
+        "domain": "windmill_items",
+        "id": "wmitem_e3e5aae8"
+      }
+    },
+    {
+      "id": "offer_wonderstone_red",
+      "shop_id": "shop_felipe",
+      "name_ja": "赤のすてき",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 140000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "windmill_output_quality_plus_half"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_felipe",
+          "stratswiki_felipe"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "offer_wonderstone_yellow",
+      "shop_id": "shop_felipe",
+      "name_ja": "黄のすてき",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 140000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "windmill_batch_bonus"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_felipe",
+          "stratswiki_felipe"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "offer_wonderstone_orange",
+      "shop_id": "shop_felipe",
+      "name_ja": "だいだいのすてき",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 140000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "windmill_batch_max_30"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_felipe",
+          "stratswiki_felipe"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "offer_wonderstone_green",
+      "shop_id": "shop_felipe",
+      "name_ja": "緑のすてき",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 140000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "windmill_lines_12"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_felipe",
+          "stratswiki_felipe"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "offer_wonderstone_purple",
+      "shop_id": "shop_felipe",
+      "name_ja": "紫のすてき",
+      "offer_type": "item",
+      "currency": "G",
+      "price": 140000,
+      "stock_rule": "once_per_save",
+      "effect": {
+        "type": "windmill_special_recipes_unlocked"
+      },
+      "provenance": {
+        "sources": [
+          "gamewith_purple",
+          "stratswiki_wonderstones"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "confirmed"
+      }
+    },
+    {
+      "id": "offer_gift_wrap",
+      "shop_id": "shop_wrap",
+      "name_ja": "プレゼントのラッピング",
+      "offer_type": "service",
+      "currency": "G",
+      "price": 140,
+      "options": [
+        "赤",
+        "青",
+        "黄"
+      ],
+      "effect": {
+        "type": "gift_friendship_boost"
+      },
+      "provenance": {
+        "sources": [
+          "stratswiki_wrap"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "probable"
+      }
+    },
+    {
+      "id": "offer_bazaar_fortune",
+      "shop_id": "shop_fortune",
+      "name_ja": "バザール占い",
+      "offer_type": "service",
+      "currency": "G",
+      "price": 3000,
+      "effect": {
+        "type": "bazaar_temporary_buff",
+        "specific_buff_unset": true
+      },
+      "provenance": {
+        "sources": [
+          "appmedia_shops"
+        ],
+        "verified_on": "2026-10-09",
+        "confidence": "probable"
+      }
+    }
+  ]
+}
