@@ -24,7 +24,19 @@ if(process.argv.length!==3||['--help','-h'].includes(process.argv[2])){
       let payload;
       try{payload=JSON.parse(readFileSync(file,'utf8'));}
       catch{payload=null;}
-      const result=auditPlayerBackup(payload);
+      let result=auditPlayerBackup(payload);
+      if(result.status==='schema_7_valid'){
+        try {
+          // The complete Master is only loaded by this explicit CLI invocation.
+          // The main PWA startup never imports this audit tool.
+          const master=JSON.parse(readFileSync(
+            new URL('../data/board-master.full.v1.json',import.meta.url),'utf8'));
+          result=auditPlayerBackup(payload,{master});
+        }catch{
+          // Standalone script may run without the complete Master.
+          // Missing Master checks must remain explicitly "not_run".
+        }
+      }
       say(result);
       if(result.status!=='schema_7_valid')process.exitCode=2;
     }
