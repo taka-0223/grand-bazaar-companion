@@ -66,6 +66,9 @@ async function withLoading(action,label){
   $('useDevice').disabled=true;
   try{await acceptState(await action(),label);}
   catch(err){
+    // Never leave an earlier player's state visible after a failed import.
+    state=null;master=null;discovery=null;
+    resetDerived();show('setupCard',false);
     const errors={
       player_schema_unsupported:'このバックアップ形式は未対応です。作戦ボードから新しいJSONを出力してください。',
       backup_invalid:'正しいJSONバックアップを選んでください。',
@@ -128,6 +131,17 @@ function inspect(){
     focus_ref:itemRef($('focusItem').value),scenario:config(),verified:verified()
   });
 }
+// Changing the focus, time or equipment invalidates downstream choices.
+$('setupCard').addEventListener('input',()=>{
+  routeConfirmed=false;
+  show('routesCard',false);show('detailsCard',false);show('resultCard',false);
+});
+$('setupCard').addEventListener('change',()=>{
+  routeConfirmed=false;
+  show('routesCard',false);show('detailsCard',false);show('resultCard',false);
+});
+$('detailsCard').addEventListener('input',()=>show('resultCard',false));
+$('detailsCard').addEventListener('change',()=>show('resultCard',false));
 $('chooseRoutes').addEventListener('click',()=>{
   if(!state||!master)return;
   if(!$('focusItem').value){problem('比較したい品物を選んでください。');return}
