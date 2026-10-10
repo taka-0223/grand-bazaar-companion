@@ -448,3 +448,35 @@ test('an active goal reserves FUTURE known output even when current stock is zer
   });
   assert.equal(reviewed.status,'ready');
 });
+
+test('a discovered mushroom shared by crop and mushroom registries remains a known cooking input',
+ {skip:!live},()=>{
+  const state=baseState();
+  state.knownEntities=['rice','shiitake_mushroom'];
+  state.knownRecipes=['mushroom_rice'];
+  const x=prep(state,{known_facility_ids:['kitchen']});
+  assert.equal(x.status,'ready');
+  assert(x.adapted.view.items.some(i=>i.id==='mushrooms:shiitake_mushroom'));
+  const routes=x.adapted.view.routes.filter(r=>r.kind==='cook');
+  assert(routes.some(r=>r.inputs.some(i=>
+    i.item_id==='mushrooms:shiitake_mushroom'&&i.quantity===3)));
+  assert(!routes.some(r=>r.inputs.some(i=>i.item_id==='entities:shiitake_mushroom')));
+});
+test('an unlearned mushroom remains hidden despite the pinned cross-registry link',
+ {skip:!live},()=>{
+  const state=baseState();
+  state.knownEntities=['rice'];state.knownRecipes=['mushroom_rice'];
+  const x=prep(state,{known_facility_ids:['kitchen']});
+  assert(!x.adapted.view.items.some(i=>i.id==='mushrooms:shiitake_mushroom'));
+  assert(!x.adapted.view.routes.some(r=>r.kind==='cook'));
+});
+test('future same-name duplicate without a reviewed ID remains undisclosed',
+ {skip:!live},()=>{
+  const state=baseState();state.knownEntities=['rice','shiitake_mushroom'];
+  state.knownRecipes=['mushroom_rice'];
+  const before=prep(state,{known_facility_ids:['kitchen']});
+  const altered=structuredClone(master);
+  altered.mushrooms.push({id:'hidden_future_mushroom',name_ja:'しいたけ'});
+  const after=prepareAppKnownEconomy(altered,state,ctx({known_facility_ids:['kitchen']}));
+  assert.deepEqual(after.adapted.view,before.adapted.view);
+});
