@@ -350,9 +350,10 @@ test('explicit known apple stock, seedling zero, and confirmed yellow route yiel
   const first=prep(s,verified);
   assert.equal(first.adapted.view.routes.length,1);
   const route=first.adapted.view.routes[0].id;
-  const result=compareAppKnownEconomy(master,s,ctx({
-    ...verified,available_route_ids:[route]
-  }));
+  const result=compareAppKnownEconomy(master,s,{
+    ...ctx({...verified,available_route_ids:[route]}),
+    focus_ref:apple
+  });
   assert.equal(result.status,'ok');
   assert(result.best_plan_id?.startsWith('candidate:windmill:'));
   assert.equal(result.ranked[0].net_gain_vs_direct_sale_g,680);
@@ -363,10 +364,13 @@ test('harvested apples must be explicitly entered; seedling count cannot stand i
   const s=baseState();s.knownEntities=['apple'];
   s.knownFacts=['process_seedling_apple'];
   s.playerState={apple:markStored(13)};
-  const x=compareAppKnownEconomy(master,s,ctx({
-    known_facility_ids:[yellow],known_resource_ids:[yellow],
-    known_sale_quote_refs:[apple,appleSeed]
-  ,focus_ref:apple}));
+  const x=compareAppKnownEconomy(master,s,{
+    ...ctx({
+      known_facility_ids:[yellow],known_resource_ids:[yellow],
+      known_sale_quote_refs:[apple,appleSeed]
+    }),
+    focus_ref:apple
+  });
   assert(['focus_quantity_not_recorded','focus_not_discovered'].includes(x.status));
 });
 test('a known but uncounted output prevents announcing baseline as the best plan',
