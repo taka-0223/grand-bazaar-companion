@@ -1,0 +1,37 @@
+name: Known economy Player State bridge
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/legacy-economy-process-crosswalk.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'tests/app-player-economy-bridge.test.mjs'
+      - '.github/workflows/known-economy-player-state.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/legacy-economy-process-crosswalk.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'tests/app-player-economy-bridge.test.mjs'
+      - '.github/workflows/known-economy-player-state.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run accounting, Master and Player State tests
+        run: node --test tests/*.test.mjs
+      - name: Verify Request and Bazaar registries were not damaged
+        run: |
+          node tools/validate-request-master.mjs
+          node tools/validate-bazaar-master.mjs
+          node tools/validate-bazaar-decor.mjs
