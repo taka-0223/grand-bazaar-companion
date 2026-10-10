@@ -146,7 +146,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.8';
+const APP_VERSION='0.11.9';
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -1344,7 +1344,7 @@ function goalSheetHtml(g){
     ${g.blocker?`<div class="notice" style="margin-top:12px">${esc(g.blocker)}</div>`:''}
     <div class="section" style="margin-top:14px"><div class="section-head"><h2>${reqTitle}</h2>${isDone?'':'<button class="btn secondary smallbtn" id="sheetAddReq">＋追加</button>'}</div><div class="card">${rs.length?rs.map((r,i)=>`<div class="req"><div class="row between"><div class="grow clickable sheetReqEdit" data-i="${i}"><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="countPair"><span>現在 <b>${r.have}</b></span><span>${isBazaar?'目標':'必要'} <b>${r.need}</b></span></div></div><div class="stepper"><button class="sheetReqStep" data-i="${i}" data-d="-1">−</button><button class="sheetReqStep" data-i="${i}" data-d="1">＋</button></div></div></div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
     <div class="section"><div class="section-head"><h2>やること</h2>${isDone?'':'<button class="btn secondary smallbtn" id="sheetAddAction">＋追加</button>'}</div><div class="card">${acts.length?acts.map(a=>`<div class="actionrow ${a.done?'done':''}"><input class="check sheetActionCheck" type="checkbox" data-id="${a.id}" ${a.done?'checked':''}><div class="grow clickable sheetActionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div></div>${a.done?'':`<button class="iconAction pin sheetPin ${a.pinned?'active':''}" data-id="${a.id}">★</button>`}</div>`).join(''):'<div class="empty">まだありません</div>'}</div></div>
-    <div class="section"><div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div><div class="card"><textarea id="sheetGoalMemo" placeholder="この目標について残しておきたいこと">${esc(g.memo||'')}</textarea></div></div>
+    <div class="section"><div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div><div class="card"><div class="field"><textarea id="sheetGoalMemo" rows="3" aria-label="目標のメモ" placeholder="この目標について残しておきたいこと">${esc(g.memo||'')}</textarea></div></div></div>
     ${recipeReverseSection(g,rs)}
     <div class="goalCompleteBox" style="margin-top:14px">${isDone?'<button class="btn secondary goalCompleteAction" id="sheetReopenGoal">進行中に戻す</button>':'<button class="btn goalCompleteAction" id="sheetCompleteGoal"><span class="goalCompleteIcon">✓</span>この目標を完了する</button>'}</div>
     <div class="sheet-actions"><button class="btn secondary" id="sheetEditGoal">編集</button>${g.sourceRecipeId?'<button class="btn secondary" id="sheetEditRecipeQty">個数</button>':''}<button class="btn" id="sheetCloseBottom">閉じる</button></div>`
