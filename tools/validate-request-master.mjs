@@ -115,10 +115,10 @@ function validateRequestMaster(master) {
   return {ok:errors.length===0,summary:{requests:req.length,requesters:new Set(req.map(x=>x.requester)).size,objectives:Object.values(objTypes).reduce((a,b)=>a+b,0),objectiveTypes:objTypes,alternativesObjectives:altCount,topLevelQualityObjectives:qualityCount,alternativeOnlyQualityObjectives:req.flatMap(r=>r.objectives).filter(o=>o.quality===undefined&&(o.alternatives||[]).some(a=>a.quality!==undefined)).length,itemReferenceBindings:nBound,linkedAlternatives:nAltsBound,internalReferenceEntities:entity.size,referenceCategories:cat.size,confirmed:req.filter(x=>x.provenance?.confidence==='confirmed').length,probable:req.filter(x=>x.provenance?.confidence==='probable').length},errors,warnings};
 }
 
-const input=process.argv[2]||'index.html';
-const html=readFileSync(input,'utf8');
-const tag=html.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
-if(!tag)throw new Error('Embedded MASTER_DATA not found in '+input);
-const report=validateRequestMaster(JSON.parse(tag[1]));
+const input=process.argv[2]||'data/board-master.full.v1.json';
+const content=readFileSync(input,'utf8');
+const tag=input.endsWith('.json')?null:content.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
+if(!input.endsWith('.json')&&!tag)throw new Error('Embedded MASTER_DATA not found in '+input);
+const report=validateRequestMaster(JSON.parse(tag?tag[1]:content));
 console.log(JSON.stringify(report,null,2));
 if(!report.ok)process.exitCode=1;

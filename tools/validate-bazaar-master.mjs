@@ -10,10 +10,7 @@ const load=path=>JSON.parse(readFileSync(path,'utf8'));
 const shops=load('data/bazaar-shops.v1.json');
 const facilities=load('data/bazaar-facilities.v1.json');
 const offers=load('data/bazaar-offers.v1.json');
-const html=readFileSync('index.html','utf8');
-const match=html.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
-if(!match)throw new Error('MASTER_DATA not found in index.html');
-const master=JSON.parse(match[1]);
+const master=load('data/board-master.full.v1.json');
 const errors=[],warnings=[],assert=(ok,msg)=>{if(!ok)errors.push(msg)};
 function unique(rows,key,label) {
   assert(rows.length===new Set(rows.map(x=>x[key])).size,label+': duplicate '+key);

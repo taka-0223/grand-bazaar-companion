@@ -7,7 +7,8 @@ import {readFileSync} from 'node:fs';
 const html=readFileSync('index.html','utf8');
 const dataTag=html.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
 if(!dataTag)throw new Error('Could not find embedded MASTER_DATA');
-const master=JSON.parse(dataTag[1]);
+const runtimeMaster=JSON.parse(dataTag[1]);
+const master=JSON.parse(readFileSync('data/board-master.full.v1.json','utf8'));
 const start=html.indexOf('const MASTER=JSON.parse');
 if(start<0)throw new Error('Could not find application bootstrap');
 const runtimeJs=html.slice(start);
@@ -35,6 +36,8 @@ const concreteIntegrationHints={
 const result={
   audit_kind:'static_literal_access_only',
   master_meta_status:master.meta?.status??null,
+  embedded_runtime_master_domains:Object.keys(runtimeMaster),
+  full_master_source:'data/board-master.full.v1.json',
   master_domains:lines.length,
   directly_accessed_domains:direct.length,
   not_directly_accessed_domains:disconnected.length,

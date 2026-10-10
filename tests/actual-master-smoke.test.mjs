@@ -1,5 +1,5 @@
-/** Integration smoke test against the repository's current embedded MASTER_DATA.
- *  Only runs in repository root where index.html exists. Skipped in standalone archive.
+/** Integration smoke test against the canonical full Master dataset.
+ *  Skipped when the standalone archive lacks the repo's full Master.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,14 +7,9 @@ import {readFileSync,existsSync} from 'node:fs';
 import {adaptKnownGrandBazaarMaster} from '../lib/grand-bazaar-master-adapter.mjs';
 import {compareGeneratedKnownPlans} from '../lib/known-economy-candidate-generator.mjs';
 
-const indexPath=process.env.GB_INDEX_HTML || 'index.html';
-const requireRoot=existsSync(indexPath);
-const master=requireRoot ? (()=>{
- const html=readFileSync(indexPath,'utf8');
- const match=html.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
- if(!match)throw Error('MASTER_DATA tag missing from '+indexPath);
- return JSON.parse(match[1]);
-})() : null;
+const masterPath=process.env.GB_MASTER_FULL || 'data/board-master.full.v1.json';
+const requireRoot=existsSync(masterPath);
+const master=requireRoot ? JSON.parse(readFileSync(masterPath,'utf8')) : null;
 const baseline={horizon_minutes:500,assumptions:{
  baseline_wind_time_confirmed:true,no_windmill_fee_confirmed:true,
  cooking_duration_minutes:0,no_cooking_fee_confirmed:true,cooking_output_is_one:true}};
