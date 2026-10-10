@@ -16,6 +16,7 @@ const master=live?(()=>{
 })():null;
 const apple={domain:'entities',id:'apple'};
 const appleSeed={domain:'entities',id:'apple_seedling'};
+const appleSeedSellAlias={domain:'windmill_items',id:'wmitem_bb743df1'};
 const potatoSeed={domain:'entities',id:'potato_seeds'};
 const potato={domain:'entities',id:'potato'};
 const cheese={domain:'animal_processed_goods',id:'cheese'};
@@ -344,7 +345,7 @@ test('explicit known apple stock, seedling zero, and confirmed yellow route yiel
   s.knownFacts=['process_seedling_apple'];
   const verified={
     confirmed_stock_rows:[{ref:apple,quantity:13},{ref:appleSeed,quantity:0}],
-    known_sale_quote_refs:[apple,appleSeed],
+    known_sale_quote_refs:[apple,appleSeedSellAlias],
     known_facility_ids:[yellow],known_resource_ids:[yellow],cash_g:0,
   };
   const first=prep(s,verified);
@@ -373,6 +374,20 @@ test('harvested apples must be explicitly entered; seedling count cannot stand i
   });
   assert(['focus_quantity_not_recorded','focus_not_discovered'].includes(x.status));
 });
+test('unconfirmed known output sale price never makes doing nothing a recommendation',
+ {skip:!live},()=>{
+  const s=baseState();s.knownEntities=['apple'];s.knownFacts=['process_seedling_apple'];
+  const verified={confirmed_stock_rows:[{ref:apple,quantity:13},{ref:appleSeed,quantity:0}],
+    known_sale_quote_refs:[apple],
+    known_facility_ids:[yellow],known_resource_ids:[yellow]};
+  const route=prep(s,verified).adapted.view.routes[0].id;
+  const result=compareAppKnownEconomy(master,s,{
+    ...ctx({...verified,available_route_ids:[route]}),focus_ref:apple,max_depth:1
+  });
+  assert.equal(result.status,'known_valuation_incomplete');
+  assert.equal(result.best_plan_id,undefined);
+});
+
 test('a known but uncounted output prevents announcing baseline as the best plan',
  {skip:!live},()=>{
   const s=baseState();s.knownEntities=['apple'];s.knownFacts=['process_seedling_apple'];
