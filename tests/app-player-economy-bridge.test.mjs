@@ -417,3 +417,39 @@ test('explicit reservations cannot exceed confirmed stock',
   assert.equal(a.status,'needs_confirmation');
   assert(a.missing.includes('reservation_exceeds_confirmed_stock'));
 });
+
+
+test('an active goal reserves FUTURE known output even when current stock is zero',
+ {skip:!live},()=>{
+  const s=baseState();
+  s.knownEntities=['apple'];
+  s.knownFacts=['process_seedling_apple'];
+  s.goals=[{id:'save-seedling',status:'active',title:'苗木を準備'}];
+  s.requirements={'save-seedling':[
+    {targetType:'entity',targetId:'apple_seedling',need:1,have:0}
+  ]};
+  const inputs={
+    confirmed_stock_rows:[{ref:apple,quantity:1},{ref:appleSeed,quantity:0}],
+    known_facility_ids:[yellow],known_resource_ids:[yellow],
+    known_sale_quote_refs:[apple,appleSeedSellAlias],
+    cash_g:0
+  };
+  // With no available route, an empty future output is not yet involved.
+  const discovery=prep(s,inputs);
+  assert.equal(discovery.adapted.view.routes.length,1);
+  const routeId=discovery.adapted.view.routes[0].id;
+  const guarded=prep(s,{...inputs,available_route_ids:[routeId]});
+  assert.equal(guarded.status,'needs_confirmation');
+  assert(guarded.missing.includes('goal_allocations_need_review'));
+  const evaluated=compareAppKnownEconomy(master,s,{
+    ...ctx({...inputs,available_route_ids:[routeId]}),
+    focus_ref:apple,max_depth:1
+  });
+  assert.equal(evaluated.status,'needs_confirmation');
+  assert.equal(evaluated.best_plan_id,undefined);
+  // Manual review may explicitly authorize a proposed trade-off.
+  const reviewed=prep(s,{
+    ...inputs,available_route_ids:[routeId],review_goal_allocations:true
+  });
+  assert.equal(reviewed.status,'ready');
+});
