@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
 
 const html=readFileSync('index.html','utf8');
-const start=html.indexOf('let dbPromise=null;function openDB(');
+const start=html.indexOf('let dbPromise=null;');
 const end=html.indexOf('function bindAutosave(',start);
 assert.ok(start>=0&&end>start,'Storage implementation missing from index.html');
 const storageSource=html.slice(start,end);
