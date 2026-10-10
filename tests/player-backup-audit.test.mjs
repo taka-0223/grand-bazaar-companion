@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,readFileSync,writeFileSync,rmSync} from 'node:fs';
+import {mkdtempSync,readFileSync,writeFileSync,rmSync,existsSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {spawnSync} from 'node:child_process';
@@ -127,4 +127,53 @@ test('CLI never includes an inaccessible path in errors',()=>{
   assert.equal(result.status,2);
   assert.equal(JSON.parse(result.stdout).status,'backup_file_unavailable_or_too_large');
   assert(!result.stdout.includes(path));
+});
+
+const masterPath='data/board-master.full.v1.json';
+const liveMaster=existsSync(masterPath)?
+  JSON.parse(readFileSync(masterPath,'utf8')):null;
+test('Master comparison counts only discovered names and pinned process links',
+  {skip:!liveMaster},()=>{
+  const s=state();
+  s.knownEntities=['apple','personal_custom_crop','unknown_from_synthetic_fixture'];
+  s.customEntities=[{id:'personal_custom_crop',name_ja:'非公開の名前'}];
+  s.knownRecipes=['grape_jam','not_a_recipe'];
+  s.knownProcesses=['cheese','unknown_route'];
+  const result=auditPlayerBackup(wrapped(s),{master:liveMaster});
+  assert.equal(result.master_reference_check,'aggregate_counts_only');
+  assert.deepEqual(result.master_linkage_counts,{
+    known_entities_in_master:1,
+    custom_entities_not_in_master:1,
+    known_entities_unmapped:1,
+    known_recipes_in_master:1,
+    known_recipes_unmapped:1,
+    known_process_links:1,
+    known_process_links_unmapped:1
+  });
+  assert(result.issue_codes.includes('master_reference_mapping_needs_review'));
+  assert(!JSON.stringify(result).includes('personal_custom_crop'));
+  assert(!JSON.stringify(result).includes('非公開'));
+});
+test('adding a hidden Master record does not change the audit of recorded discovery',
+  {skip:!liveMaster},()=>{
+  const s=state();s.knownEntities=['apple'];s.knownProcesses=['cheese'];
+  const before=auditPlayerBackup(wrapped(s),{master:liveMaster});
+  const enlarged=structuredClone(liveMaster);
+  enlarged.windmill_recipes.push({
+    id:'hidden_future_master_recipe',windmill:'yellow',output_item_id:'hidden',
+    inputs:[],output_quantity:999999
+  });
+  assert.deepEqual(auditPlayerBackup(wrapped(s),{master:enlarged}),before);
+});
+test('an absent Master is labeled not run, never a claim of full verification',()=>{
+  const r=auditPlayerBackup(wrapped(state()));
+  assert.equal(r.master_reference_check,'not_run');
+  assert.equal(r.master_linkage_counts,undefined);
+});
+test('malicious-looking app version metadata cannot appear in redacted output',()=>{
+  const raw=wrapped(state());
+  raw.appVersion='private-note-dont-show';
+  const r=auditPlayerBackup(raw);
+  assert.equal(r.app_version,null);
+  assert(!JSON.stringify(r).includes('private-note'));
 });
