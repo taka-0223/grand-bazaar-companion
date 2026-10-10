@@ -143,12 +143,19 @@ test('Master comparison counts only discovered names and pinned process links',
   assert.equal(result.master_reference_check,'aggregate_counts_only');
   assert.deepEqual(result.master_linkage_counts,{
     known_entities_in_master:1,
+    known_entities_in_other_domains:0,
+    known_entities_via_pinned_process_alias:0,
+    known_entities_ambiguous:0,
     custom_entities_not_in_master:1,
     known_entities_unmapped:1,
     known_recipes_in_master:1,
     known_recipes_unmapped:1,
     known_process_links:1,
-    known_process_links_unmapped:1
+    known_process_links_unmapped:1,
+    known_facts_in_master:0,
+    known_facts_unmapped:0,
+    known_requests_in_master:0,
+    known_requests_unmapped:0
   });
   assert(result.issue_codes.includes('master_reference_mapping_needs_review'));
   assert(!JSON.stringify(result).includes('personal_custom_crop'));
@@ -176,4 +183,49 @@ test('malicious-looking app version metadata cannot appear in redacted output',(
   const r=auditPlayerBackup(raw);
   assert.equal(r.app_version,null);
   assert(!JSON.stringify(r).includes('private-note'));
+});
+
+test('known objects across mushroom, recipe, processed goods and legacy aliases are recognized',
+  {skip:!liveMaster},()=>{
+  const s=state();
+  s.knownEntities=['shiitake_mushroom','shimeji_mushroom','common_mushroom',
+    'porcini_mushroom','bread','cheese','chestnut','wheat_flour',
+    'salt','watermelon_tea_tin','melon_tea_tin','rock_salt'];
+  s.knownFacts=['process_seed_carrot'];
+  s.requests=[{masterId:'rqm_nerine_shop',status:'active',
+    objectives:[{type:'item_quantity',target:1,current:0}]}];
+  const r=auditPlayerBackup(wrapped(s),{master:liveMaster});
+  assert.equal(r.status,'schema_7_valid');
+  assert.equal(r.master_linkage_counts.known_entities_in_master,11);
+  assert.equal(r.master_linkage_counts.known_entities_in_other_domains,4);
+  assert.equal(r.master_linkage_counts.known_entities_via_pinned_process_alias,4);
+  assert.equal(r.master_linkage_counts.known_entities_ambiguous,0);
+  assert.equal(r.master_linkage_counts.known_entities_unmapped,1);
+  assert.equal(r.master_linkage_counts.known_facts_in_master,1);
+  assert.equal(r.master_linkage_counts.known_requests_in_master,1);
+  assert(r.issue_codes.includes('master_reference_mapping_needs_review'));
+  assert(!JSON.stringify(r).includes('rock_salt'));
+});
+test('all processing rows are counted even when seed quantity is unknown',()=>{
+  const s=state();
+  s.playerState={
+    a:{seedCount:null,status:'processing',location:'blue_windmill'},
+    b:{seedCount:3,status:'processing',location:'yellow_windmill'},
+    c:{seedCount:2,status:'stored',location:'blue_windmill'}
+  };
+  const r=auditPlayerBackup(wrapped(s));
+  assert.equal(r.crop_state_record_counts.processing_rows_excluded,2);
+  assert.equal(r.crop_state_record_counts.seed_quantity_untracked,1);
+  assert.equal(r.crop_state_record_counts.ambiguous_storage_rows,1);
+});
+test('future name mismatch fails closed for a pinned mushroom alias',
+  {skip:!liveMaster},()=>{
+  const s=state();s.knownEntities=['shiitake_mushroom'];
+  const before=auditPlayerBackup(wrapped(s),{master:liveMaster});
+  assert.equal(before.master_linkage_counts.known_entities_ambiguous,0);
+  const corrupted=structuredClone(liveMaster);
+  corrupted.entities.find(x=>x.id==='shiitake_mushroom').name_ja='different';
+  const after=auditPlayerBackup(wrapped(s),{master:corrupted});
+  assert.equal(after.master_linkage_counts.known_entities_ambiguous,1);
+  assert(after.issue_codes.includes('ambiguous_discovery_registry_ref'));
 });
