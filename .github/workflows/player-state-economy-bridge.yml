@@ -1,0 +1,34 @@
+name: Player State economy bridge
+
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'lib/known-economy.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/legacy-economy-process-crosswalk.mjs'
+      - 'tests/*.test.mjs'
+      - '.github/workflows/player-state-economy-bridge.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'lib/known-economy.mjs'
+      - 'lib/grand-bazaar-master-adapter.mjs'
+      - 'lib/known-economy-candidate-generator.mjs'
+      - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/legacy-economy-process-crosswalk.mjs'
+      - 'tests/*.test.mjs'
+      - '.github/workflows/player-state-economy-bridge.yml'
+
+jobs:
+  economy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate economy kernel, actual Master integration, and read-only Player State bridge
+        run: node --test tests/known-economy.test.mjs tests/grand-bazaar-adapter.test.mjs tests/actual-master-smoke.test.mjs tests/app-player-economy-bridge.test.mjs
+      - name: Protect Request Master schema
+        run: node tools/validate-request-master.mjs
