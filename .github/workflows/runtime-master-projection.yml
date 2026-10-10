@@ -1,0 +1,28 @@
+name: Runtime Master projection
+on:
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'data/board-master.full.v1.json'
+      - 'lib/runtime-master-projection.mjs'
+      - 'tools/build-runtime-master.mjs'
+      - 'tests/runtime-master.test.mjs'
+      - '.github/workflows/runtime-master-projection.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'data/board-master.full.v1.json'
+      - 'lib/runtime-master-projection.mjs'
+      - 'tools/build-runtime-master.mjs'
+      - 'tests/runtime-master.test.mjs'
+      - '.github/workflows/runtime-master-projection.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confirm runtime Master matches canonical full Master
+        run: node tools/build-runtime-master.mjs --check
+      - name: Test projection, offline mode and UI invariants
+        run: node --test tests/runtime-master.test.mjs

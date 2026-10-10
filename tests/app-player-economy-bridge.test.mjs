@@ -6,14 +6,9 @@ import {
 } from '../lib/app-player-economy-bridge.mjs';
 import {LEGACY_ECONOMY_PROCESS_CROSSWALK as crosswalk} from '../lib/legacy-economy-process-crosswalk.mjs';
 
-const path=process.env.GB_INDEX_HTML||'index.html';
+const path=process.env.GB_MASTER_FULL||'data/board-master.full.v1.json';
 const live=existsSync(path);
-const master=live?(()=>{
-  const html=readFileSync(path,'utf8');
-  const match=html.match(/<script\b[^>]*\bid=["']MASTER_DATA["'][^>]*>([\s\S]*?)<\/script>/i);
-  if(!match)throw Error('Embedded MASTER_DATA absent');
-  return JSON.parse(match[1]);
-})():null;
+const master=live?JSON.parse(readFileSync(path,'utf8')):null;
 const apple={domain:'entities',id:'apple'};
 const appleSeed={domain:'entities',id:'apple_seedling'};
 const appleSeedSellAlias={domain:'windmill_items',id:'wmitem_bb743df1'};
