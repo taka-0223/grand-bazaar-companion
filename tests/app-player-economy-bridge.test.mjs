@@ -353,7 +353,7 @@ test('explicit known apple stock, seedling zero, and confirmed yellow route yiel
   const route=first.adapted.view.routes[0].id;
   const result=compareAppKnownEconomy(master,s,{
     ...ctx({...verified,available_route_ids:[route]}),
-    focus_ref:apple
+    focus_ref:apple,max_depth:1
   });
   assert.equal(result.status,'ok');
   assert(result.best_plan_id?.startsWith('candidate:windmill:'));
