@@ -5,22 +5,26 @@ on:
     paths:
       - 'index.html'
       - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/app-economy-input-contract.mjs'
       - 'lib/legacy-economy-process-crosswalk.mjs'
       - 'lib/grand-bazaar-master-adapter.mjs'
       - 'lib/known-economy.mjs'
       - 'lib/known-economy-candidate-generator.mjs'
       - 'tests/app-player-economy-bridge.test.mjs'
+      - 'tests/app-economy-input-contract.test.mjs'
       - '.github/workflows/known-economy-player-state.yml'
   push:
     branches: [main]
     paths:
       - 'index.html'
       - 'lib/app-player-economy-bridge.mjs'
+      - 'lib/app-economy-input-contract.mjs'
       - 'lib/legacy-economy-process-crosswalk.mjs'
       - 'lib/grand-bazaar-master-adapter.mjs'
       - 'lib/known-economy.mjs'
       - 'lib/known-economy-candidate-generator.mjs'
       - 'tests/app-player-economy-bridge.test.mjs'
+      - 'tests/app-economy-input-contract.test.mjs'
       - '.github/workflows/known-economy-player-state.yml'
 
 jobs:
