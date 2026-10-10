@@ -142,3 +142,48 @@ test('pilot is separate from current PWA startup and has working structure',()=>
     'economy-lab/view.mjs','lib/known-economy-on-demand.mjs'])
     execFileSync(process.execPath,['--check',f],{stdio:'pipe'});
 });
+
+test('existing IndexedDB is opened read-only, newer snapshot beats mirror',async()=>{
+  const durable=player();durable.updatedAt='2026-10-10T10:03:00Z';
+  const mirror=player();mirror.updatedAt='2026-10-10T10:02:00Z';
+  const actions=[];
+  const db={
+    objectStoreNames:{contains:name=>name==='kv'},
+    transaction(name,mode){
+      actions.push(name+':'+mode);
+      return {onabort:null,objectStore(){
+        return {get(key){
+          actions.push('get:'+key);
+          const req={result:null,onsuccess:null,onerror:null};
+          queueMicrotask(()=>{req.result=durable;req.onsuccess?.()});
+          return req;
+        }};
+      }};
+    },
+    close(){actions.push('close')}
+  };
+  const idb={
+    databases:async()=>[{name:'gb-board-db',version:1}],
+    open(name){
+      actions.push('open:'+name);
+      const req={result:null,onsuccess:null,onupgradeneeded:null,
+        onerror:null,onblocked:null};
+      queueMicrotask(()=>{req.result=db;req.onsuccess?.()});
+      return req;
+    }
+  };
+  const local={getItem:()=>JSON.stringify(mirror)};
+  const picked=await readDevicePlayerState({local,idb});
+  assert.deepEqual(picked,durable);
+  assert.deepEqual(actions,[
+    'open:gb-board-db','kv:readonly','get:state','close'
+  ]);
+});
+test('newer local mirror wins, never mutating its raw JSON',async()=>{
+  const localState=player();localState.updatedAt='2026-10-10T12:00:00Z';
+  const raw=JSON.stringify(localState);
+  const h={getItem:()=>raw};
+  const read=await readDevicePlayerState({local:h,idb:{databases:async()=>[]}});
+  assert.equal(JSON.stringify(read),raw);
+  assert.equal(h.getItem('gb-board-data'),raw);
+});
