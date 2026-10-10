@@ -146,7 +146,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.10';
+const APP_VERSION='0.11.11';
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -342,7 +342,7 @@ function syncHeaderSeasonUi(){const c=calendarState(),has=calendarHasToday(c.tod
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1500)}
 function showUndo(label,snapshot){undoSnapshot=snapshot;const u=$('#undo');$('#undoText').textContent=label;u.classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{u.classList.remove('show');undoSnapshot=null},5000)}async function withUndo(label,fn){const before=clone(state);fn();await save();showUndo(label,before)}$('#undoBtn').onclick=async()=>{if(!undoSnapshot)return;state=undoSnapshot;undoSnapshot=null;$('#undo').classList.remove('show');await save();render();toast('元に戻しました')}
 function show(id){const current=$('.screen.active')?.id||null;document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.nav===id));if(current!==id)window.scrollTo({top:0,behavior:'instant'})}
-function openHomeNav(dest){show(dest);if(dest==='plan')plan();else if(dest==='inbox')inbox();else if(dest==='crops')crops();else if(dest==='recipes')recipesScreen()}
+function openHomeNav(dest){show(dest);renderScreen(dest)}
 const CAL_SEASONS=['春','夏','秋','冬'],CAL_WEEKDAYS=['日','月','火','水','木','金','土'];
 const CAL_BIRTHDAYS={
 '春':{5:['カゲツ'],16:['シェルファ'],18:['メリーニ'],20:['エーリッヒ'],25:['サニア']},
@@ -1689,8 +1689,11 @@ function openQuickAdd(){
   modal(`<h3>＋ ${label}</h3><div class="stack" style="margin-top:10px">${actions.map(([icon,title,type],i)=>`<button class="btn ${i===0?'':'secondary'} quickRelated" data-type="${type}" style="width:100%;text-align:left">${icon} ${title}</button>`).join('')}</div><div class="sheet-actions"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`);
   $$('.quickRelated').forEach(b=>b.onclick=()=>{const type=b.dataset.type;closeModal();if(type==='goal')openGeneralPlan();else if(type==='action')openAction(null,null,screen==='home'?'home':'plan');else if(type==='request')openRequestRecord();else if(type==='memo')openCapture()})
 }
-function bindGoalOpen(){$$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b.dataset.id,'plan'))}function render(){state=migrate(state)||clone(INITIAL);const plantNormalized=reconcileKnownPlantMaster(),bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();const currentCal=calendarState();if(calendarHasToday(currentCal.today))state.season=currentCal.today.season;$('#seasonSelect').value=state.season||'';setSeasonSelectClass();syncHeaderSeasonUi();home();crops();recipesScreen();plan();inbox();const active=$('.navbtn.active')?.dataset.nav||'home';show(active);updateSaveStatus();if(plantNormalized||bazaarNormalized||groupsNormalized||requestsSynced)save()}
-$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{show(b.dataset.nav);if(b.dataset.nav==='home')home();if(b.dataset.nav==='crops')crops();if(b.dataset.nav==='recipes')recipesScreen();if(b.dataset.nav==='plan')plan();if(b.dataset.nav==='inbox')inbox()});render();hydrate();
+function bindGoalOpen(){$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b.dataset.id,'plan'))}
+const SCREEN_RENDERERS={home,crops,recipes:recipesScreen,plan,inbox};
+function renderScreen(id){const draw=SCREEN_RENDERERS[id];if(draw)draw()}
+function render(){state=migrate(state)||clone(INITIAL);const plantNormalized=reconcileKnownPlantMaster(),bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();const currentCal=calendarState();if(calendarHasToday(currentCal.today))state.season=currentCal.today.season;$('#seasonSelect').value=state.season||'';setSeasonSelectClass();syncHeaderSeasonUi();const active=$('.navbtn.active')?.dataset.nav||'home';renderScreen(active);show(active);updateSaveStatus();if(plantNormalized||bazaarNormalized||groupsNormalized||requestsSynced)save()}
+$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{show(b.dataset.nav);renderScreen(b.dataset.nav)});render();hydrate();
 </script>
 <script>
 let deferredInstallPrompt=null;
