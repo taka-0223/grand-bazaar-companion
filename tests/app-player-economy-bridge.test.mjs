@@ -480,3 +480,97 @@ test('future same-name duplicate without a reviewed ID remains undisclosed',
   const after=prepareAppKnownEconomy(altered,state,ctx({known_facility_ids:['kitchen']}));
   assert.deepEqual(after.adapted.view,before.adapted.view);
 });
+
+test('legacy known output is a known product but does not grant the windmill recipe',
+ {skip:!live},()=>{
+  const s=baseState();
+  s.knownEntities=['wheat','wheat_flour'];
+  const view=prep(s,{known_facility_ids:[red],known_resource_ids:[red]});
+  assert(view.adapted.view.items.some(x=>x.name_ja==='小麦粉'));
+  assert.deepEqual(view.adapted.view.routes,[]);
+});
+
+test('legacy recipe cannot be discovered by adding an unrelated future Master output',
+ {skip:!live},()=>{
+  const s=baseState();s.knownEntities=['wheat_flour'];
+  const a=prep(s);
+  const changed=structuredClone(master);
+  changed.windmill_recipes.push({
+    id:'future_wheat_flour_hidden',output_item_id:'wmitem_0290b993',
+    windmill:'red',inputs:[],output_quantity:100,
+    base_processing_minutes:1
+  });
+  const b=prepareAppKnownEconomy(changed,s,ctx());
+  assert.deepEqual(b.adapted.view,a.adapted.view);
+});
+
+test('learned mushroom rice can use the already discovered porcini ingredient',
+ {skip:!live},()=>{
+  const s=baseState();
+  s.knownEntities=['rice','porcini_mushroom'];
+  s.knownRecipes=['mushroom_rice'];
+  const x=prep(s,{known_facility_ids:['kitchen']});
+  assert(x.adapted.view.items.some(i=>i.id==='mushrooms:porcini_mushroom'));
+  const recipes=x.adapted.view.routes.filter(r=>r.kind==='cook');
+  assert(recipes.some(r=>r.inputs.some(i=>
+    i.item_id==='mushrooms:porcini_mushroom'&&i.quantity===3)));
+  assert(!recipes.some(r=>r.inputs.some(i=>i.item_id.includes('morel'))));
+});
+
+test('undiscovered porcini and future same-name members cannot create cooking routes',
+ {skip:!live},()=>{
+  const s=baseState();s.knownEntities=['rice'];s.knownRecipes=['mushroom_rice'];
+  const old=prep(s,{known_facility_ids:['kitchen']});
+  assert(!old.adapted.view.routes.some(x=>x.kind==='cook'));
+  const hidden=structuredClone(master);
+  hidden.mushrooms.push({id:'secret_future_mushroom',name_ja:'ポルチーニ'});
+  const revised=prepareAppKnownEconomy(hidden,s,ctx({known_facility_ids:['kitchen']}));
+  assert.deepEqual(revised.adapted.view,old.adapted.view);
+});
+
+test('real-save-shaped wheat seed record and active request cannot imply harvested stock',
+ {skip:!live},()=>{
+  const s=baseState();
+  s.knownEntities=['wheat','wheat_flour'];
+  s.knownProcesses=['wheat_flour'];
+  s.playerState={wheat:{seedCount:9,seedQuality:5,status:'processing',
+    location:'blue_windmill',growing:false,growingCount:null}};
+  s.requests=[{status:'active',objectives:[{type:'item_quantity',target:20,current:0,
+    category:'mushroom'}]}];
+  const before=JSON.stringify(s);
+  const result=prep(s,{known_facility_ids:[red],known_resource_ids:[red]});
+  assert.equal(result.status,'needs_confirmation');
+  assert(result.missing.includes('request_materials_need_review'));
+  assert(result.notices.includes('processing_stock_excluded'));
+  assert.equal(result.player.inventory['entities:wheat'],undefined);
+  assert.equal(JSON.stringify(s),before);
+});
+
+test('known wheat-to-flour route requires request allocation review and real wheat stock',
+ {skip:!live},()=>{
+  const s=baseState();s.knownEntities=['wheat','wheat_flour'];
+  s.knownProcesses=['wheat_flour'];
+  s.requests=[{status:'active',objectives:[
+    {type:'item_quantity',target:20,current:0,category:'mushroom'}]}];
+  const settings={known_facility_ids:[red],known_resource_ids:[red],
+    known_sale_quote_refs:[
+      {domain:'entities',id:'wheat'},
+      {domain:'windmill_items',id:'wmitem_0290b993'}],
+    confirmed_stock_rows:[
+      {ref:{domain:'entities',id:'wheat'},quantity:2},
+      {ref:{domain:'windmill_items',id:'wmitem_0290b993'},quantity:0}]
+  };
+  const first=prep(s,settings);
+  assert.equal(first.adapted.view.routes.length,1);
+  const route=first.adapted.view.routes[0].id;
+  const held=prep(s,{...settings,available_route_ids:[route]});
+  assert(held.missing.includes('request_materials_need_review'));
+  const result=compareAppKnownEconomy(master,s,{
+    ...ctx({...settings,available_route_ids:[route],
+      review_request_materials:true,cash_g:0}),
+    focus_ref:{domain:'entities',id:'wheat'},max_depth:1
+  });
+  assert.equal(result.status,'ok');
+  assert.equal(result.ranked[0].net_gain_vs_direct_sale_g,75);
+  assert.equal(result.ranked[0].scope,'evaluated_known_plan_only');
+});
