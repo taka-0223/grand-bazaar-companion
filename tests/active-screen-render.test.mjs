@@ -47,6 +47,7 @@ function harness(active='home',normalized=false){
     show:id=>trace.push('show:'+id),
     updateSaveStatus:()=>trace.push('status'),
     save:()=>trace.push('save'),
+    PERF_DIAG:{begin:()=>0,record:()=>{}},
     document:{querySelectorAll:()=>[tab]}
   };
   const context={...mock};
