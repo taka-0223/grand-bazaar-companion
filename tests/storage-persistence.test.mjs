@@ -72,7 +72,8 @@ function storageHarness({localFails=false,openFails=false}={}){
     setTimeout(){return 1},
     clone:x=>JSON.parse(JSON.stringify(x)),
     migrate:x=>x,
-    captureMigrationSnapshot(){}
+    captureMigrationSnapshot(){},
+    PERF_DIAG:{begin:()=>0,record:()=>{},markReady:()=>{}}
   };
   runInNewContext(storageSource,ctx);
   return {
@@ -191,7 +192,7 @@ test('Player State keys, autosave, migration and beforeunload safeguards are unc
   assert.ok(html.includes('function bindAutosave(elements,persist,delay=400)'));
   assert.ok(html.includes('window.addEventListener(\'beforeunload\''));
   assert.ok(html.includes('async function hydrate()'));
-  assert.ok(html.includes('const APP_VERSION=\'0.11.12\''));
+  assert.ok(html.includes('const APP_VERSION=\'0.11.13\''));
   assert.ok(storageSource.includes("t.objectStore('kv').put(snapshot,'state')"));
   assert.ok(!storageSource.includes("put(clone("));
 });
