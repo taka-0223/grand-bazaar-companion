@@ -146,7 +146,54 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.12';
+const APP_VERSION='0.11.13';
+// PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
+const PERF_DIAG=(()=>{
+  const LIMIT=40,samples={tab:[],render:[],save:[]};
+  let ready=null;
+  const clock=()=>{
+    try{return typeof performance!=='undefined'&&typeof performance.now==='function'?performance.now():null}
+    catch(_){return null}
+  };
+  const record=(category,start)=>{
+    if(!Object.prototype.hasOwnProperty.call(samples,category)||typeof start!=='number'||!Number.isFinite(start))return;
+    const end=clock(),elapsed=end===null?NaN:end-start;
+    if(!Number.isFinite(elapsed)||elapsed<0)return;
+    const bucket=samples[category];
+    bucket.push(Math.round(elapsed*10)/10);
+    if(bucket.length>LIMIT)bucket.shift();
+  };
+  const format=ms=>Number.isFinite(ms)?ms.toFixed(1)+' ms':'未計測';
+  const summary=category=>{
+    const xs=samples[category];
+    if(!xs.length)return '未計測';
+    const sorted=[...xs].sort((a,b)=>a-b);
+    const percentile=p=>sorted[Math.max(0,Math.ceil(sorted.length*p)-1)];
+    return xs.length+'回 / 中央値 '+format(percentile(.5))+' / P95 '+format(percentile(.95))+' / 最大 '+format(percentile(1));
+  };
+  const domReady=()=>{
+    try{
+      const nav=performance.getEntriesByType?.('navigation')?.[0];
+      return nav?.domContentLoadedEventEnd>0?nav.domContentLoadedEventEnd:null;
+    }catch(_){return null}
+  };
+  return {
+    begin:clock,
+    record,
+    markReady:()=>{if(ready===null)ready=clock()},
+    report:version=>[
+      'アプリ v'+version+' / この起動中の計測',
+      '起動完了（ページ開始〜保存状態読込）: '+format(ready),
+      'DOM準備（ページ開始〜解析完了）: '+format(domReady()),
+      'タブ移動: '+summary('tab'),
+      '画面描画: '+summary('render'),
+      '保存完了: '+summary('save'),
+      '※直近40回までの処理時間。通信や端末状態、登録量によって変化します。',
+      '※プレイヤーデータ・ゲーム情報は計測結果に含みません。'
+    ].join('\n')
+  };
+})();
+// PERFORMANCE_DIAGNOSTICS_END
 document.title=`風のグランドバザール 作戦ボード v${APP_VERSION}`;const appVersionLabel=document.getElementById('appVersionLabel');if(appVersionLabel)appVersionLabel.textContent=`v${APP_VERSION}`;
 const MIGRATION_BACKUP_KEY='gb-board-pre-v07-backup';
 const V09_MIGRATION_BACKUP_KEY='gb-board-pre-v09-backup';
@@ -302,11 +349,13 @@ async function idbGet(){for(const n of [DBNAME,...OLD_DBS]){const x=await idbGet
 function updateSaveStatus(extra=''){const el=$('#saveStatus');if(!el)return;const t=state.updatedAt?new Date(state.updatedAt).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}):'未保存';el.textContent=extra||`端末保存 ${t}`}
 let saveQueue=Promise.resolve(),saveRevision=0;
 async function save(){
+  const startedAt=PERF_DIAG.begin();
   const revision=++saveRevision;
   state.updatedAt=new Date().toISOString();
   let json;
   try{json=JSON.stringify(state)}catch(_){
     if(revision===saveRevision)updateSaveStatus('保存失敗');
+    PERF_DIAG.record('save',startedAt);
     return false;
   }
   let localOk=true;
@@ -320,6 +369,7 @@ async function save(){
     updateSaveStatus(localOk||idbOk?'保存済み':'保存失敗');
     setTimeout(()=>{if(revision===saveRevision)updateSaveStatus()},900);
   }
+  PERF_DIAG.record('save',startedAt);
   return localOk||idbOk;
 }
 function bindAutosave(elements,persist,delay=400){
@@ -330,7 +380,7 @@ function bindAutosave(elements,persist,delay=400){
   for(const el of list){el.addEventListener('input',schedule);el.addEventListener('change',commit);el.addEventListener('blur',()=>{if(timer)commit()})}
   return {commit,schedule}
 }
-async function hydrate(){const d=await idbGet();if(d&&(!state.updatedAt||String(d.updatedAt)>String(state.updatedAt))){state=d;render()}if(needsStableMigration){needsStableMigration=false;await save()}else updateSaveStatus()}window.addEventListener('beforeunload',()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch(e){}});
+async function hydrate(){const d=await idbGet();if(d&&(!state.updatedAt||String(d.updatedAt)>String(state.updatedAt))){state=d;render()}if(needsStableMigration){needsStableMigration=false;await save()}else updateSaveStatus();PERF_DIAG.markReady()}window.addEventListener('beforeunload',()=>{try{localStorage.setItem(STORAGE,JSON.stringify(state))}catch(e){}});
 const APP_ENTITY_LABELS={baby_blue_seeds:'ネモフィラ',pansy_seeds:'パンジー',buttercup_seeds:'ラナンキュラス',hibiscus_seeds:'ハイビスカス',petunia_seeds:'ペチュニア',marigold_seeds:'マリーゴールド',sunflower_seeds:'ひまわり',rose_seeds:'ローズ',chrysanthemum_seeds:'キク',clematis_seeds:'クレマチス',daisy_seeds:'マーガレット',cineraria_seeds:'サイネリア',primrose_seeds:'プリムラ',begonia_seeds:'ベゴニア',bellflower_seeds:'カンパニュラ'};
 const APP_ENTITY_ALIASES={'ネモフィラ':'baby_blue_seeds','ネモフィラの種':'baby_blue_seeds','パンジー':'pansy_seeds','パンジーの種':'pansy_seeds','ラナンキュラス':'buttercup_seeds','ラナンキュラスの種':'buttercup_seeds','ハイビスカス':'hibiscus_seeds','ハイビスカスの種':'hibiscus_seeds','ペチュニア':'petunia_seeds','ペチュニアの種':'petunia_seeds','マリーゴールド':'marigold_seeds','マリーゴールドの種':'marigold_seeds','ひまわり':'sunflower_seeds','ひまわりの種':'sunflower_seeds','ヒマワリ':'sunflower_seeds','ローズ':'rose_seeds','ローズの種':'rose_seeds','キク':'chrysanthemum_seeds','キクの種':'chrysanthemum_seeds','菊':'chrysanthemum_seeds','クレマチス':'clematis_seeds','クレマチスの種':'clematis_seeds','マーガレット':'daisy_seeds','マーガレットの種':'daisy_seeds','サイネリア':'cineraria_seeds','サイネリアの種':'cineraria_seeds','プリムラ':'primrose_seeds','プリムラの種':'primrose_seeds','ベゴニア':'begonia_seeds','ベゴニアの種':'begonia_seeds','カンパニュラ':'bellflower_seeds','カンパニュラの種':'bellflower_seeds','しいたけ':'shiitake_mushroom','しいたけ種菌':'shiitake_mushroom','しめじ':'shimeji_mushroom','しめじ種菌':'shimeji_mushroom','マッシュルーム':'common_mushroom','マッシュルーム種菌':'common_mushroom'};
 function customById(){return new Map((state.customEntities||[]).map(e=>[e.id,e]))}function ent(id){return baseById.get(id)||customById().get(id)||{id,name_ja:id,kind:'custom',attributes:{}}}const name=id=>APP_ENTITY_LABELS[id]||ent(id).name_ja||ent(id).name_en||id;
@@ -405,7 +455,7 @@ function syncHeaderSeasonUi(){const c=calendarState(),has=calendarHasToday(c.tod
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1500)}
 function showUndo(label,snapshot){undoSnapshot=snapshot;const u=$('#undo');$('#undoText').textContent=label;u.classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{u.classList.remove('show');undoSnapshot=null},5000)}async function withUndo(label,fn){const before=clone(state);fn();await save();showUndo(label,before)}$('#undoBtn').onclick=async()=>{if(!undoSnapshot)return;state=undoSnapshot;undoSnapshot=null;$('#undo').classList.remove('show');await save();render();toast('元に戻しました')}
 function show(id){const current=$('.screen.active')?.id||null;document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.nav===id));if(current!==id)window.scrollTo({top:0,behavior:'instant'})}
-function openHomeNav(dest){show(dest);renderScreen(dest)}
+function openHomeNav(dest){const t=PERF_DIAG.begin();show(dest);renderScreen(dest);PERF_DIAG.record('tab',t)}
 const CAL_SEASONS=['春','夏','秋','冬'],CAL_WEEKDAYS=['日','月','火','水','木','金','土'];
 const CAL_BIRTHDAYS={
 '春':{5:['カゲツ'],16:['シェルファ'],18:['メリーニ'],20:['エーリッヒ'],25:['サニア']},
@@ -1691,6 +1741,7 @@ async function applyAppUpdate(btn=null){
     if(btn){btn.disabled=false;btn.textContent=original}
   }
 }
+function updatePerfDiagnostics(){const el=$('#perfDiagnosticsReport');if(el)el.textContent=PERF_DIAG.report(APP_VERSION)}
 async function settings(){
   const [h,release]=await Promise.all([storageHealth(),currentReleaseInfo()]);
   const lastBackup=state.ui?.lastBackupAt?new Date(state.ui.lastBackupAt).toLocaleString('ja-JP'):'まだありません';
@@ -1711,6 +1762,17 @@ async function settings(){
     <div class="healthrow"><span>最終バックアップ</span><b>${lastBackup}</b></div>
     <div class="healthrow"><span>使用量</span><b>${bytes(h.usage)} / ${bytes(h.quota)}</b></div>
   </div>
+  <div class="card settingsAbout">
+    <button class="miniLink" id="togglePerfDiagnostics">性能診断を表示</button>
+    <div id="perfDiagnosticsDetails" class="hidden" style="margin-top:8px">
+      <div class="small muted">起動・タブ操作・保存にかかった時間です。この起動中だけ計測し、外部への送信や保存はしません。</div>
+      <pre id="perfDiagnosticsReport" class="small" style="white-space:pre-wrap;line-height:1.7;margin:8px 0 10px;font-family:inherit"></pre>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn secondary smallbtn" id="refreshPerfDiagnostics">計測値を更新</button>
+        <button class="btn secondary smallbtn" id="copyPerfDiagnostics">計測値をコピー</button>
+      </div>
+    </div>
+  </div>
   <div class="notice">固定URLではアプリ更新とプレイデータを分離します。同じURLを使い続ける限り、アプリ更新後も端末データを引き継ぐ設計です。重要データはJSONバックアップも併用してください。</div>
   <div class="stack" style="margin-top:12px">
     ${h.standalone?'':'<button class="btn secondary" id="installBtn">ホーム画面にアプリとして追加</button>'}
@@ -1730,6 +1792,21 @@ async function settings(){
   const ib=$('#installBtn');if(ib)ib.onclick=async()=>{if(deferredInstallPrompt){deferredInstallPrompt.prompt();await deferredInstallPrompt.userChoice;deferredInstallPrompt=null;closeModal();toast('ホーム画面への追加を確認しました')}else toast('Chromeメニューの「アプリをインストール / ホーム画面に追加」を使ってください')};
   $('#appUpdateBtn').onclick=e=>applyAppUpdate(e.currentTarget);
   $('#persistBtn').onclick=async()=>{if(navigator.storage?.persist){const ok=await navigator.storage.persist();toast(ok?'保存保護が有効になりました':'通常保存で利用中です。Chromeは利用状況に応じて後から保存保護を許可することがあります');closeModal();settings()}else toast('このブラウザは保存保護APIに未対応です')};
+  const perfToggle=$('#togglePerfDiagnostics'),perfDetails=$('#perfDiagnosticsDetails');
+  if(perfToggle&&perfDetails)perfToggle.onclick=()=>{
+    const open=perfDetails.classList.contains('hidden');
+    perfDetails.classList.toggle('hidden',!open);
+    perfToggle.textContent=open?'性能診断を閉じる':'性能診断を表示';
+    if(open)updatePerfDiagnostics();
+  };
+  $('#refreshPerfDiagnostics')?.addEventListener('click',updatePerfDiagnostics);
+  $('#copyPerfDiagnostics')?.addEventListener('click',async()=>{
+    try{
+      if(!navigator.clipboard?.writeText)throw Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(PERF_DIAG.report(APP_VERSION));
+      toast('計測値をコピーしました');
+    }catch(_){toast('コピーできませんでした。計測値を長押ししてコピーしてください')}
+  });
   $('#exportBtn').onclick=exportJson;$('#importFile').onchange=importJson;
   $('#resetBtn').onclick=()=>confirmDelete('現在の入力を消して初期状態へ戻しますか？',async()=>{state=clone(INITIAL);await save();closeModal();render();toast('初期状態に戻しました')})
 }
@@ -1754,9 +1831,9 @@ function openQuickAdd(){
 }
 function bindGoalOpen(){$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b.dataset.id,'plan'))}
 const SCREEN_RENDERERS={home,crops,recipes:recipesScreen,plan,inbox};
-function renderScreen(id){const draw=SCREEN_RENDERERS[id];if(draw)draw()}
+function renderScreen(id){const draw=SCREEN_RENDERERS[id];if(draw){const t=PERF_DIAG.begin();draw();PERF_DIAG.record('render',t)}}
 function render(){state=migrate(state)||clone(INITIAL);const plantNormalized=reconcileKnownPlantMaster(),bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();const currentCal=calendarState();if(calendarHasToday(currentCal.today))state.season=currentCal.today.season;$('#seasonSelect').value=state.season||'';setSeasonSelectClass();syncHeaderSeasonUi();const active=$('.navbtn.active')?.dataset.nav||'home';renderScreen(active);show(active);updateSaveStatus();if(plantNormalized||bazaarNormalized||groupsNormalized||requestsSynced)save()}
-$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{show(b.dataset.nav);renderScreen(b.dataset.nav)});render();hydrate();
+$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{const t=PERF_DIAG.begin();show(b.dataset.nav);renderScreen(b.dataset.nav);PERF_DIAG.record('tab',t)});render();hydrate();
 </script>
 <script>
 let deferredInstallPrompt=null;
