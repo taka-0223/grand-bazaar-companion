@@ -126,6 +126,19 @@
 .sheet.cropDetailSheet{height:min(94dvh,calc(100% - 4px));max-height:min(94dvh,calc(100% - 4px))}
 .imeSafeActions{position:sticky;bottom:0;z-index:9;background:linear-gradient(to bottom,rgba(255,253,248,.9),var(--surface) 28%);padding-bottom:calc(8px + env(safe-area-inset-bottom));margin-left:-2px;margin-right:-2px}
 
+
+/* Readable game-event summaries and crop-in-field status. */
+.calendarEventInfo{padding:11px 4px;border-bottom:1px solid var(--line)}
+.calendarEventInfo:last-child{border-bottom:0}
+.calendarEventTitle{font-size:14px;font-weight:900}
+.calendarEventTime{display:inline-block;color:#42603c;background:#edf5e9;border-radius:8px;padding:4px 8px;font-size:12px;font-weight:900;margin-top:6px}
+.calendarEventDescription{font-size:12px;line-height:1.65;margin-top:7px;color:var(--text)}
+.cropCompact.growing{background:#edf5e9;box-shadow:inset 4px 0 0 #6a9866}
+.cropNameLine{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
+.cropNameLine .cropname{flex:1 1 auto;min-width:0}
+.cropGrowingBadge{background:#477649;color:white;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:950;white-space:nowrap}
+.cropGrowingBanner.active{background:#e3f2df;border:1px solid #9fc598;color:#2f6137;border-radius:13px;padding:11px 13px;font-weight:950;font-size:14px;margin:10px 0}
+
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -527,6 +540,31 @@ function calFromAbs(abs){const a=Math.max(0,abs),year=Math.floor(a/124)+1,rem=a%
 function calWeekday(year,season,day){return(6+calAbs(year,season,day))%7}
 function firstWeekday(year,season,target){const w=calWeekday(year,season,1);return 1+(target-w+7)%7}
 function festivalMap(year,season){const out={};const add=(day,label)=>{if(day>=1&&day<=31)(out[day]||(out[day]=[])).push(label)};if(season==='春'){const t=firstWeekday(year,season,2)+7;add(t,'花祭り');add(t+1,'花祭り');if(year>=2)add(t+3,'どうぶつ品評会');add(t+10,'マイハニー祭り');if(year>=2)add(t+13,'さくもつ品評会');add(t+16,'お茶会')}else if(season==='夏'){const t=firstWeekday(year,season,4);add(t,'ペットコンテスト');add(t+8,'どうぶつ品評会');add(t+13,'乗馬大会');add(t+18,'さくもつ品評会')}else if(season==='秋'){const t=firstWeekday(year,season,1);add(t,'料理祭り・メイン');add(t+1,'料理祭り・デザート');add(t+11,'どうぶつ品評会');add(t+17,'ジュース祭り');add(t+21,'さくもつ品評会');add(t+24,'かぼちゃ祭り')}else if(season==='冬'){const t=firstWeekday(year,season,4);add(t,'ペットコンテスト');add(t+5,'ぽかぽか祭り');add(t+8,'どうぶつ品評会');add(t+13,'乗馬大会');add(t+18,'さくもつ品評会');add(t+21,'星夜祭');add(31,'カウントダウン')}return out}
+// Only already calendar-visible events; summaries are editorial, not copied game dialogue.
+const EVENT_GUIDE=Object.freeze({
+  'バザール':{time:'10:00〜18:59',description:'町で開かれる週末のバザール。出品と買い物ができます。'},
+  '花祭り':{time:'12:00〜15:59（受付）',description:'2日間、住人に花を贈るお祭り。花を準備しておくと安心です。'},
+  'どうぶつ品評会':{time:'12:00〜15:59（受付）',description:'飼っている動物の状態を審査してもらう品評会です。'},
+  'マイハニー祭り':{time:'12:00〜15:59',description:'パートナー候補にハチミツやハチミツを使ったお菓子を贈れます。'},
+  'さくもつ品評会':{time:'12:00〜15:59（受付）',description:'育てた作物の品質を審査してもらいます。出品する作物を持っていきましょう。'},
+  'お茶会':{time:'12:00〜15:59',description:'お茶に関する料理を持ち寄る集まり。品質に応じて評価されます。'},
+  'ペットコンテスト':{time:'12:00〜15:59（受付）',description:'イヌやネコのくんれん成果を披露する大会です。'},
+  '乗馬大会':{time:'12:00〜15:59（受付）',description:'ウマに乗って障害物コースに挑戦します。'},
+  '料理祭り・メイン':{time:'12:00〜15:59（受付）',description:'メイン料理を出品して品質などを競う料理祭りです。'},
+  '料理祭り・デザート':{time:'12:00〜15:59（受付）',description:'デザート料理を出品して品質などを競う料理祭りです。'},
+  'ジュース祭り':{time:'12:00〜15:59',description:'ジュースを持ち寄って住人と楽しむ行事。品質も評価されます。'},
+  'かぼちゃ祭り':{time:'11:00・13:00ごろ',description:'11時にケヴィン、13時にララミーとシギュンが訪ねてきます。お菓子を用意しましょう。'},
+  'ぽかぽか祭り':{time:'6:00〜22:00',description:'住人に料理をプレゼントする行事です。仲良し度によってお返しもあります。'},
+  '星夜祭':{time:'20:00〜23:59',description:'約束したパートナー候補と過ごす夜の行事です。前日の約束を確認しましょう。'},
+  'カウントダウン':{time:'22:00〜23:59',description:'町のみんなで新年を迎える行事です。参加前にその日の作業を終えましょう。'}
+});
+function calendarEntryDetails(e){
+  if(e.resident)return `<button class="miniLink residentOpen" data-resident="${esc(e.resident)}" style="display:block;padding:7px 0">${e.icon} ${esc(e.label)} ›</button>`;
+  const info=EVENT_GUIDE[e.label];
+  return info
+    ?`<div class="calendarEventInfo"><div class="calendarEventTitle">${e.icon} ${esc(e.label)}</div><div class="calendarEventTime">🕒 ${esc(info.time)}</div><div class="calendarEventDescription">${esc(info.description)}</div></div>`
+    :`<div class="small" style="padding:5px 0">${e.icon} ${esc(e.label)}</div>`;
+}
 function hasFestival(year,season,day){return !!festivalMap(year,season)[day]?.length}
 function isBazaarDate(year,season,day){const abs=calAbs(year,season,day);if(calWeekday(year,season,day)===6&&!hasFestival(year,season,day))return true;if(abs>0){const p=calFromAbs(abs-1);if(calWeekday(p.year,p.season,p.day)===6&&hasFestival(p.year,p.season,p.day)&&!hasFestival(year,season,day))return true}return false}
 function dayEntries(year,season,day){const arr=[];if(isBazaarDate(year,season,day))arr.push({type:'bazaar',icon:'🎪',label:'バザール'});for(const x of festivalMap(year,season)[day]||[])arr.push({type:'festival',icon:'🎉',label:x});for(const x of CAL_BIRTHDAYS[season]?.[day]||[])arr.push({type:'birthday',icon:'🎂',label:x,resident:x});return arr}
@@ -597,7 +635,7 @@ function todayStripHtml(){
     for(const e of dayEntries(year,t.season,day)){
       if(e.resident)parts.push(`<button class="miniLink todayResident" data-resident="${esc(e.resident)}">${e.icon} ${esc(e.label)}</button>`);
       else if(e.type==='bazaar')parts.push('<span>🎪 今日はバザール</span>');
-      else parts.push(`<span>${e.icon} ${esc(e.label)}</span>`);
+      else{const info=EVENT_GUIDE[e.label];parts.push(`<span>${e.icon} ${esc(e.label)}${info?.time?` ・ ${esc(info.time)}`:''}</span>`) }
     }
     const next=nextBazaarFromToday();
     if(next&&next.delta>0)parts.push(`<span>🎪 バザールまで あと${next.delta}日</span>`);
@@ -678,7 +716,7 @@ function openCalendarDay(day,opts={}){
   const cal=calendarState(),season=opts.season||cal.viewSeason||state.season||'春',year=Math.max(1,Number(opts.year||cal.year)||1),notes=calendarNotes(year,season),weather=calendarWeather(year,season),saved=weather[String(day)]||{},isToday=cal.today?.year===year&&cal.today?.season===season&&Number(cal.today.day)===Number(day),entries=dayEntries(year,season,day),prev=calendarDayNeighbor(year,season,day,-1),next=calendarDayNeighbor(year,season,day,1);
   cal.year=year;cal.viewSeason=season;
   let selectedWeather=saved.weather||'',selectedWind=Number.isInteger(saved.wind)?saved.wind:null,navigating=false;
-  modal(`<div id="calendarDaySwipeSurface"><div class="calendarDayHeader"><button class="calendarDayNav" id="calendarDayPrev" aria-label="前の日" ${prev?'':'disabled'}>‹</button><h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3><button class="calendarDayNav" id="calendarDayNext" aria-label="次の日">›</button></div><div class="calendarSwipeHint">左右スワイプで前後の日へ</div>${entries.length?`<div class="card">${entries.map(e=>e.resident?`<button class="miniLink residentOpen" data-resident="${esc(e.resident)}" style="display:block;padding:7px 0">${e.icon} ${esc(e.label)} ›</button>`:`<div class="small" style="padding:5px 0">${e.icon} ${esc(e.label)}</div>`).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風量</div><div class="small strong" style="margin-top:9px">天気</div><div class="weatherChoiceGrid">${WEATHER_TYPES.map(w=>`<button type="button" class="weatherChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}"><span class="weatherChoiceIcon">${weatherSymbol(w)||'○'}</span><span>${w}</span></button>`).join('')}</div><div class="small strong" style="margin-top:14px">風量</div><div class="windChoiceGrid">${WIND_LEVELS.map(w=>`<button type="button" class="windChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}" aria-label="風量 ${windName(w)}">${windMeterHtml(w)}<span class="windLevelText">${windName(w)}</span></button>`).join('')}</div></div><div class="field" style="margin-top:12px"><label>この日のメモ</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" id="cancelCalDay">戻る</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button><button class="btn" id="saveCalDay">保存</button></div></div>`);
+  modal(`<div id="calendarDaySwipeSurface"><div class="calendarDayHeader"><button class="calendarDayNav" id="calendarDayPrev" aria-label="前の日" ${prev?'':'disabled'}>‹</button><h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3><button class="calendarDayNav" id="calendarDayNext" aria-label="次の日">›</button></div><div class="calendarSwipeHint">左右スワイプで前後の日へ</div>${entries.length?`<div class="card">${entries.map(calendarEntryDetails).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風量</div><div class="small strong" style="margin-top:9px">天気</div><div class="weatherChoiceGrid">${WEATHER_TYPES.map(w=>`<button type="button" class="weatherChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}"><span class="weatherChoiceIcon">${weatherSymbol(w)||'○'}</span><span>${w}</span></button>`).join('')}</div><div class="small strong" style="margin-top:14px">風量</div><div class="windChoiceGrid">${WIND_LEVELS.map(w=>`<button type="button" class="windChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}" aria-label="風量 ${windName(w)}">${windMeterHtml(w)}<span class="windLevelText">${windName(w)}</span></button>`).join('')}</div></div><div class="field" style="margin-top:12px"><label>この日のメモ</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" id="cancelCalDay">戻る</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button><button class="btn" id="saveCalDay">保存</button></div></div>`);
   const back=()=>{if(CALENDAR_RETURN_CONTEXT==='calendar')openCalendarSheet();else{closeModal();home()}};
   const refreshWeatherButtons=()=>{$$('.dayWeather').forEach(b=>b.classList.toggle('active',b.dataset.weather===selectedWeather));$$('.dayWind').forEach(b=>b.classList.toggle('active',Number(b.dataset.wind)===selectedWind))};
   const persistCurrent=async()=>{const v=$('#calMemo')?.value.trim()||'';if(v)notes[day]=v;else delete notes[day];writeCalendarWeather(year,season,day,selectedWeather,selectedWind);await save()};
@@ -1269,7 +1307,7 @@ function crops(){
 function cropRow(e){
   const p=player(e.id),edit=!!state.ui.cropEditMode,st=p.status==='processing'?`加工中・${locationLabel(p.location)}`:locationLabel(p.location),stClass=p.status==='processing'?'processing':p.location?'':'unset',seasons=effectiveSeasons(e),summary=cultivationSummary(e);
   const dots=seasons.map(s=>`<span class="seasonDot ${seasonClass(s)}" title="${s}"></span>`).join('')||'<span class="compactSub">季節未設定</span>';
-  return `<div><div class="cropCompact cropOpen clickable" data-id="${e.id}"><div class="cropMain"><div class="cropname">${iconFor(e)} ${esc(name(e.id))}${p.growing?' <span class="compactSub">●育成</span>':''}</div><div class="seasonDots">${dots}${summary?`<span class="compactSub" style="margin-left:5px">${esc(summary)}</span>`:''}</div></div><div class="compactVal ${p.seedQuality==null?'muted':''}">${p.seedQuality==null?'—':qtext(p.seedQuality)}</div><div class="compactVal ${p.seedCount==null?'muted':p.seedCount===0?'stockZero':''}">${p.seedCount==null?'—':p.seedCount}</div><div class="compactState ${stClass}">${esc(st)}</div></div>${edit?`<div class="cropEdit"><div class="tiny muted">一覧から品質だけ調整</div><div class="miniStep"><button class="qAdjust" data-id="${e.id}" data-delta="-0.5">−</button><div class="qval">${qtext(p.seedQuality)}</div><button class="qAdjust" data-id="${e.id}" data-delta="0.5">＋</button></div></div>`:''}</div>`
+  return `<div><div class="cropCompact cropOpen clickable ${p.growing?'growing':''}" data-id="${e.id}"><div class="cropMain"><div class="cropNameLine"><span class="cropname">${iconFor(e)} ${esc(name(e.id))}</span>${p.growing?`<span class="cropGrowingBadge">🌱 育成中${p.growingCount!=null?` ${p.growingCount}個`:''}</span>`:''}</div><div class="seasonDots">${dots}${summary?`<span class="compactSub" style="margin-left:5px">${esc(summary)}</span>`:''}</div></div><div class="compactVal ${p.seedQuality==null?'muted':''}">${p.seedQuality==null?'—':qtext(p.seedQuality)}</div><div class="compactVal ${p.seedCount==null?'muted':p.seedCount===0?'stockZero':''}">${p.seedCount==null?'—':p.seedCount}</div><div class="compactState ${stClass}">${esc(st)}</div></div>${edit?`<div class="cropEdit"><div class="tiny muted">一覧から品質だけ調整</div><div class="miniStep"><button class="qAdjust" data-id="${e.id}" data-delta="-0.5">−</button><div class="qval">${qtext(p.seedQuality)}</div><button class="qAdjust" data-id="${e.id}" data-delta="0.5">＋</button></div></div>`:''}</div>`
 }
 function qStepper(id,key,label,value){return `<div class="field"><label>${label}</label><div class="qstep"><button type="button" class="detailQ" data-id="${id}" data-key="${key}" data-delta="-0.5">−</button><div class="qval ${value==null?'unset':''}">${qtext(value)}</div><button type="button" class="detailQ" data-id="${id}" data-key="${key}" data-delta="0.5">＋</button></div></div>`}
 function renderCurrentCropView(id){const sheet=$('#modalSheet'),open=$('#modal')?.classList.contains('open');if(open&&sheet?.dataset.cropDetailId===String(id)){showCrop(id,{refresh:true,sheetScroll:sheet.scrollTop});return}if($('#detail').classList.contains('active'))showCrop(id);else crops()}
@@ -1295,6 +1333,7 @@ function showCrop(id,opts={}){
       <button class="iconAction" id="closeCropSheet" aria-label="種詳細を閉じる">×</button>
     </div>
     <div class="cropDetailHead"><div class="cropDetailMeta">${seasons.length?seasons.map(s=>`<span class="badge ${seasonClass(s)}">${esc(s)}</span>`).join(''):'<span class="pill">季節未確認</span>'}<span class="pill">${esc(growSummary)}</span>${p.growing?'<span class="pill green">育成中</span>':''}</div></div>
+    <div id="cropGrowingBanner" class="cropGrowingBanner ${p.growing?'active':'hidden'}">🌱 ${p.growing?`育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}</div>
     <div id="cropStockDecision" class="cropDecision ${decision.tone}">${cropDecisionHtml(decision)}</div>
     <div class="section"><div class="section-head"><h2>在庫・品質</h2><span class="tiny">自動保存</span></div><div class="card cropQuickCard stack">
       <div class="cropQuickGrid">
@@ -1321,7 +1360,8 @@ function showCrop(id,opts={}){
     const d=cropStockDecision(e,p,lab),box=$('#cropStockDecision');
     if(box){box.className=`cropDecision ${d.tone}`;box.innerHTML=cropDecisionHtml(d)}
     if($('#cropQuickLocation'))$('#cropQuickLocation').textContent=cropStatusSummary(p);
-    if($('#cropQuickGrowing'))$('#cropQuickGrowing').textContent=p.growing?(p.growingCount!=null?`${p.growingCount}個`:'数未入力'):'なし'
+    if($('#cropQuickGrowing'))$('#cropQuickGrowing').textContent=p.growing?(p.growingCount!=null?`${p.growingCount}個`:'数未入力'):'なし';
+    const growingBanner=$('#cropGrowingBanner');if(growingBanner){growingBanner.classList.toggle('hidden',!p.growing);growingBanner.classList.toggle('active',!!p.growing);growingBanner.textContent=p.growing?`🌱 育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}
   };
   const refreshLocation=()=>{if(selectedStatus==='processing'&&fac){selectedLocation=fac;$('#locationSelect').value=selectedLocation;$('#locationSelect').disabled=true;$('#facilityBox').innerHTML=`加工中のため場所は <b>${locationLabel(selectedLocation)}</b> に自動設定されます`}else{$('#locationSelect').disabled=false;$('#facilityBox').textContent='保管中は倉庫・各風車から選べます'}};
   const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
