@@ -139,6 +139,11 @@
 .cropGrowingBadge{background:#477649;color:white;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:950;white-space:nowrap}
 .cropGrowingBanner.active{background:#e3f2df;border:1px solid #9fc598;color:#2f6137;border-radius:13px;padding:11px 13px;font-weight:950;font-size:14px;margin:10px 0}
 
+
+/* Request details are information-first; progress is controlled by completion, not counters. */
+.requestFlavorDisplay{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
+#requestMatchFeedback{min-height:18px;line-height:1.55}
+
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -956,7 +961,8 @@ function applyEarlierRequestHistory(m,now){
 function requestMasterPreview(m){
   if(!m)return'';
   const detail=(m.objectives||[]).length?m.objectives.map(o=>esc(o.label)+(Number(o.target)>1?' ×'+o.target:'')).join('<br>'):esc(m.objectiveText||'');
-  return `<div class="notice" style="margin-top:8px"><div class="small strong">Master照合済み</div><div class="tiny muted" style="margin-top:4px">依頼人：${esc(m.requester)}</div>${detail?`<div class="small" style="margin-top:8px"><b>達成条件</b><br>${detail}</div>`:''}${m.reward?`<div class="small" style="margin-top:8px"><b>報酬：</b>${esc(m.reward)}</div>`:''}${m.audit?.status==='source_conflict'?'<div class="notice" style="margin-top:8px"><div class="tiny"><b>攻略情報に差異あり</b><br>'+esc(m.audit.note||'複数ソースで内容が一致していません。')+'</div></div>':''}</div>`
+  const flavor=String(m.flavorText||'').trim();
+  return `<div class="notice" style="margin-top:8px"><div class="small strong">Master照合済み</div><div class="tiny muted" style="margin-top:4px">依頼人：${esc(m.requester)}</div>${flavor?`<div class="small" style="margin-top:8px;white-space:pre-wrap">${esc(flavor)}</div>`:'' }${detail?`<div class="small" style="margin-top:8px"><b>達成条件</b><br>${detail}</div>`:''}${m.reward?`<div class="small" style="margin-top:8px"><b>報酬：</b>${esc(m.reward)}</div>`:''}${m.audit?.status==='source_conflict'?'<div class="notice" style="margin-top:8px"><div class="tiny"><b>攻略情報に差異あり</b><br>'+esc(m.audit.note||'複数ソースで内容が一致していません。')+'</div></div>':''}</div>`
 }
 function requestTypeLabel(t){return({item_quantity:'品物',action_count:'回数',money_amount:'金額',check:'その他'})[t]||'その他'}
 function requestObjectiveProgress(o){
@@ -966,11 +972,11 @@ function requestObjectiveProgress(o){
 function requestObjectiveDone(o){return requestObjectiveProgress(o)>=Math.max(1,Number(o.target)||1)}
 function requestReportReady(r){const objs=r.objectives||[];return objs.length>0&&objs.every(requestObjectiveDone)}
 function requestCardHtml(r){
-  const objs=r.objectives||[],done=objs.filter(requestObjectiveDone).length,meta=[],ready=requestReportReady(r),canComplete=!r.archived&&r.status!=='completed';
+  const objs=r.objectives||[],meta=[],canComplete=!r.archived&&r.status!=='completed';
   if(r.requester)meta.push(esc(r.requester));
-  if(objs.length)meta.push(`達成 ${done}/${objs.length}`);
+  if(objs.length)meta.push(`条件 ${objs.length}件`);
   if(r.inferred)meta.push('履歴補完');
-  return `<div class="requestCompact clickable requestOpen" data-id="${r.id}"><div class="grow"><div class="requestCompactTitle">🙏 ${esc(r.title)}</div><div class="requestCompactMeta">${ready?'<span class="requestReady">報告待ち</span>':''}${meta.length?`<span>${meta.join('</span><span>')}</span>`:''}</div></div><div class="requestCompactActions">${canComplete?`<button class="requestQuickDone" data-request-done="${r.id}" aria-label="お願いを完了">完了</button>`:'<div class="requestCompactArrow">›</div>'}</div></div>`
+  return `<div class="requestCompact clickable requestOpen" data-id="${r.id}"><div class="grow"><div class="requestCompactTitle">🙏 ${esc(r.title)}</div><div class="requestCompactMeta">${meta.length?`<span>${meta.join('</span><span>')}</span>`:''}</div></div><div class="requestCompactActions">${canComplete?`<button class="requestQuickDone" data-request-done="${r.id}" aria-label="お願いを完了">完了</button>`:'<div class="requestCompactArrow">›</div>'}</div></div>`
 }
 function requestsHomeHtml(){
   const all=requestsState(),
@@ -999,21 +1005,16 @@ function openRequestRecord(id=null){
   const r=id?requestsState().find(x=>x.id===id):{title:'',requester:'',status:'active',note:'',objectives:[],reward:'',masterId:null};if(id&&!r)return;
   let selectedMasterId=r.masterId||null;
   modal(`<h3>${id?'お願いを編集':'お願いを登録'}</h3>${id?'<div class="editorSaveHint">変更は自動保存されます</div>':''}
-    <div class="field"><label>お願いタイトル</label><input id="requestTitle" value="${esc(r.title)}" placeholder="ゲーム内のタイトル" autocomplete="off"><div class="tiny muted" style="margin-top:4px">Masterは裏で照合します。依頼人なしの部分一致では、未来のお願い名は表示しません。</div></div>
-    <div id="requestMasterSuggestions"></div>
+    <div class="field"><label>お願いタイトル</label><input id="requestTitle" value="${esc(r.title)}" placeholder="ゲーム内のタイトル" autocomplete="off"><div class="tiny muted" style="margin-top:4px">ゲーム内で見た名前を入力してください。候補の一覧は表示しません。</div></div>
+    <div class="field" style="margin-top:8px"><label>依頼人</label><input id="requestRequester" value="${esc(r.requester||'')}" placeholder="ゲーム内の住人名" autocomplete="off"><div class="tiny muted">依頼人は手入力で確定します。候補のタップ操作はありません。</div></div>
+    <button class="btn" type="button" id="requestMatchButton" style="width:100%;margin-top:12px">🔍 お願いをMaster照合</button>
+    <div id="requestMatchFeedback" class="tiny muted" role="status" aria-live="polite" style="margin-top:6px">タイトルと依頼人を入力して照合してください。</div>
     <div id="requestMasterPreview"></div>
     <div id="requestPriorSteps"></div>
-    <div class="field" style="margin-top:8px"><label>依頼人</label><input id="requestRequester" value="${esc(r.requester||'')}" placeholder="住人名" autocomplete="off"><div id="requestRequesterSuggestions"></div></div>
-    <div class="field" style="margin-top:8px"><label>状態</label><select id="requestStatus"><option value="active" ${r.status!=='completed'?'selected':''}>進行中</option><option value="completed" ${r.status==='completed'?'selected':''}>完了済み</option></select></div>
+    <div class="field" style="margin-top:12px"><label>お願いの文章（任意・ゲーム内で確認した内容）</label><textarea id="requestFlavorText" placeholder="ゲーム内の説明・依頼人の言葉をメモ">${esc(r.flavorText||'')}</textarea><div class="tiny muted">Master未収録の文章は手入力できます。通常のメモとは別に保存します。</div></div>
     <div class="sheet-actions">${id?'<button class="btn danger" id="deleteRequest">削除</button>':''}<button class="btn secondary" id="closeRequestEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="createRequest">登録</button>'}</div>`);
 
   const selected=()=>selectedMasterId?requestMasterById.get(selectedMasterId):null;
-  const renderResidentSuggestions=()=>{
-    const box=$('#requestRequesterSuggestions');if(!box)return;
-    const matches=residentNameSuggestions($('#requestRequester').value);
-    box.innerHTML=matches.length?`<div class="card" style="margin-top:6px;padding:5px">${matches.map(n=>`<button type="button" class="miniLink residentNameCandidate" data-name="${esc(n)}" style="display:block;width:100%;text-align:left;padding:7px 4px">${esc(n)}</button>`).join('')}</div>`:'';
-    $$('.residentNameCandidate').forEach(b=>b.onclick=()=>{$('#requestRequester').value=b.dataset.name;box.innerHTML='';renderMaster()})
-  };
   const renderPrior=()=>{
     const m=selected(),box=$('#requestPriorSteps'),earlier=(!id&&m)?requestEarlierStepCandidates(m):[];
     box.innerHTML=earlier.length?`<div class="card" style="margin-top:8px"><div class="switchline"><div><div class="small strong">以前のお願いも記録する</div><div class="tiny">この系列の過去 ${earlier.length}件を「完了済み・アーカイブ」として補完します。完了日は記録しません。</div></div><label class="switch"><input id="requestBackfillPrior" type="checkbox" checked><span class="slider"></span></label></div></div>`:''
@@ -1034,58 +1035,54 @@ function openRequestRecord(id=null){
     await save()
   };
   const renderMaster=async()=>{
-    const title=$('#requestTitle').value,requester=$('#requestRequester').value,box=$('#requestMasterSuggestions'),preview=$('#requestMasterPreview');
-    const exact=requestMasterExactMatches(title,requester);
-    if(!selectedMasterId&&exact.length===1){
-      const m=exact[0];
-      selectedMasterId=m.id;
-      $('#requestTitle').value=m.title;
-      $('#requestRequester').value=m.requester;
-      if(id)await linkExistingToMaster(m);
-      box.innerHTML='';
-      preview.innerHTML=requestMasterPreview(m);
-      renderPrior();
+    const title=$('#requestTitle').value.trim(),requester=$('#requestRequester').value.trim(),feedback=$('#requestMatchFeedback');
+    if(!title||!requester){
+      feedback.textContent='タイトルと依頼人の両方を入力してください。';
       return
     }
-    const matches=requestMasterMatches(title,requester),hint=requestMasterMatchHint(title,requester);
-    if(matches.length===1){
-      const m=matches[0];
-      box.innerHTML=`<div class="card" style="margin-top:8px;padding:7px"><button class="miniLink requestMasterCandidate" data-master="${m.id}" style="display:block;width:100%;text-align:left;padding:8px 4px"><b>${esc(m.title)}</b><span class="tiny muted" style="margin-left:6px">${esc(m.requester)}</span></button></div>`;
-    }else if(hint){
-      box.innerHTML=`<div class="notice" style="margin-top:8px"><div class="tiny">${esc(hint)}</div></div>`;
-    }else box.innerHTML='';
-    preview.innerHTML=requestMasterPreview(selected());
-    renderPrior();
-    $$('.requestMasterCandidate').forEach(b=>b.onclick=async()=>{
-      const m=requestMasterById.get(b.dataset.master);if(!m)return;
-      selectedMasterId=m.id;
-      $('#requestTitle').value=m.title;
-      $('#requestRequester').value=m.requester;
-      box.innerHTML='';
-      preview.innerHTML=requestMasterPreview(m);
-      renderPrior();
-      if(id)await linkExistingToMaster(m)
-    })
+    // No candidate names are shown. Unique and exact requester identity are required.
+    const matches=requestMasterMatches(title,requester).filter(m=>requestNorm(m.requester)===requestNorm(requester));
+    if(matches.length!==1){
+      feedback.textContent='一致するお願いを特定できませんでした。タイトルと依頼人の表記を確認してください。';
+      return
+    }
+    const m=matches[0];
+    selectedMasterId=m.id;
+    $('#requestTitle').value=m.title;
+    $('#requestRequester').value=m.requester;
+    if(id)await linkExistingToMaster(m);
+    $('#requestMasterPreview').innerHTML=requestMasterPreview(m);
+    feedback.textContent='✓ Masterと照合できました。';
+    renderPrior()
   };
-  $('#requestTitle').addEventListener('input',()=>{if(selectedMasterId&&!requestTitleMatchesMasterValue($('#requestTitle').value,selected()))selectedMasterId=null;renderMaster()});
-  $('#requestRequester').addEventListener('input',()=>{if(selectedMasterId&&norm($('#requestRequester').value)!==norm(selected()?.requester||''))selectedMasterId=null;renderResidentSuggestions();renderMaster()});
-  if($('#requestRequester').value.trim())renderResidentSuggestions();
-  if(selectedMasterId){$('#requestMasterPreview').innerHTML=requestMasterPreview(selected());renderPrior()}else if($('#requestTitle').value.trim().length>=2)renderMaster();
+  const invalidateMatch=()=>{
+    const m=selected();
+    if(!m||requestTitleMatchesMasterValue($('#requestTitle').value,m)&&requestNorm($('#requestRequester').value)===requestNorm(m.requester))return;
+    selectedMasterId=null;
+    $('#requestMasterPreview').innerHTML='';
+    $('#requestPriorSteps').innerHTML='';
+    $('#requestMatchFeedback').textContent='入力を変更しました。もう一度照合してください。'
+  };
+  $('#requestTitle').addEventListener('input',invalidateMatch);
+  $('#requestRequester').addEventListener('input',invalidateMatch);
+  $('#requestMatchButton').onclick=renderMaster;
+  if(selectedMasterId){$('#requestMasterPreview').innerHTML=requestMasterPreview(selected());renderPrior();$('#requestMatchFeedback').textContent='✓ Masterと照合済みです。'}
   $('#closeRequestEditor').onclick=()=>{closeModal();if(id)showRequestRecord(id);else if(activeScreenId()==='plan')plan();else home()};
 
   if(id){
     $('#deleteRequest').onclick=()=>confirmDelete('このお願いを削除しますか？',async()=>{await withUndo('お願いの削除を元に戻せます',()=>state.requests=state.requests.filter(x=>x.id!==id));closeModal();if(activeScreenId()==='plan')plan();else home()});
-    const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.status=$('#requestStatus').value;const nextMasterId=selectedMasterId||null;if(r.masterId!==nextMasterId){r.masterId=nextMasterId;if(!nextMasterId)requestClearMasterSyncFields(r)}if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
-    bindAutosave([$('#requestTitle'),$('#requestRequester'),$('#requestStatus')],persist)
+    const persist=async()=>{const t=$('#requestTitle').value.trim();if(t)r.title=t;r.requester=$('#requestRequester').value.trim();r.flavorText=$('#requestFlavorText').value;const nextMasterId=selectedMasterId||null;if(r.masterId!==nextMasterId){r.masterId=nextMasterId;if(!nextMasterId)requestClearMasterSyncFields(r)}if(selected())r.reward=selected().reward||r.reward||'';r.updatedAt=new Date().toISOString();await save()};
+    bindAutosave([$('#requestTitle'),$('#requestRequester'),$('#requestFlavorText')],persist)
   }else{
     $('#createRequest').onclick=async()=>{
       const title=$('#requestTitle').value.trim();if(!title)return;
-      const m=selected(),now=new Date().toISOString(),status=$('#requestStatus').value,nr={
+      const m=selected(),now=new Date().toISOString(),status='active',nr={
         id:'rq'+Date.now(),
         title:m?.title||title,
         requester:m?.requester||$('#requestRequester').value.trim(),
         status,
         note:'',
+        flavorText:$('#requestFlavorText').value,
         reward:m?.reward||'',
         masterId:m?.id||null,
         ...(m?requestMasterSyncFields(m,'canonical'):{}),
@@ -1106,11 +1103,9 @@ function openRequestRecord(id=null){
   }
 }
 function requestObjectiveRow(r,o,i){
-  const current=requestObjectiveProgress(o),target=Math.max(1,Number(o.target)||1),done=requestObjectiveDone(o),unit=o.type==='money_amount'?'G':o.type==='check'?'':'';
-  if(o.type==='check'){
-    return `<div class="actionrow ${done?'done':''}"><input class="check requestObjectiveCheck" type="checkbox" data-i="${i}" ${done?'checked':''}><div class="grow clickable requestObjectiveEdit" data-i="${i}"><div class="small strong">${esc(o.label)}</div><div class="tiny muted">${requestTypeLabel(o.type)}</div></div></div>`
-  }
-  return `<div class="actionrow ${done?'done':''}"><div class="grow clickable requestObjectiveEdit" data-i="${i}"><div class="small strong">${esc(o.label)}</div><div class="tiny muted">${requestTypeLabel(o.type)} ・ ${current}${unit} / ${target}${unit}</div></div><div class="stepper"><button class="requestObjectiveStep" data-i="${i}" data-d="-1">−</button><button class="requestObjectiveStep" data-i="${i}" data-d="1">＋</button></div></div>`
+  const target=Math.max(1,Number(o.target)||1);
+  const quantity=o.type==='check'?'':(o.type==='money_amount'?target+'G':target>1?' ×'+target:'');
+  return `<div class="actionrow"><div class="grow ${r.archived?'':'clickable requestObjectiveEdit'}" data-i="${i}"><div class="small strong">${esc(o.label)}${quantity?'<span class="tiny muted"> '+esc(quantity)+'</span>':''}</div><div class="tiny muted">${requestTypeLabel(o.type)}</div></div></div>`
 }
 function completeRequestById(id,origin=null){
   const r=requestsState().find(x=>x.id===id);if(!r||r.status==='completed')return;
@@ -1118,13 +1113,13 @@ function completeRequestById(id,origin=null){
 }
 function showRequestRecord(id,origin=null){
   const r=requestsState().find(x=>x.id===id);if(!r)return;touchRecent('request',id);
-  const returnScreen=origin||activeScreenId(),objs=r.objectives||[],done=r.status==='completed';
+  const returnScreen=origin||activeScreenId(),objs=r.objectives||[],done=r.status==='completed',flavor=String(r.flavorText||requestMasterById.get(r.masterId)?.flavorText||'').trim();
   modal(`<h3>🙏 ${esc(r.title)}</h3>
     ${r.requester?`<div class="tiny muted" style="margin-bottom:6px">依頼人：${esc(r.requester)}</div>`:''}
-    ${r.masterId?'<div class="tiny muted" style="margin-bottom:6px">Masterと照合済み</div>':'<button class="miniLink" id="matchRequestMaster" style="margin:0 0 8px">Master照合</button>'}
+    ${r.masterId?'<div class="tiny muted" style="margin-bottom:6px">Masterと照合済み</div>':'<button class="btn secondary" id="matchRequestMaster" style="width:100%;margin:0 0 12px">🔍 お願いをMaster照合</button>'}
     ${r.inferred?'<div class="notice" style="margin-bottom:10px">途中から利用を開始したため、後の段階のお願いから「完了済み」と判断して補完した履歴です。完了日は記録していません。</div>':''}
     ${r.archived&&!r.inferred?'<div class="tiny muted" style="margin-bottom:10px">アーカイブ済み</div>':''}
-    ${requestReportReady(r)&&!done?'<div class="notice" style="margin-bottom:10px"><b>✓ 条件達成・報告待ち</b><br>ゲーム内で依頼人へ報告したら完了にしてください。</div>':''}
+    <div class="section"><div class="section-head"><h2>お願いの文章</h2></div><div class="card requestFlavorDisplay">${flavor?esc(flavor):'<span class="tiny muted">まだ記録されていません。編集からゲーム内の文章を追加できます。</span>'}</div></div>
     ${r.reward?`<div class="card" style="margin-bottom:12px"><div class="tiny muted">報酬</div><div class="small strong" style="margin-top:4px">${esc(r.reward)}</div></div>`:''}
     <div class="section"><div class="section-head"><h2>達成条件</h2>${r.archived?'':'<button class="btn secondary smallbtn" id="addRequestObjective">＋追加</button>'}</div><div class="card">${objs.length?objs.map((o,i)=>requestObjectiveRow(r,o,i)).join(''):'<div class="empty">まだありません</div>'}</div></div>
     <div class="section"><div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div><div class="card"><div class="field"><textarea id="requestNote" placeholder="このお願いについて覚えておきたいこと">${esc(r.note||'')}</textarea></div></div></div>
@@ -1137,8 +1132,6 @@ function showRequestRecord(id,origin=null){
   $('#matchRequestMaster')?.addEventListener('click',()=>openRequestRecord(id));
   $('#addRequestObjective')?.addEventListener('click',()=>openRequestObjective(id));
   $$('.requestObjectiveEdit').forEach(b=>b.onclick=()=>{if(!r.archived)openRequestObjective(id,+b.dataset.i)});
-  $$('.requestObjectiveStep').forEach(b=>b.onclick=async()=>{if(r.archived)return;const o=r.objectives[+b.dataset.i],target=Math.max(1,Number(o.target)||1),step=o.type==='money_amount'?1000:1;o.current=Math.max(0,Math.min(target,requestObjectiveProgress(o)+Number(b.dataset.d)*step));r.updatedAt=new Date().toISOString();await save();showRequestRecord(id,returnScreen)});
-  $$('.requestObjectiveCheck').forEach(b=>b.onchange=async()=>{if(r.archived)return;const o=r.objectives[+b.dataset.i];o.current=b.checked?1:0;o.target=1;r.updatedAt=new Date().toISOString();await save();showRequestRecord(id,returnScreen)});
   bindAutosave([$('#requestNote')],async()=>{r.note=$('#requestNote').value;r.updatedAt=new Date().toISOString();await save()});
   $('#completeRequest')?.addEventListener('click',()=>completeRequestById(id,returnScreen));
   $('#reopenRequest')?.addEventListener('click',async()=>{await withUndo('お願いの再開を元に戻せます',()=>{r.status='active';r.completedAt=null});showRequestRecord(id,returnScreen);toast('お願いを進行中に戻しました')});
@@ -1150,7 +1143,7 @@ function openRequestObjective(requestId,idx=null){
   modal(`<h3>${editing?'達成条件を編集':'達成条件を追加'}</h3>${editing?'<div class="editorSaveHint">変更は自動保存されます</div>':''}
     <div class="field"><label>種類</label><select id="requestObjectiveType"><option value="item_quantity" ${o.type==='item_quantity'?'selected':''}>品物</option><option value="action_count" ${o.type==='action_count'?'selected':''}>回数</option><option value="money_amount" ${o.type==='money_amount'?'selected':''}>金額</option><option value="check" ${o.type==='check'?'selected':''}>その他</option></select></div>
     <div class="field" style="margin-top:8px"><label>内容</label><input id="requestObjectiveLabel" value="${esc(o.label||'')}" placeholder="例：お風呂に入る"></div>
-    <div id="requestObjectiveNumbers" class="grid2" style="margin-top:8px"><div class="field"><label>目標</label><input id="requestObjectiveTarget" type="number" min="1" value="${Math.max(1,Number(o.target)||1)}"></div><div class="field"><label>現在</label><input id="requestObjectiveCurrent" type="number" min="0" value="${Math.max(0,Number(o.current)||0)}"></div></div>
+    <div id="requestObjectiveNumbers" class="grid2" style="margin-top:8px"><div class="field"><label>必要数</label><input id="requestObjectiveTarget" type="number" min="1" value="${Math.max(1,Number(o.target)||1)}"></div></div>
     <div class="sheet-actions">${editing?'<button class="btn danger" id="deleteRequestObjective">削除</button>':''}<button class="btn secondary" id="closeRequestObjective">${editing?'閉じる':'キャンセル'}</button>${editing?'':'<button class="btn" id="addRequestObjectiveRecord">追加</button>'}</div>`);
   const refresh=()=>{$('#requestObjectiveNumbers').style.display=$('#requestObjectiveType').value==='check'?'none':'grid'};
   refresh();$('#requestObjectiveType').onchange=refresh;
@@ -1161,15 +1154,15 @@ function openRequestObjective(requestId,idx=null){
       const label=$('#requestObjectiveLabel').value.trim();if(label)o.label=label;
       o.type=$('#requestObjectiveType').value;
       if(o.type==='check'){o.target=1;o.current=requestObjectiveProgress(o)>0?1:0}
-      else{o.target=Math.max(1,+$('#requestObjectiveTarget').value||1);o.current=Math.max(0,Math.min(o.target,+$('#requestObjectiveCurrent').value||0))}
+      else{o.target=Math.max(1,+$('#requestObjectiveTarget').value||1)}
       if(!requestObjectivesEqualOnFields([o],[baseline],['type','label','target']))requestMarkCustom(r,o);
       r.updatedAt=new Date().toISOString();await save()
     };
-    bindAutosave([$('#requestObjectiveType'),$('#requestObjectiveLabel'),$('#requestObjectiveTarget'),$('#requestObjectiveCurrent')],persist)
+    bindAutosave([$('#requestObjectiveType'),$('#requestObjectiveLabel'),$('#requestObjectiveTarget')],persist)
   }else{
     $('#addRequestObjectiveRecord').onclick=async()=>{
       const label=$('#requestObjectiveLabel').value.trim();if(!label)return;
-      const type=$('#requestObjectiveType').value,target=type==='check'?1:Math.max(1,+$('#requestObjectiveTarget').value||1),current=type==='check'?0:Math.max(0,Math.min(target,+$('#requestObjectiveCurrent').value||0));
+      const type=$('#requestObjectiveType').value,target=type==='check'?1:Math.max(1,+$('#requestObjectiveTarget').value||1),current=0;
       r.objectives.push({id:'rqo'+Date.now(),type,label,target,current});requestMarkCustom(r);r.updatedAt=new Date().toISOString();await save();showRequestRecord(requestId)
     }
   }
@@ -1177,8 +1170,7 @@ function openRequestObjective(requestId,idx=null){
 
 function homeProgressItems(){
   const requestItems=requestsState().filter(r=>!r.archived&&r.status!=='completed').map(r=>{
-    const objs=r.objectives||[],ready=objs.length>0&&objs.every(requestObjectiveDone);
-    return{kind:'request',id:r.id,title:r.title,priority:ready?0:2,meta:ready?'✓ 条件達成・報告待ち':(r.requester?`お願い ・ ${r.requester}`:'お願い')}
+    return{kind:'request',id:r.id,title:r.title,priority:2,meta:r.requester?`お願い ・ ${r.requester}`:'お願い'}
   });
   const goalItems=(state.goals||[]).filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request').map(g=>{
     const rs=state.requirements[g.id]||[],done=rs.filter(r=>r.have>=r.need).length,acts=state.actions.filter(a=>a.goalId===g.id&&!a.done).length;
