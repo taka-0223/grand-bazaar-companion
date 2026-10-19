@@ -144,6 +144,15 @@
 .requestFlavorDisplay{font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere}
 #requestMatchFeedback{min-height:18px;line-height:1.55}
 
+
+/* Explicit touch-accessible reorder handle (no accidental checkbox drag). */
+.planActionRow{position:relative;transition:background-color .12s}
+.actionGrip{flex:0 0 38px;width:38px;height:42px;border:0;background:transparent;color:#607b59;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:21px;line-height:1;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.actionGrip:focus-visible{outline:3px solid #699766;outline-offset:1px}
+.planActionRow.dragging{background:#edf5e9;opacity:.78}
+.planActionRow.dropBefore{box-shadow:inset 0 4px 0 #659362}
+.planActionRow.dropAfter{box-shadow:inset 0 -4px 0 #659362}
+
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -1467,14 +1476,98 @@ function plan(){
   ${requestsHomeHtml()}
   <div class="section"><div class="section-head"><h2>目標</h2></div>${goals.length?goals.map(goalCard).join(''):'<div class="card empty">まだありません</div>'}${completed.length?`<button class="miniLink" id="toggleCompletedGoals" style="margin:5px 2px 0">${showCompleted?'完了した目標を閉じる':`完了した目標 ${completed.length}件`}</button>`:''}</div>
   ${showCompleted&&completed.length?`<div class="section"><div class="section-head"><h2>完了した目標</h2></div>${completed.map(goalCard).join('')}</div>`:''}
-  <div class="section"><div class="section-head"><h2>やること</h2></div>${actions.length?`<div class="card">${actions.map(a=>`<div class="actionrow"><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable actionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><button class="iconAction pin ${a.pinned?'active':''}" data-pin="${a.id}" aria-label="今やる">★</button></div>`).join('')}</div>`:'<div class="compactEmpty">まだありません</div>'}</div>`;
+  <div class="section"><div class="section-head"><h2>やること</h2></div>${actions.length?`<div class="card" id="planActionList">${actions.map(a=>`<div class="actionrow planActionRow" data-action-id="${a.id}"><button type="button" class="actionGrip" data-action-id="${a.id}" aria-label="${esc(a.text)}を並べ替え。上下にドラッグ、または矢印キーで移動" title="長押しせずにつかんで上下に移動">☰</button><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable actionEdit" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><button class="iconAction pin ${a.pinned?'active':''}" data-pin="${a.id}" aria-label="今やる">★</button></div>`).join('')}</div>`:'<div class="compactEmpty">まだありません</div>'}</div>`;
   bindRequestsHome();
   $('#toggleCompletedGoals')?.addEventListener('click',async()=>{state.ui.planShowCompleted=!showCompleted;await save();plan()});
   bindGoalOpen();
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.actionEdit').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id,'plan'));
-  $$('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();plan()});
+  $('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();plan()});
+  bindActionReorder();
 }
+// Reorder only currently visible, unfinished actions. Completed actions keep their slots.
+function moveActionInPlan(fromId,toId,after=false){
+  const rows=state.actions.filter(a=>!a.done);
+  const from=rows.findIndex(a=>String(a.id)===String(fromId));
+  const to=rows.findIndex(a=>String(a.id)===String(toId));
+  if(from<0||to<0||from===to)return false;
+  const oldIds=rows.map(a=>a.id);
+  const [moving]=rows.splice(from,1);
+  const index=rows.findIndex(a=>String(a.id)===String(toId))+(after?1:0);
+  rows.splice(index,0,moving);
+  if(rows.every((a,i)=>a.id===oldIds[i]))return false;
+  let pos=0;
+  state.actions=state.actions.map(a=>a.done?a:rows[pos++]);
+  return true
+}
+function bindActionReorder(){
+  const container=$('#planActionList');if(!container)return;
+  const handles=[...container.querySelectorAll('.actionGrip')];
+  const rows=()=>[...container.querySelectorAll('.planActionRow')];
+  let dragging=null;
+  const clearHighlight=()=>{
+    for(const row of rows())row.classList.remove('dragging','dropBefore','dropAfter')
+  };
+  const commit=async(from,to,after=false)=>{
+    const before=clone(state);
+    if(!moveActionInPlan(from,to,after))return;
+    await save();
+    showUndo('やることの並べ替えを元に戻せます',before);
+    plan()
+  };
+  const targetAt=(y,id)=>{
+    const candidates=rows().filter(r=>r.dataset.actionId!==id);
+    for(const row of candidates){
+      const r=row.getBoundingClientRect();
+      if(y<r.top+(r.height/2))return {id:row.dataset.actionId,after:false,row}
+    }
+    const last=candidates[candidates.length-1];
+    return last?{id:last.dataset.actionId,after:true,row:last}:null
+  };
+  for(const handle of handles){
+    handle.addEventListener('pointerdown',e=>{
+      if(e.button!==0&&e.pointerType!=='touch')return;
+      e.preventDefault();
+      dragging={id:handle.dataset.actionId,pointerId:e.pointerId,target:null};
+      handle.setPointerCapture?.(e.pointerId);
+      handle.closest('.planActionRow')?.classList.add('dragging');
+    });
+    handle.addEventListener('pointermove',e=>{
+      if(!dragging||dragging.id!==handle.dataset.actionId||dragging.pointerId!==e.pointerId)return;
+      const target=targetAt(e.clientY,dragging.id);
+      clearHighlight();
+      handle.closest('.planActionRow')?.classList.add('dragging');
+      if(target){
+        dragging.target=target;
+        target.row.classList.add(target.after?'dropAfter':'dropBefore')
+      }
+      if(e.clientY<55)window.scrollBy?.(0,-16);
+      else if(e.clientY>window.innerHeight-80)window.scrollBy?.(0,16)
+    });
+    handle.addEventListener('pointerup',e=>{
+      if(!dragging||dragging.id!==handle.dataset.actionId||dragging.pointerId!==e.pointerId)return;
+      const {id,target}=dragging;
+      dragging=null;
+      clearHighlight();
+      if(target)commit(id,target.id,target.after)
+    });
+    handle.addEventListener('pointercancel',()=>{dragging=null;clearHighlight()});
+    handle.addEventListener('keydown',e=>{
+      if(e.key!=='ArrowUp'&&e.key!=='ArrowDown')return;
+      e.preventDefault();
+      const active=state.actions.filter(a=>!a.done);
+      const i=active.findIndex(a=>String(a.id)===handle.dataset.actionId);
+      const n=i+(e.key==='ArrowUp'?-1:1);
+      if(n<0||n>=active.length)return;
+      const id=handle.dataset.actionId,to=active[n].id;
+      commit(id,to,e.key==='ArrowDown').then(()=>{
+        const h=[...document.querySelectorAll('.actionGrip')].find(x=>x.dataset.actionId===id);
+        h?.focus()
+      })
+    })
+  }
+}
+
 async function toggleAction(id,done,goalContext=null){await withUndo(done?'完了を元に戻せます':'変更を元に戻せます',()=>{const a=state.actions.find(x=>x.id===id);if(a)a.done=done});if(goalContext)returnToGoal(goalContext);else render()}
 function returnToGoal(id){openGoalSheet(id,GOAL_RETURN_CONTEXT)}
 function leaveGoalAfterDelete(){
