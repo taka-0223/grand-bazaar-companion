@@ -1480,7 +1480,7 @@ function openKnownRecipe(){modal(`<h3>知った料理を登録</h3><p class="sma
     const box=$('#knownRecipeCandidates'),raw=$('#knownRecipeName').value;
     const options=recipeRegistrationCandidates(raw);
     box.innerHTML=options.length?'<div class="card" style="padding:5px">'+options.map(r=>'<button type="button" class="miniLink knownRecipeCandidate" data-recipe="'+esc(r.id)+'" style="display:block;width:100%;text-align:left;padding:9px 7px">🍳 '+esc(rname(r.id))+(state.knownRecipes.includes(r.id)?' <span class="tiny muted">登録済み</span>':'')+'</button>').join('')+'</div>':raw.trim()?'<div class="tiny muted">候補がない場合は、もう少し名前を入力してください。</div>':'';
-    $('.knownRecipeCandidate').forEach(b=>b.onclick=()=>{
+    $$('.knownRecipeCandidate').forEach(b=>b.onclick=()=>{
       const r=recipeData(b.dataset.recipe);if(!r)return;
       $('#knownRecipeName').value=rname(r.id);
       box.textContent='✓ 料理名を選択しました。「照合して登録」を押してください。';
