@@ -12,6 +12,7 @@ on:
       - 'tests/performance-diagnostics.test.mjs'
       - 'tests/calendar-crops-requests.test.mjs'
       - 'tests/action-reorder.test.mjs'
+      - 'tests/plan-interactions.test.mjs'
       - '.github/workflows/runtime-master-projection.yml'
   push:
     branches: [main]
@@ -26,6 +27,7 @@ on:
       - 'tests/performance-diagnostics.test.mjs'
       - 'tests/calendar-crops-requests.test.mjs'
       - 'tests/action-reorder.test.mjs'
+      - 'tests/plan-interactions.test.mjs'
       - '.github/workflows/runtime-master-projection.yml'
 jobs:
   check:
@@ -35,4 +37,4 @@ jobs:
       - name: Confirm runtime Master matches canonical full Master
         run: node tools/build-runtime-master.mjs --check
       - name: Test projection, offline mode and UI invariants
-        run: node --test tests/runtime-master.test.mjs tests/active-screen-render.test.mjs tests/storage-persistence.test.mjs tests/performance-diagnostics.test.mjs tests/calendar-crops-requests.test.mjs tests/action-reorder.test.mjs
+        run: node --test tests/runtime-master.test.mjs tests/active-screen-render.test.mjs tests/storage-persistence.test.mjs tests/performance-diagnostics.test.mjs tests/calendar-crops-requests.test.mjs tests/action-reorder.test.mjs tests/plan-interactions.test.mjs
