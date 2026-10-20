@@ -16,6 +16,7 @@ const suggestSource=section('function recipeRegistrationCandidates(', 'function 
 const groupSource=section('function knownGroupOptions(', 'function recipeGoalFor(');
 const titles={
   pizza:'ピザ',
+  pizza_toast:'ピザトースト',
   herb_sandwich:'ハーブサンドイッチ',
   herb_tea:'ハーブティー',
   cookie:'クッキー',
@@ -43,6 +44,7 @@ test('unknown recipes never appear in a short or ambiguous candidate list',()=>{
 });
 test('a strongly implied single unknown recipe can be suggested, but only from a prefix',()=>{
   assert.deepEqual(suggest('ピザ'),['pizza']);
+  assert.deepEqual(suggest('ピザトースト',['pizza']),['pizza_toast']);
   assert.deepEqual(suggest('ハーブサン'),['herb_sandwich']);
   assert.deepEqual(suggest('ブサンド'),[]);
   assert.deepEqual(suggest('ハーブティー'),['herb_tea']);
