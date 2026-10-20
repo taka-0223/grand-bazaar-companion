@@ -1373,7 +1373,7 @@ function showCrop(id,opts={}){
     ${facts.length?`<div class="section"><div class="section-head"><h2>自分が知っている加工</h2></div>${facts.map(factCard).join('')}</div>`:''}
     ${isCustom?'<button class="btn danger" id="deleteCustomCrop" style="width:100%">このカスタム品目を削除</button>':''}
     <div class="sheet-actions cropSheetBottomActions"><button class="btn" id="cropSheetCloseBottom">閉じる</button></div>`);
-  const sheet=$('#modalSheet');sheet.classList.add('cropDetailSheet');sheet.dataset.cropDetailId=String(id);sheet.dataset.cropOrigin=origin||'';sheet.dataset.cropReturnScroll=String(returnScroll);sheet.scrollTop=sheetScroll;
+  const sheet=$('#modalSheet');sheet.classList.add('cropDetailSheet');sheet.dataset.cropDetailId=String(id);sheet.dataset.cropOrigin=origin||'';sheet.dataset.cropReturnScroll=String(returnScroll);sheet.dataset.cropEditMode=String(!!initialEditing);sheet.dataset.cropEverEdited=String(!!editedBefore);sheet.scrollTop=sheetScroll;
   let selectedStatus=p.status||'',selectedLocation=p.location||'';
   $('#locationSelect').value=selectedLocation;
   const refreshOverview=()=>{
@@ -1381,15 +1381,28 @@ function showCrop(id,opts={}){
     if(box){box.className=`cropDecision ${d.tone}`;box.innerHTML=cropDecisionHtml(d)}
     if($('#cropQuickLocation'))$('#cropQuickLocation').textContent=cropStatusSummary(p);
     if($('#cropQuickGrowing'))$('#cropQuickGrowing').textContent=p.growing?(p.growingCount!=null?`${p.growingCount}個`:'数未入力'):'なし';
+    if($('#cropReadCount'))$('#cropReadCount').textContent=p.seedCount==null?'未記録':p.seedCount+'個';
+    if($('#cropReadQuality'))$('#cropReadQuality').textContent=qtext(p.seedQuality);
+    if($('#cropReadLocation'))$('#cropReadLocation').textContent=cropStatusSummary(p);
+    if($('#cropReadGrowing'))$('#cropReadGrowing').textContent=p.growing?(p.growingCount!=null?'育成中 '+p.growingCount+'個':'育成中・数未入力'):'なし';
     const growingBanner=$('#cropGrowingBanner');if(growingBanner){growingBanner.classList.toggle('hidden',!p.growing);growingBanner.classList.toggle('active',!!p.growing);growingBanner.textContent=p.growing?`🌱 育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}
   };
   const refreshLocation=()=>{if(selectedStatus==='processing'&&fac){selectedLocation=fac;$('#locationSelect').value=selectedLocation;$('#locationSelect').disabled=true;$('#facilityBox').innerHTML=`加工中のため場所は <b>${locationLabel(selectedLocation)}</b> に自動設定されます`}else{$('#locationSelect').disabled=false;$('#facilityBox').textContent='保管中は倉庫・各風車から選べます'}};
   const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
   const closeCrop=async()=>{
-    await persistCrop();closeModal();
+    if(sheet.dataset.cropEverEdited==='true')await persistCrop();
+    closeModal();
     if(origin==='crops'){const y=returnScroll;crops();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}))}
   };
   refreshLocation();refreshOverview();
+  $('#cropEditToggle').onclick=()=>{
+    const open=$('#cropEditFields').classList.contains('hidden');
+    $('#cropEditFields').classList.toggle('hidden',!open);
+    $('#cropEditToggle').textContent=open?'編集欄を閉じる':'✎ 記録を編集する';
+    $('#cropEditToggle').setAttribute('aria-expanded',String(open));
+    sheet.dataset.cropEditMode=String(open);
+    if(open)sheet.dataset.cropEverEdited='true';
+  };
   $('#closeCropSheet').onclick=closeCrop;$('#cropSheetCloseBottom').onclick=closeCrop;
   $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
   $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
