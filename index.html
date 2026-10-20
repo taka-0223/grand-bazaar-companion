@@ -1462,7 +1462,33 @@ function recipesScreen(){
   $('#recipes').innerHTML=`<div class="pageHead"><h1>料理</h1><p>知っている料理を検索・比較</p><div class="pageHeadMeta"><span>${loaded?'Master接続済み':'簡易表示'}</span><span>既知 ${state.knownRecipes.length}件</span></div></div><input id="recipeSearch" class="search" placeholder="知っている料理から検索" value="${esc(q)}"><div class="controls"><div class="tiny" id="recipeCount">表示 ${arr.length}件 / 既知 ${state.knownRecipes.length}件</div><select id="recipeSort" class="sortSelect"><option value="name">名前順</option><option value="category">カテゴリ順</option><option value="priceDesc">価格 高い順</option><option value="priceAsc">価格 安い順</option></select></div><div class="filters"><button class="filter ${filter==='all'?'active':''}" data-rfilter="all">すべて</button><button class="filter ${filter==='favorite'?'active':''}" data-rfilter="favorite">⭐ お気に入り</button><button class="filter ${filter==='goal'?'active':''}" data-rfilter="goal">目標あり</button><button class="filter ${filter==='archived'?'active':''}" data-rfilter="archived">アーカイブ</button></div><div class="recipeList" id="recipeListBody">${arr.length?arr.map(recipeRow).join(''):'<div class="empty">該当する既知料理はありません</div>'}</div>`;
   $('#recipeSort').value=sort;$('#recipeSearch').oninput=e=>refreshRecipeResults(e.target.value);$('#recipeSort').onchange=async e=>{state.ui.recipeSort=e.target.value;await save();recipesScreen()};$$('[data-rfilter]').forEach(b=>b.onclick=async()=>{state.ui.recipeFilter=b.dataset.rfilter;await save();recipesScreen()});bindRecipeRows()
 }
-function openKnownRecipe(){modal(`<h3>知った料理を登録</h3><p class="small muted">ネタバレ防止のため候補は表示しません。ゲーム内の料理名を最後まで入力してください。</p><div class="field"><label>料理名</label><input id="knownRecipeName" autocomplete="off" placeholder="例：ピザ"></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerRecipe">照合して登録</button></div>`);$('#registerRecipe').onclick=async()=>{const raw=$('#knownRecipeName').value.trim();if(!raw)return;const key=norm(raw),all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);const r=all.find(x=>norm(rname(x.id))===key||norm(x.id)===key);if(!r){toast('料理Masterに完全一致しません');return}if(state.knownRecipes.includes(r.id)){closeModal();showRecipe(r.id);toast('すでに登録済みです');return}state.knownRecipes.push(r.id);for(const id of r.ingredient||[])addKnownConcrete(id);await save();closeModal();showRecipe(r.id);toast(`登録しました：${rname(r.id)}`)}}
+function recipeRegistrationCandidates(raw){
+  const key=norm(raw);if(!key)return[];
+  const all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);
+  const matches=all.filter(r=>norm(rname(r.id)).includes(key)||norm(r.id)===key);
+  const known=new Set(state.knownRecipes||[]);
+  const familiar=matches.filter(r=>known.has(r.id)).slice(0,5);
+  if(familiar.length)return familiar;
+  const exact=matches.filter(r=>norm(rname(r.id))===key||norm(r.id)===key);
+  if(exact.length===1)return exact;
+  // No directory of undiscovered recipes: only one strongly implied prefix.
+  if(key.length>=4&&matches.length===1&&norm(rname(matches[0].id)).startsWith(key))return matches;
+  return[]
+}
+function openKnownRecipe(){modal(`<h3>知った料理を登録</h3><p class="small muted">知っている料理は名前の一部で検索できます。未登録の料理は、十分に名前を入力して1件に絞れたときだけ候補を表示します。</p><div class="field"><label>料理名</label><input id="knownRecipeName" autocomplete="off" placeholder="例：ハーブサンド"><div id="knownRecipeCandidates" role="status" aria-live="polite" style="margin-top:7px"></div></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerRecipe">照合して登録</button></div>`);
+  const showRecipeCandidates=()=>{
+    const box=$('#knownRecipeCandidates'),raw=$('#knownRecipeName').value;
+    const options=recipeRegistrationCandidates(raw);
+    box.innerHTML=options.length?'<div class="card" style="padding:5px">'+options.map(r=>'<button type="button" class="miniLink knownRecipeCandidate" data-recipe="'+esc(r.id)+'" style="display:block;width:100%;text-align:left;padding:9px 7px">🍳 '+esc(rname(r.id))+(state.knownRecipes.includes(r.id)?' <span class="tiny muted">登録済み</span>':'')+'</button>').join('')+'</div>':raw.trim()?'<div class="tiny muted">候補がない場合は、もう少し名前を入力してください。</div>':'';
+    $('.knownRecipeCandidate').forEach(b=>b.onclick=()=>{
+      const r=recipeData(b.dataset.recipe);if(!r)return;
+      $('#knownRecipeName').value=rname(r.id);
+      box.textContent='✓ 料理名を選択しました。「照合して登録」を押してください。';
+    })
+  };
+  $('#knownRecipeName').addEventListener('input',showRecipeCandidates);
+  showRecipeCandidates();
+  $('#registerRecipe').onclick=async()=>{const raw=$('#knownRecipeName').value.trim();if(!raw)return;const key=norm(raw),all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);const r=all.find(x=>norm(rname(x.id))===key||norm(x.id)===key);if(!r){toast('料理候補を選ぶか、名前を最後まで入力してください');return}if(state.knownRecipes.includes(r.id)){closeModal();showRecipe(r.id);toast('すでに登録済みです');return}state.knownRecipes.push(r.id);for(const id of r.ingredient||[])addKnownConcrete(id);await save();closeModal();showRecipe(r.id);toast(`登録しました：${rname(r.id)}`)}}
 function playerHint(id){const p=state.playerState[id];if(!p)return'';const bits=[];if(p.seedQuality!=null)bits.push(`種 ${qtext(p.seedQuality)}`);if(p.seedCount!=null)bits.push(`${p.seedCount}個`);if(p.status==='processing')bits.push(`加工中・${locationLabel(p.location)}`);else if(p.location)bits.push(locationLabel(p.location));return bits.length?`<div class="tiny" style="margin-top:4px;color:#42603c">種管理：${esc(bits.join(' / '))}</div>`:''}
 function processChainHtml(id,mult=1){const p=processData(id);if(!p)return'';const known=(state.knownProcesses||[]).includes(id);if(!known)return `<div class="chain unknown">加工方法はまだKnowledgeに登録されていません。<br><button class="miniLink revealProcess" data-output="${id}">ゲーム内で確認済みとして登録</button></div>`;const inputs=countIngredients(p.ingredient||[]).map(x=>`${rname(x.id)}${x.qty*mult>1?' ×'+(x.qty*mult):''}`).join(' + ');return `<div class="chain">↳ ${esc(inputs)} → <b>${esc(windmillJa(p.windmill))}</b> → ${esc(rname(id))} ${mult>1?'×'+mult:''}</div>`}
 function recipeChainHtml(id,mult=1){const r=recipeData(id);if(!r)return'';const inputs=countIngredients(r.ingredient||[]).map(x=>`${rname(x.id)}${x.qty*mult>1?' ×'+(x.qty*mult):''}`).join(' + ');return `<div class="chain">↳ ${esc(inputs)} → <b>料理</b> → ${esc(rname(id))} ${mult>1?'×'+mult:''}</div>`}
@@ -1471,12 +1497,12 @@ function groupChainHtml(id,mult=1){
   const members=g.members||[],knownEntities=new Set(state.knownEntities||[]),knownProcesses=new Set(state.knownProcesses||[]),knownRecipes=new Set(state.knownRecipes||[]);
   const candidates=members.filter(mid=>knownEntities.has(mid)||knownProcesses.has(mid)||knownRecipes.has(mid));
   const processed=candidates.find(mid=>processData(mid)&&knownProcesses.has(mid));
-  if(processed)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">手元の既知候補：${esc(rname(processed))}</div>${processChainHtml(processed,mult)}</div>`;
+  if(processed)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">知っている候補：${esc(rname(processed))}</div>${processChainHtml(processed,mult)}</div>`;
   const cooked=candidates.find(mid=>recipeData(mid)&&knownRecipes.has(mid));
-  if(cooked)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">手元の既知候補：${esc(rname(cooked))}</div>${recipeChainHtml(cooked,mult)}</div>`;
+  if(cooked)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">知っている候補：${esc(rname(cooked))}</div>${recipeChainHtml(cooked,mult)}</div>`;
   return ''
 }
-function ingredientHtml(x,goal=null){const id=x.id,isGroup=groupById.has(id),opts=isGroup?knownGroupOptions(id):[],req=goal?(state.requirements[goal.id]||[]).find(r=>r.targetId===id):null;return `<div class="ingredientLine"><div class="row between"><div class="grow"><div class="small strong">${esc(rname(id))}</div><div class="tiny">${isGroup?'材料グループ':'必要素材'}</div>${req?`<div class="countPair"><span>現在 <b>${req.have}</b></span><span>必要 <b>${req.need}</b></span></div>`:`<div class="countPair"><span></span><span>必要 <b>${x.qty}</b></span></div>`}${opts.length?`<div class="tiny" style="margin-top:4px;color:#42603c">手元の候補：${opts.map(rname).map(esc).join(' / ')}</div>`:''}${isGroup?'':playerHint(id)}</div>${recipeData(id)&&state.knownRecipes.includes(id)?`<button class="btn secondary smallbtn nestedRecipe" data-rid="${id}">料理を見る</button>`:''}</div>${isGroup?groupChainHtml(id,req?.need??x.qty):processChainHtml(id,req?.need??x.qty)}${isGroup?'':recipeChainHtml(id,req?.need??x.qty)}</div>`}
+function ingredientHtml(x,goal=null){const id=x.id,isGroup=groupById.has(id),opts=isGroup?knownGroupOptions(id):[],req=goal?(state.requirements[goal.id]||[]).find(r=>r.targetId===id):null;return `<div class="ingredientLine"><div class="row between"><div class="grow"><div class="small strong">${esc(rname(id))}</div><div class="tiny">${isGroup?'材料グループ':'必要素材'}</div>${req?`<div class="countPair"><span>現在 <b>${req.have}</b></span><span>必要 <b>${req.need}</b></span></div>`:`<div class="countPair"><span></span><span>必要 <b>${x.qty}</b></span></div>`}${opts.length?`<div class="tiny" style="margin-top:4px;color:#42603c">知っている候補：${opts.map(rname).map(esc).join(' / ')}</div>`:''}${isGroup?'':playerHint(id)}</div>${recipeData(id)&&state.knownRecipes.includes(id)?`<button class="btn secondary smallbtn nestedRecipe" data-rid="${id}">料理を見る</button>`:''}</div>${isGroup?groupChainHtml(id,req?.need??x.qty):processChainHtml(id,req?.need??x.qty)}${isGroup?'':recipeChainHtml(id,req?.need??x.qty)}</div>`}
 let CURRENT_RECIPE_ID=null;function bindRecipeDetail(){$$('.revealProcess').forEach(b=>b.onclick=()=>confirmRevealProcess(b.dataset.output));$$('.nestedRecipe').forEach(b=>b.onclick=()=>showRecipe(b.dataset.rid))}
 function showRecipe(id){
   CURRENT_RECIPE_ID=id;const r=recipeData(id);if(!r)return;touchRecent('recipe',id);
@@ -1485,7 +1511,7 @@ function showRecipe(id){
     ${goal?'<div class="badge accent" style="margin:8px 0 4px">目標あり</div>':''}
     ${effect?`<div class="recipeEffectCard"><span class="recipeEffectIcon">✨</span><div><div class="tiny muted">料理効果</div><div class="small strong">${esc(effect)}</div></div></div>`:''}
     <div class="section" style="margin-top:14px"><div class="section-head"><h2>必要なもの</h2></div><div class="card">${ings.map(x=>ingredientHtml(x,goal)).join('')}</div></div>
-    <div class="notice">加工品は、ゲーム内で確認済みの加工方法だけ経路表示します。</div>
+    <div class="notice">候補はアプリに記録した既知情報に応じて更新されます。所持している現物や在庫数を表すものではありません。加工品は、確認済みの加工方法だけ表示します。</div>
     <div class="stack" style="margin-top:12px">${goal?'<button class="btn" id="openRecipeGoal">この料理の目標を開く</button>':'<button class="btn" id="makeRecipeGoal">作りたい → 目標に追加</button>'}<button class="btn secondary" id="archiveRecipe">${meta.archived?'アーカイブから戻す':'アーカイブ'}</button></div>
     <div class="sheet-actions"><button class="btn" id="recipeSheetCloseBottom">閉じる</button></div>`);
   const close=()=>{closeModal();recipesScreen()};
