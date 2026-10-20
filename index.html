@@ -173,7 +173,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.14';
+const APP_VERSION='0.11.15';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};
@@ -1482,7 +1482,7 @@ function plan(){
   bindGoalOpen();
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.actionEdit').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id,'plan'));
-  $('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();plan()});
+  $$('[data-pin]').forEach(b=>b.onclick=async()=>{const a=state.actions.find(x=>x.id===b.dataset.pin);if(!a)return;a.pinned=!a.pinned;await save();plan()});
   bindActionReorder();
 }
 // Reorder only currently visible, unfinished actions. Completed actions keep their slots.
@@ -1954,7 +1954,7 @@ function openQuickAdd(){
   modal(`<h3>＋ ${label}</h3><div class="stack" style="margin-top:10px">${actions.map(([icon,title,type],i)=>`<button class="btn ${i===0?'':'secondary'} quickRelated" data-type="${type}" style="width:100%;text-align:left">${icon} ${title}</button>`).join('')}</div><div class="sheet-actions"><button class="btn ghost" onclick="closeModal()">閉じる</button></div>`);
   $$('.quickRelated').forEach(b=>b.onclick=()=>{const type=b.dataset.type;closeModal();if(type==='goal')openGeneralPlan();else if(type==='action')openAction(null,null,screen==='home'?'home':'plan');else if(type==='request')openRequestRecord();else if(type==='memo')openCapture()})
 }
-function bindGoalOpen(){$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b.dataset.id,'plan'))}
+function bindGoalOpen(){$$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b.dataset.id,'plan'))}
 const SCREEN_RENDERERS={home,crops,recipes:recipesScreen,plan,inbox};
 function renderScreen(id){const draw=SCREEN_RENDERERS[id];if(draw){const t=PERF_DIAG.begin();draw();PERF_DIAG.record('render',t)}}
 function render(){state=migrate(state)||clone(INITIAL);const plantNormalized=reconcileKnownPlantMaster(),bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();const currentCal=calendarState();if(calendarHasToday(currentCal.today))state.season=currentCal.today.season;$('#seasonSelect').value=state.season||'';setSeasonSelectClass();syncHeaderSeasonUi();const active=$('.navbtn.active')?.dataset.nav||'home';renderScreen(active);show(active);updateSaveStatus();if(plantNormalized||bazaarNormalized||groupsNormalized||requestsSynced)save()}
