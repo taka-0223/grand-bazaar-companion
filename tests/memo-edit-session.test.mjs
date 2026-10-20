@@ -319,5 +319,87 @@ test('AS-4/UN-6: failed Undo persistence is retried before leaving the reopened 
   h.setFailures(false,false);await h.close();assert.deepEqual(saved(h).actions.map(a=>a.id),['one','two']);
 });
 
+test('submemo Add: A fails, B retry persists only B once under the same child ID',async()=>{
+  const h=harness({localFails:true,idbFails:true});h.ctx.openCapture('a');const input=h.$('#subText'),add=h.$('#addSub');
+  h.input(input,'追加A');add.click();await h.finishWrites();
+  const childId=h.pending[0].record.captures[0].children[1].id;
+  assert.equal(h.root.modal.classList.contains('open'),true);
+  h.input(input,'  追加B\n★  ');h.setFailures(false,false);add.click();await h.finishWrites();
+  assert.deepEqual(saved(h).captures[0].children.slice(1),[{id:childId,text:'  追加B\n★  ',done:false}]);
+  assert.equal(current(h).children.length,2);
+});
+
+test('submemo Add: input B during save A is saved before the editor is rebuilt',async()=>{
+  const h=harness();h.ctx.openCapture('a');const input=h.$('#subText');h.input(input,'追加A');h.$('#addSub').click();
+  await h.until(()=>h.pending.length===1);const childId=h.pending[0].record.captures[0].children[1].id;
+  h.input(input,'  保存中のB\n★  ');h.pending[0].done=true;h.pending[0].resolve();
+  await h.until(()=>h.pending.length===2);
+  assert.equal(h.$('#subText'),input,'Do not discard the current draft before the latest save succeeds');
+  assert.equal(h.pending[1].record.captures[0].children[1].text,'  保存中のB\n★  ');
+  await h.finishWrites();assert.deepEqual(saved(h).captures[0].children.slice(1),[{id:childId,text:'  保存中のB\n★  ',done:false}]);
+});
+
+test('submemo Add: repeated failures retain latest input and retry one stable child ID',async()=>{
+  const h=harness({localFails:true,idbFails:true});h.ctx.openCapture('a');const input=h.$('#subText'),add=h.$('#addSub');
+  for(const text of ['失敗A','失敗B','  最終C\n★  ']){
+    h.input(input,text);add.click();await h.finishWrites();
+    assert.equal(h.$('#subText'),input);assert.equal(input.value,text);assert.equal(current(h).children.length,2);
+    assert.equal(h.root.modal.classList.contains('open'),true);
+  }
+  const ids=h.pending.map(p=>p.record.captures[0].children[1].id);assert.equal(new Set(ids).size,1);
+  h.setFailures(false,false);add.click();await h.finishWrites();
+  assert.deepEqual(saved(h).captures[0].children.slice(1),[{id:ids[0],text:'  最終C\n★  ',done:false}]);
+});
+
+test('unadded submemo: typing/blur/composition do not claim autosave or create storage writes',async()=>{
+  const h=harness();h.ctx.openCapture('a');const input=h.$('#subText'),status=h.$('#saveStatus');
+  status.textContent='端末保存 テスト';h.input(input,'未追加の入力');
+  assert.equal(status.textContent,'端末保存 テスト','An unadded draft must not enter the autosave status cycle');
+  input.blur();h.runTimers();await h.tick();assert.equal(h.pending.length,0);
+  assert.match(h.$('#subDraftStatus')?.textContent||'',/未追加|まだ保存/);
+  input.dispatch('compositionstart');h.input(input,'変換中');input.dispatch('compositionend');h.runTimers();await h.tick();
+  assert.equal(status.textContent,'端末保存 テスト');assert.equal(h.pending.length,0);assert.equal(current(h).children.length,1);
+});
+
+test('submemo Add: composing the draft blocks Add and Enter, while existing child edits still save',async()=>{
+  const h=harness();h.ctx.openCapture('a');const input=h.$('#subText'),child=h.root.modalSheet.querySelector('.subInlineEditable');
+  input.dispatch('compositionstart');h.input(input,'変換中の新規子');await h.$('#addSub').click();
+  await input.dispatch('keydown',{key:'Enter',isComposing:false,shiftKey:false});
+  assert.equal(h.pending.length,0);assert.equal(current(h).children.length,1);
+  await h.$('#closeCaptureEditor').click();assert.equal(h.root.modal.classList.contains('open'),true);
+  input.dispatch('compositionend');h.runTimers();await h.tick();assert.equal(h.pending.length,0);
+  h.input(child,'  既存の子を編集\n★  ');await h.close();
+  assert.deepEqual(saved(h).captures[0].children,[{id:'child',text:'  既存の子を編集\n★  ',done:false}]);
+});
+
+test('submemo Add: last draft edit during a concurrent body save is included before leaving',async()=>{
+  const h=harness();h.ctx.openCapture('a');const input=h.$('#subText');h.input(input,'追加A');h.$('#addSub').click();
+  await h.until(()=>h.pending.length===1);h.input(body(h),'本文の後続編集');h.runTimers();h.input(input,'最新B');
+  await h.finishWrites();const persisted=saved(h).captures[0];
+  assert.equal(persisted.text,'本文の後続編集');assert.equal(persisted.children.length,2);assert.equal(persisted.children[1].text,'最新B');
+});
+
+test('submemo Add: after failure, Close also flushes the latest explicit-add draft once',async()=>{
+  const h=harness({localFails:true,idbFails:true});h.ctx.openCapture('a');const input=h.$('#subText');h.input(input,'追加A');h.$('#addSub').click();await h.finishWrites();
+  const childId=current(h).children[1].id;h.input(input,'閉じる前のB');h.setFailures(false,false);await h.close();
+  assert.deepEqual(saved(h).captures[0].children.slice(1),[{id:childId,text:'閉じる前のB',done:false}]);
+});
+
+test('submemo Add: composition starting during save keeps the draft until an explicit retry',async()=>{
+  const h=harness();h.ctx.openCapture('a');const input=h.$('#subText');h.input(input,'追加A');h.$('#addSub').click();await h.until(()=>h.pending.length===1);
+  input.dispatch('compositionstart');h.input(input,'変換中のB');await h.finishWrites();
+  assert.equal(h.$('#subText'),input);assert.equal(h.root.modal.classList.contains('open'),true);
+  input.dispatch('compositionend');await h.tick();assert.equal(h.$('#subText'),input,'Do not replay a blocked transition after compositionend');
+  h.$('#addSub').click();await h.finishWrites();assert.equal(saved(h).captures[0].children.length,2);assert.equal(saved(h).captures[0].children[1].text,'変換中のB');
+  h.input(input,'破棄済みの入力');assert.equal(current(h).children[1].text,'変換中のB');
+});
+
+test('submemo Add: whitespace-only revision cannot silently confirm the earlier draft',async()=>{
+  const h=harness({localFails:true,idbFails:true});h.ctx.openCapture('a');const input=h.$('#subText');h.input(input,'追加A');h.$('#addSub').click();await h.finishWrites();
+  const childId=current(h).children[1].id;h.input(input,' \n ');h.setFailures(false,false);await h.close();
+  assert.equal(h.root.modal.classList.contains('open'),true);assert.equal(h.$('#subText'),input);assert.equal(input.value,' \n ');
+  h.input(input,'  確定B\n★  ');h.$('#addSub').click();await h.finishWrites();assert.deepEqual(saved(h).captures[0].children.slice(1),[{id:childId,text:'  確定B\n★  ',done:false}]);
+});
+
 // Parses all of the app, not just the extracted test sections.
 test('full inline app is syntactically valid',()=>{const start=html.indexOf('const MASTER=JSON.parse');new Script(html.slice(start,html.indexOf('</script>',start)))});

@@ -472,16 +472,18 @@ function leaveMemoEditors(navigate,mutation=null,dispose=true){
 function deferMemoNavigation(navigate){if(!memoEditors.size&&!memoPendingSave)return false;void leaveMemoEditors(navigate);return true}
 function createMemoEditor(fields,{captureId=null,body=null,extra=[]}={}){
   let disposed=false,retry=false;
-  const listeners=[],seen=new Map(fields.map(f=>[f.el,f.read()]));
+  const listeners=[],extraComposing=new Set(),seen=new Map(fields.map(f=>[f.el,f.read()]));
   const accepted=new Map(seen);
-  const changed=()=>{for(const f of fields){const value=f.read();if(value!==seen.get(f.el)){seen.set(f.el,value);invalidateMemoUndo()}}};
+  const changed=()=>{for(const f of fields){const value=f.read();if(value!==seen.get(f.el)){seen.set(f.el,value);if(f.active?.()!==false)invalidateMemoUndo()}}};
   const persist=async()=>{
     if(disposed)return true;
     // Capture values before the first await; never query a replacement sheet.
-    const values=fields.map(f=>[f,f.read()]);let modified=false,exists=false;
+    const values=fields.filter(f=>f.active?.()!==false&&!extraComposing.has(f.el)).map(f=>[f,f.read()]);let modified=false,exists=false;
+    if(values.some(([f,text])=>f.required&&!text.trim()))return false;
     for(const [f,text] of values){
       const captureId=typeof f.captureId==='function'?f.captureId():f.captureId;
-      const c=state.captures.find(x=>x.id===captureId),record=f.childId?c?.children?.find(x=>x.id===f.childId):c;
+      const childId=typeof f.childId==='function'?f.childId():f.childId;
+      const c=state.captures.find(x=>x.id===captureId),record=childId?c?.children?.find(x=>x.id===childId):c;
       if(!record){accepted.set(f.el,text);continue}exists=true;
       if(!text.trim()){accepted.set(f.el,text);continue}
       if(text===accepted.get(f.el))continue;
@@ -491,19 +493,25 @@ function createMemoEditor(fields,{captureId=null,body=null,extra=[]}={}){
     if(!exists||(!modified&&!retry)){updateSaveStatus();return true}
     retry=true;const ok=await save();if(ok)retry=false;return ok;
   };
-  const autosave=bindAutosave([...fields.map(f=>f.el),...extra],persist);
+  const autoElements=fields.filter(f=>f.autosave!==false).map(f=>f.el);
+  const autosave=bindAutosave(autoElements,persist);
   const listen=(el,type,fn)=>{el.addEventListener(type,fn);listeners.push([el,type,fn])};
   for(const f of fields){
     listen(f.el,'input',changed);
-    if(f.childId){
+    if(f.childId&&f.autosave!==false){
       listen(f.el,'click',e=>e.stopPropagation());
       listen(f.el,'keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&!autosave.composing){e.preventDefault();f.el.blur()}});
     }
   }
-  const editor={captureId,body,get disposed(){return disposed},get composing(){return autosave.composing},
-    get dirty(){return retry||fields.some(f=>f.read()!==accepted.get(f.el))},
+  // Draft-only fields need composition protection without autosave/status events.
+  for(const el of extra.filter(el=>!autoElements.includes(el))){
+    listen(el,'compositionstart',()=>extraComposing.add(el));
+    listen(el,'compositionend',()=>extraComposing.delete(el));
+  }
+  const editor={captureId,body,get disposed(){return disposed},get composing(){return autosave.composing||!!extraComposing.size},
+    get dirty(){return retry||fields.some(f=>f.active?.()!==false&&f.read()!==accepted.get(f.el))},
     get blankBody(){return !!captureId&&!!body&&!body.value.trim()},
-    async flush(){if(disposed)return false;changed();return autosave.flush()},
+    async flush(){if(disposed||editor.composing)return false;changed();return autosave.flush()},
     retrySave(){retry=true},
     dispose(){if(disposed)return;disposed=true;autosave.dispose();for(const [el,type,fn] of listeners)el.removeEventListener(type,fn);memoEditors.delete(editor)}
   };
@@ -1889,9 +1897,9 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
       ?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn secondary" id="restoreCaptureDetail" style="width:100%">アーカイブから戻す</button></div>`
       :`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn ghost" id="archiveCaptureDetail" style="width:100%">アーカイブ</button></div>`
   ):'';
-  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?'<div class="editorSaveHint">本文とサブメモは自動保存されます</div>':''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
-  const body=$('#capText'),subInput=$('#subText');let draftId=null;
-  const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)}))];
+  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?'<div class="editorSaveHint">本文と追加済みのサブメモは自動保存されます</div>':''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div><div id="subDraftStatus" class="tiny muted" role="status" style="margin-top:6px">「追加」を押すまで保存されません。</div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
+  const body=$('#capText'),subInput=$('#subText');let draftId=null,subDraftId=null,subDraftAdded=false;
+  const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)})),...(subInput?[{el:subInput,captureId:id,childId:()=>subDraftId,active:()=>subDraftAdded,autosave:false,required:true,read:()=>subInput.value}]:[])];
   const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput].filter(Boolean)});
   const finish=()=>{closeModal();inbox()};
   $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(finish);
@@ -1912,14 +1920,26 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
       const remove=memoOperation(null,()=>{const c=state.captures.find(y=>y.id===id);if(c){c.children=(c.children||[]).filter(y=>y.id!==x.dataset.child);c.updatedAt=new Date().toISOString()}});
       x.onclick=()=>{if(editor.composing)return;if(confirm('このサブメモを削除しますか？'))return leaveMemoEditors(()=>openCapture(id),remove)};
     });
-    // Only an explicit Add commits this draft. Keep its ID across failed retries.
-    let addSub=null;
+    // Activate the same draft field once; flush reads its latest value on every retry.
+    const addSub=()=>{
+      if(!subDraftAdded){
+        const c=state.captures.find(y=>y.id===id);if(!c||!subInput.value.trim())return false;
+        subDraftId??='sc'+Date.now();
+        (c.children??=[]).push({id:subDraftId,text:subInput.value,done:false});
+        c.updatedAt=new Date().toISOString();subDraftAdded=true;editor.retrySave();
+      }
+      return true;
+    };
+    const subDraftStatus=$('#subDraftStatus');
+    subInput.addEventListener('input',()=>{
+      if(editor.disposed)return;
+      subDraftStatus.textContent=subDraftAdded?'変更はまだ保存確定していません。追加で再試行できます。':'未追加：この入力はまだ保存されていません。';
+    });
     $('#addSub').onclick=()=>{
-      if(editor.composing||!subInput.value.trim())return;
-      if(!addSub){const text=subInput.value,childId='sc'+Date.now();addSub=memoOperation(null,()=>{const c=state.captures.find(y=>y.id===id);if(c){(c.children??=[]).push({id:childId,text,done:false});c.updatedAt=new Date().toISOString()}})}
+      if(editor.disposed||editor.composing||!subInput.value.trim())return;
       return leaveMemoEditors(()=>openCapture(id),addSub);
     };
-    subInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&!editor.composing){e.preventDefault();$('#addSub').click()}});
+    subInput.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing&&!editor.disposed&&!editor.composing){e.preventDefault();$('#addSub').click()}});
   }else{
     // New drafts are not autosaved or inserted until the explicit Add action.
     $('#addCaptureRecord').onclick=()=>{
