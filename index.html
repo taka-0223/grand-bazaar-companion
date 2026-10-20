@@ -1333,6 +1333,8 @@ function showCrop(id,opts={}){
   DETAIL_CONTEXT='crops';
   const priorSheet=$('#modalSheet'),refresh=!!opts.refresh&&$('#modal')?.classList.contains('open')&&priorSheet?.dataset.cropDetailId===String(id);
   const origin=opts.origin||(refresh?priorSheet.dataset.cropOrigin:activeScreenId()),returnScroll=Number(opts.returnScroll??(refresh?priorSheet.dataset.cropReturnScroll:window.scrollY))||0,sheetScroll=Number(opts.sheetScroll??(refresh?priorSheet.scrollTop:0))||0;
+  const initialEditing=opts.edit===true||(refresh&&priorSheet.dataset.cropEditMode==='true');
+  const editedBefore=initialEditing||(refresh&&priorSheet.dataset.cropEverEdited==='true');
   if(!refresh)touchRecent('crop',id);
   const e=ent(id),p=player(id),lab=plantLabels(e),fac=facilityFor(e),isCustom=!baseById.has(id)&&customById().has(id),facts=knownFacts().filter(f=>f.output===id||(f.inputs||[]).some(x=>x.entity===id)),masterSeasons=masterSeasonsForId(id),seasons=effectiveSeasons(e),growSummary=cultivationSummary(e)||'未確認',decision=cropStockDecision(e,p,lab);
   modal(`<div class="cropSheetToolbar">
@@ -1342,6 +1344,17 @@ function showCrop(id,opts={}){
     <div class="cropDetailHead"><div class="cropDetailMeta">${seasons.length?seasons.map(s=>`<span class="badge ${seasonClass(s)}">${esc(s)}</span>`).join(''):'<span class="pill">季節未確認</span>'}<span class="pill">${esc(growSummary)}</span>${p.growing?'<span class="pill green">育成中</span>':''}</div></div>
     <div id="cropGrowingBanner" class="cropGrowingBanner ${p.growing?'active':'hidden'}">🌱 ${p.growing?`育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}</div>
     <div id="cropStockDecision" class="cropDecision ${decision.tone}">${cropDecisionHtml(decision)}</div>
+    <div class="card cropReadOverview"><div class="strong small" style="margin-bottom:10px">いまの記録</div>
+      <div class="cropReadGrid">
+        <div><span>種・苗の品質</span><b id="cropReadQuality">${qtext(p.seedQuality)}</b></div>
+        <div><span>${esc(lab.n)}</span><b id="cropReadCount">${p.seedCount==null?'未記録':p.seedCount+'個'}</b></div>
+        <div><span>保管・加工</span><b id="cropReadLocation">${esc(cropStatusSummary(p))}</b></div>
+        <div><span>育成</span><b id="cropReadGrowing">${p.growing?(p.growingCount!=null?'育成中 '+p.growingCount+'個':'育成中・数未入力'):'なし'}</b></div>
+      </div>
+    </div>
+    ${cultivationInfoHtml(e)}
+    <button type="button" class="btn secondary cropEditToggle" id="cropEditToggle" aria-controls="cropEditFields" aria-expanded="${initialEditing?'true':'false'}">${initialEditing?'編集欄を閉じる':'✎ 記録を編集する'}</button>
+    <div id="cropEditFields" class="cropEditFields ${initialEditing?'':'hidden'}">
     <div class="section"><div class="section-head"><h2>在庫・品質</h2><span class="tiny">自動保存</span></div><div class="card cropQuickCard stack">
       <div class="cropQuickGrid">
         ${qStepper(id,'seedQuality',lab.q,p.seedQuality)}
@@ -1350,13 +1363,13 @@ function showCrop(id,opts={}){
       <div class="cropQuickMeta"><div><span class="tiny muted">保管・加工</span><b id="cropQuickLocation">${esc(cropStatusSummary(p))}</b></div><div><span class="tiny muted">育成</span><b id="cropQuickGrowing">${p.growing?`${p.growingCount??'数未入力'}${p.growingCount!=null?'個':''}`:'なし'}</b></div></div>
       ${isCustom?`<div class="field"><label>育つ季節（複数選択）</label><div class="season-grid">${['春','夏','秋','冬'].map(s=>`<button type="button" class="season-chip ${seasonClass(s)} ${(p.knownSeasons||[]).includes(s)?'active':''}" data-season="${s}">${s}</button>`).join('')}</div></div>`:''}
     </div></div>
-    ${cultivationInfoHtml(e)}
     <div class="section"><div class="section-head"><h2>保管・加工</h2></div><div class="card stack">
       <div class="field"><label>状態</label><div class="stateChoice">${[['','未設定'],['stored','保管中'],['processing','加工中']].map(([v,l])=>`<button type="button" class="stateBtn ${p.status===v?'active':''}" data-status="${v}">${l}</button>`).join('')}</div></div>
       <div class="field"><label>保管場所</label><select id="locationSelect"><option value="">未設定</option><option value="warehouse">倉庫</option><option value="blue_windmill">青風車</option><option value="red_windmill">赤風車</option><option value="yellow_windmill">黄風車</option></select><div class="facilityBox" id="facilityBox"></div></div>
     </div></div>
     <div class="section"><div class="section-head"><h2>育成・収穫</h2></div><div class="card stack"><div class="switchline"><div><div class="strong small">育成中</div><div class="tiny">植えているものがある時だけON</div></div><label class="switch"><input id="growing" type="checkbox" ${p.growing?'checked':''}><span class="slider"></span></label></div><div class="field"><label>育成中の数（任意）</label><input id="growingCount" type="number" min="0" inputmode="numeric" value="${p.growingCount??''}" placeholder="空欄でもOK"></div>${qStepper(id,'harvestQuality','収穫作物の品質（必要な時だけ）',p.harvestQuality)}</div></div>
     <div class="section"><div class="section-head"><h2>メモ</h2></div><div class="card"><div class="field"><textarea id="cropNote" placeholder="必要なことだけ">${esc(p.note||'')}</textarea></div></div></div>
+    </div>
     ${facts.length?`<div class="section"><div class="section-head"><h2>自分が知っている加工</h2></div>${facts.map(factCard).join('')}</div>`:''}
     ${isCustom?'<button class="btn danger" id="deleteCustomCrop" style="width:100%">このカスタム品目を削除</button>':''}
     <div class="sheet-actions cropSheetBottomActions"><button class="btn" id="cropSheetCloseBottom">閉じる</button></div>`);
