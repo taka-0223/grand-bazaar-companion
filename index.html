@@ -432,10 +432,10 @@ function bindAutosave(elements,persist,delay=400){
 }
 // RAM-only editor lifecycle. save() remains the sole whole-state persistence queue.
 const memoEditors=new Set();
-let memoExitPromise=null,memoEditRevision=0,memoStateGeneration=0,memoPendingSave=null;
-function invalidateMemoUndo(){memoEditRevision++;undoSnapshot=null;clearTimeout(undoTimer);$('#undo')?.classList.remove('show')}
+let memoExitPromise=null,memoEditRevision=0,memoStateGeneration=0,memoPendingSave=null,memoLinksUndo=null;
+function invalidateMemoUndo(){memoEditRevision++;undoSnapshot=null;if(!memoLinksUndo){clearTimeout(undoTimer);$('#undo')?.classList.remove('show')}}
 function disposeMemoEditors(){for(const editor of [...memoEditors])editor.dispose()}
-function replaceMemoState(next){disposeMemoEditors();memoStateGeneration++;memoPendingSave=null;invalidateMemoUndo();state=next}
+function replaceMemoState(next){disposeMemoEditors();memoStateGeneration++;memoPendingSave=null;memoLinksUndo=null;invalidateMemoUndo();state=next}
 async function flushMemoEditors(){
   const editors=[...memoEditors];
   do{
@@ -620,9 +620,13 @@ function qtext(v){return v==null?'未設定':`★${Number(v).toFixed(Number(v)%1
 function seasonClass(s){return s==='春'?'spring':s==='夏'?'summer':s==='秋'?'autumn':'winter'}function seasonBadge(s){return `<span class="badge ${seasonClass(s)}">${s==='春'?'🌸':s==='夏'?'☀️':s==='秋'?'🍂':'❄️'} ${s}</span>`}function setSeasonSelectClass(){const e=$('#seasonSelect');e.classList.remove('spring','summer','autumn','winter');if(state.season)e.classList.add(seasonClass(state.season))}
 function syncHeaderSeasonUi(){const c=calendarState(),has=calendarHasToday(c.today),sel=$('#seasonSelect'),btn=$('#seasonContextBtn');if(!sel||!btn)return;btn.classList.remove('spring','summer','autumn','winter');if(has){sel.classList.add('hidden');btn.classList.remove('hidden');btn.classList.add(seasonClass(c.today.season));btn.textContent=`${seasonIcon(c.today.season)} ${c.today.season}`;btn.setAttribute('aria-label',`${c.today.season}の月。カレンダーを開く`)}else{btn.classList.add('hidden');sel.classList.remove('hidden')}}
 function toast(s){const e=$('#toast');e.textContent=s;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),1500)}
-function showUndo(label,snapshot){undoSnapshot=snapshot;const u=$('#undo');$('#undoText').textContent=label;u.classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{u.classList.remove('show');undoSnapshot=null},5000)}
+function showUndo(label,snapshot,links=null){undoSnapshot=links?null:snapshot;memoLinksUndo=links;const u=$('#undo');$('#undoText').textContent=label;u.classList.add('show');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{u.classList.remove('show');undoSnapshot=null;memoLinksUndo=null},5000)}
 async function withUndo(label,fn){const before=clone(state),revision=memoEditRevision;fn();const ok=await save();if(ok!==false&&revision===memoEditRevision)showUndo(label,before);return ok}
 $('#undoBtn').onclick=async()=>{
+  if(memoLinksUndo){const token=memoLinksUndo;return leaveMemoEditors(()=>refreshMemoRecipeLinks(),persistCaptureLinks(token.captureId,c=>{
+    if(memoLinksUndo!==token||token.generation!==memoStateGeneration||!sameCaptureLinks(c,token.after))return false;
+    restoreCaptureLinks(c,token.before);memoLinksUndo=null;$('#undo').classList.remove('show');return true;
+  },false),false)}
   if(!undoSnapshot||!await flushMemoEditors()||!undoSnapshot)return;
   const id=[...memoEditors].find(e=>e.body)?.captureId,snapshot=undoSnapshot;
   replaceMemoState(snapshot);$('#undo').classList.remove('show');
@@ -1845,6 +1849,98 @@ function openAction(goalId=null,id=null,origin=null){if(deferMemoNavigation(()=>
   }
 }
 function captureStatus(c){return c.status||(c.processed?'processed':'active')}
+// Read adapters never normalize or repair persisted links.
+function captureLinks(c){
+  const seen=new Set();return (Array.isArray(c?.links)?c.links:[]).filter(x=>{
+    if(!x||x.kind!=='recipe'||typeof x.id!=='string'||!x.id||seen.has(x.id))return false;
+    seen.add(x.id);return true;
+  });
+}
+function memoRecipeName(id){if(!(state.knownRecipes||[]).includes(id))return null;const label=rname(id);return label&&label!==id?label:null}
+function memoRecipeMatches(text){
+  const raw=String(text).normalize('NFKC'),fold=s=>s.toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60)),input=fold(raw);
+  const cls=c=>/[ァ-ヶー]/.test(c||'')?'K':/[ぁ-ゖ]/.test(c||'')?'H':/[\p{Script=Han}々]/u.test(c||'')?'C':/[a-zA-Z]/.test(c||'')?'L':'O';
+  const particles=new Set('をがはのにでとやもへか'),matches=[];
+  for(const id of new Set(state.knownRecipes||[])){
+    const label=memoRecipeName(id);if(!label)continue;const name=label.normalize('NFKC'),needle=fold(name);if(needle.length<2)continue;
+    for(let pos=input.indexOf(needle);pos!==-1;pos=input.indexOf(needle,pos+1)){
+      const end=pos+needle.length,prev=raw[pos-1],next=raw[end],first=raw[pos],last=raw[end-1];
+      const before=cls(prev)==='O'||(cls(prev)==='H'?particles.has(prev):cls(prev)!==cls(first));
+      const after=cls(next)==='O'||(cls(last)==='H'?(particles.has(next)||cls(next)==='C'):cls(next)!==cls(last));
+      if(before&&after)matches.push({id,pos,end});
+    }
+  }
+  const longest=matches.filter(m=>!matches.some(n=>n.pos<=m.pos&&n.end>=m.end&&n.end-n.pos>m.end-m.pos));
+  return [...new Set(longest.sort((a,b)=>a.pos-b.pos).map(m=>m.id))];
+}
+function memoRecipeCandidates(text,linked=[]){return memoRecipeMatches(text).filter(id=>!linked.includes(id)).slice(0,3)}
+function searchMemoRecipes(query,linked=[]){const key=norm(query);return key?[...new Set(state.knownRecipes||[])].filter(id=>{const label=memoRecipeName(id);return label&&!linked.includes(id)&&norm(label).includes(key)}).slice(0,20):[]}
+function changeCaptureLink(c,id,add){
+  if(Object.hasOwn(c,'links')&&!Array.isArray(c.links))return false;
+  const links=captureLinks(c),present=links.some(x=>x.id===id);
+  if(add){if(present||links.length>=3||!memoRecipeName(id))return false;(c.links??=[]).push({kind:'recipe',id})}
+  else{if(!present)return false;c.links=c.links.filter(x=>!(x?.kind==='recipe'&&x.id===id));if(!c.links.length)delete c.links}
+  return true;
+}
+function rawCaptureLinks(c){return Object.hasOwn(c,'links')?{present:true,value:clone(c.links)}:{present:false}}
+function sameCaptureLinks(c,raw){return !!c&&JSON.stringify(rawCaptureLinks(c))===JSON.stringify(raw)}
+function restoreCaptureLinks(c,raw){if(raw.present)c.links=clone(raw.value);else delete c.links}
+function refreshMemoRecipeLinks(){for(const editor of memoEditors)editor.refreshLinks?.()}
+// One operation uses the existing flush/exit lock and save queue, including retries.
+function persistCaptureLinks(captureId,mutate,undo=true){
+  let token=null,completed=false;
+  const run=async()=>{
+    if(completed)return true;
+    const c=state.captures.find(x=>x.id===captureId);if(!c)return false;
+    if(!token){
+      const before=rawCaptureLinks(c);if(!mutate(c))return false;
+      token={captureId,before,after:rawCaptureLinks(c),generation:memoStateGeneration};
+      // A new links operation replaces the previous whole/local Undo.
+      memoEditRevision++;undoSnapshot=null;memoLinksUndo=null;clearTimeout(undoTimer);$('#undo')?.classList.remove('show');
+    }
+    if(token.generation!==memoStateGeneration||!sameCaptureLinks(c,token.after)){if(memoPendingSave===run)memoPendingSave=null;return false}
+    c.updatedAt=new Date().toISOString();const ok=await save();
+    if(token.generation!==memoStateGeneration)return false;
+    if(ok){completed=true;if(memoPendingSave===run)memoPendingSave=null;if(undo&&sameCaptureLinks(state.captures.find(x=>x.id===captureId),token.after))showUndo('料理の関連付けを元に戻せます',null,token)}
+    else memoPendingSave=run;
+    refreshMemoRecipeLinks();return ok;
+  };return run;
+}
+function bindMemoRecipeLinks(editor,id,draft){
+  const selected=$('#memoLinksSelected'),candidates=$('#memoLinksCandidates'),results=$('#memoLinksResults'),query=$('#memoLinksQuery'),status=$('#memoLinksStatus'),retry=$('#memoLinksRetry'),search=$('#memoLinksSearch'),searchField=$('#memoLinksSearchField');
+  let timer=null,matches=[],searching=false;
+  const record=()=>id?state.captures.find(c=>c.id===id):draft;
+  const choose=(recipeId,add)=>{
+    if(editor.disposed||editor.composing||memoExitPromise)return;
+    if(!id){if(changeCaptureLink(draft,recipeId,add))refresh();return}
+    return leaveMemoEditors(refresh,persistCaptureLinks(id,c=>changeCaptureLink(c,recipeId,add)),false);
+  };
+  const choices=(box,ids)=>{
+    box.innerHTML=ids.map((recipeId,i)=>`<label class="small" style="display:inline-flex;align-items:center;margin:4px 10px 4px 0"><input type="checkbox" class="memoLinkChoice" data-index="${i}"> ${esc(memoRecipeName(recipeId)||'')}</label>`).join('');
+    box.querySelectorAll('.memoLinkChoice').forEach(el=>{el.disabled=captureLinks(record()).length>=3;el.onchange=()=>{el.checked=false;return choose(ids[Number(el.dataset.index)],true)}});
+  };
+  const refresh=()=>{
+    if(editor.disposed)return;
+    const c=record(),links=captureLinks(c),invalid=c&&Object.hasOwn(c,'links')&&!Array.isArray(c.links),linked=links.map(x=>x.id);
+    selected.innerHTML=!id?links.map((x,i)=>`<label class="small" style="display:inline-flex;align-items:center;margin:4px 10px 4px 0"><input type="checkbox" class="memoLinkDraftChoice" data-index="${i}" checked> ${esc(memoRecipeName(x.id)||'未確認のつながり')}</label>`).join(''):links.map((x,i)=>`<span class="small" style="display:inline-flex;align-items:center;margin-right:10px">${esc(memoRecipeName(x.id)||'未確認のつながり')}<button type="button" class="miniLink memoLinkRemove" data-index="${i}" aria-label="${esc(memoRecipeName(x.id)||'未確認のつながり')}の関連付けを解除">×</button></span>`).join('');
+    selected.querySelectorAll('.memoLinkDraftChoice').forEach(el=>el.onchange=()=>{el.checked=true;return choose(links[Number(el.dataset.index)].id,false)});
+    selected.querySelectorAll('.memoLinkRemove').forEach(el=>el.onclick=()=>choose(links[Number(el.dataset.index)].id,false));
+    choices(candidates,invalid?[]:matches.filter(recipeId=>!linked.includes(recipeId)&&memoRecipeName(recipeId)).slice(0,3));
+    choices(results,invalid?[]:searchMemoRecipes(searching?query.value:'',linked));
+    if(searching&&norm(query.value)&&!results.innerHTML)results.textContent='知っている料理に見つかりません。料理タブで登録できます';
+    status.textContent=invalid?'つながりの保存形式を確認できないため、追加・解除できません。':memoPendingSave?'関連付けはまだ保存確定していません。再試行してください。':!id?'選択した料理はメモの「追加」で保存します。':links.length>=3?'関連付けは最大3件です。':'候補は選んだときだけ保存します。';
+    retry.classList.toggle('hidden',!memoPendingSave);search.disabled=!!invalid;
+  };
+  const match=()=>{if(editor.disposed||editor.composing)return;matches=memoRecipeMatches(editor.body.value);refresh()};
+  const schedule=()=>{clearTimeout(timer);timer=setTimeout(match,250)};
+  editor.body.addEventListener('input',schedule);editor.body.addEventListener('compositionend',schedule);
+  search.onclick=()=>{if(editor.disposed)return;searching=!searching;searchField.classList.toggle('hidden',!searching);if(searching)query.focus();refresh()};
+  query.oninput=()=>{if(!editor.disposed)refresh()};
+  retry.onclick=()=>{if(!editor.disposed)return leaveMemoEditors(refresh,null,false)};
+  editor.refreshLinks=refresh;
+  const dispose=editor.dispose;editor.dispose=()=>{clearTimeout(timer);editor.body.removeEventListener('input',schedule);editor.body.removeEventListener('compositionend',schedule);dispose()};
+  match();
+}
 function captureChildrenSummary(c){const xs=c.children||[];if(!xs.length)return'';const done=xs.filter(x=>x.done).length;return `<div class="tiny muted" style="margin-top:6px">サブメモ ${done}/${xs.length}</div>`}
 function captureChildrenExpanded(c){
   const xs=c.children||[];if(!xs.length)return'';
@@ -1897,10 +1993,11 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
       ?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn secondary" id="restoreCaptureDetail" style="width:100%">アーカイブから戻す</button></div>`
       :`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn ghost" id="archiveCaptureDetail" style="width:100%">アーカイブ</button></div>`
   ):'';
-  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?'<div class="editorSaveHint">本文と追加済みのサブメモは自動保存されます</div>':''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div><div id="subDraftStatus" class="tiny muted" role="status" style="margin-top:6px">「追加」を押すまで保存されません。</div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
-  const body=$('#capText'),subInput=$('#subText');let draftId=null,subDraftId=null,subDraftAdded=false;
+  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?'<div class="editorSaveHint">本文と追加済みのサブメモは自動保存されます</div>':''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div><div class="small muted" style="margin-top:10px">料理との関連付け</div><div id="memoLinksSelected"></div><div id="memoLinksCandidates"></div><button type="button" class="miniLink" id="memoLinksSearch">＋料理をつなげる</button><div id="memoLinksSearchField" class="hidden"><input id="memoLinksQuery" class="search" placeholder="知っている料理から検索"><div id="memoLinksResults"></div></div><div class="tiny muted" id="memoLinksStatus" role="status"></div><button type="button" class="miniLink hidden" id="memoLinksRetry">関連付けの保存を再試行</button>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div><div id="subDraftStatus" class="tiny muted" role="status" style="margin-top:6px">「追加」を押すまで保存されません。</div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
+  const body=$('#capText'),subInput=$('#subText'),linkDraft={};let draftId=null,subDraftId=null,subDraftAdded=false;
   const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)})),...(subInput?[{el:subInput,captureId:id,childId:()=>subDraftId,active:()=>subDraftAdded,autosave:false,required:true,read:()=>subInput.value}]:[])];
-  const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput].filter(Boolean)});
+  const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput,$('#memoLinksQuery')].filter(Boolean)});
+  bindMemoRecipeLinks(editor,id,linkDraft);
   const finish=()=>{closeModal();inbox()};
   $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(finish);
   if(id){
@@ -1951,7 +2048,7 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
           const text=body.value;if(!text.trim())return false;
           const existing=state.captures.find(c=>c.id===draftId);
           if(existing){existing.text=text;existing.updatedAt=new Date().toISOString()}
-          else state.captures.unshift({id:draftId,text,processed:false,status:'active',children:[],updatedAt:new Date().toISOString()});
+          else state.captures.unshift({id:draftId,text,processed:false,status:'active',children:[],...clone(linkDraft),updatedAt:new Date().toISOString()});
           const ok=await save();
           if(!ok){if(!existing)state.captures=state.captures.filter(c=>c.id!==draftId);else editor.retrySave();return false}
           if(editor.disposed||editor.composing)return false;
