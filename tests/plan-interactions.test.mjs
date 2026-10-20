@@ -40,6 +40,7 @@ function fakeHandle(id,row){
 function planHarness(){
   const events=[];
   const ctx={
+    memoEditRevision:0,
     state:{
       goals:[{id:'g1',status:'active',kind:'goal',title:'自分の目標'}],
       actions:[{id:'a1',text:'はじめのタスク',done:false,pinned:false,goalId:null},

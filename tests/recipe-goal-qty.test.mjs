@@ -33,7 +33,7 @@ function harness(input=fixture(),handler=source){
   const state=structuredClone(input),events=[],saved=[],master={recipes:[{id:'recipe-id'}]};
   const dom={'#editRecipeQty':{value:''},'#saveRecipeQty':{},'#cancelRecipeQty':{}};
   const open=runInNewContext(handler+'\nopenRecipeGoalQty',{
-    state,MASTER:master,$:selector=>dom[selector],esc:String,
+    state,MASTER:master,$:selector=>dom[selector],esc:String,deferMemoNavigation:()=>false,
     rname:id=>id==='recipe-id'?'テスト料理':'別の料理',
     modal:markup=>events.push(['modal',markup]),
     save:async()=>{saved.push(structuredClone(state));events.push(['save'])},

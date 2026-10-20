@@ -103,6 +103,7 @@ test('new crop registration opens the name form without forcing keyboard focus a
   const known={id:'tomato_seed',name_ja:'トマトの種',kind:'seed'};
   const state={knownEntities:[],customEntities:[],playerState};
   const context={
+    deferMemoNavigation:()=>false,
     modal:markup=>events.push(['modal',markup]),
     $:id=>dom[id],
     findByName:name=>name==='トマトの種'?known:null,
