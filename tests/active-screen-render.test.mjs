@@ -29,6 +29,7 @@ function harness(active='home',normalized=false){
   const state={season:'冬',marker:'first'};
   const mock={
     state,INITIAL:{},migrate:s=>s,clone:s=>structuredClone(s),
+    deferMemoNavigation:()=>false,closeModal:()=>{},
     reconcileKnownPlantMaster:()=>normalized,
     normalizeLegacyBazaarGoals:()=>false,
     normalizeIngredientGroupKnowledge:()=>false,
