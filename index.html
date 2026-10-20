@@ -1466,11 +1466,11 @@ function recipeRegistrationCandidates(raw){
   const key=norm(raw);if(!key)return[];
   const all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);
   const matches=all.filter(r=>norm(rname(r.id)).includes(key)||norm(r.id)===key);
+  const exact=matches.filter(r=>norm(rname(r.id))===key||norm(r.id)===key);
+  if(exact.length===1)return exact;
   const known=new Set(state.knownRecipes||[]);
   const familiar=matches.filter(r=>known.has(r.id)).slice(0,5);
   if(familiar.length)return familiar;
-  const exact=matches.filter(r=>norm(rname(r.id))===key||norm(r.id)===key);
-  if(exact.length===1)return exact;
   // No directory of undiscovered recipes: only one strongly implied prefix.
   if(key.length>=4&&matches.length===1&&norm(rname(matches[0].id)).startsWith(key))return matches;
   return[]
