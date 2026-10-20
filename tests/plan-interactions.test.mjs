@@ -49,7 +49,7 @@ function planHarness(){
       requirements:{},ui:{planShowCompleted:false}
     },
     planKind:()=> 'plan',
-    goalCard:g=>'<div class="goalOpen" data-id="'+g.id+'">目標</div>',
+    goalCard:g=>'<div class="card clickable goalOpen" data-id="'+g.id+'">目標</div>',
     requestsHomeHtml:()=>'',bindRequestsHome:()=>{},
     esc:x=>String(x),clone:x=>JSON.parse(JSON.stringify(x)),
     openGoalSheet:(...args)=>events.push({type:'goal',args}),
