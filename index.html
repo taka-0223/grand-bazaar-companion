@@ -133,11 +133,10 @@
 .calendarEventTitle{font-size:14px;font-weight:900}
 .calendarEventTime{display:inline-block;color:#42603c;background:#edf5e9;border-radius:8px;padding:4px 8px;font-size:12px;font-weight:900;margin-top:6px}
 .calendarEventDescription{font-size:12px;line-height:1.65;margin-top:7px;color:var(--text)}
-.cropCompact.growing{background:#edf5e9;box-shadow:inset 4px 0 0 #6a9866}
 .cropNameLine{display:flex;align-items:center;gap:5px;min-width:0;flex-wrap:wrap}
 .cropNameLine .cropname{flex:1 1 auto;min-width:0}
 .cropGrowingBadge{background:#477649;color:white;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:950;white-space:nowrap}
-.cropGrowingBanner.active{background:#e3f2df;border:1px solid #9fc598;color:#2f6137;border-radius:13px;padding:11px 13px;font-weight:950;font-size:14px;margin:10px 0}
+.cropGrowingBanner.active{background:var(--surface);border:1px solid var(--line);color:var(--text);border-radius:13px;padding:11px 13px;font-weight:950;font-size:14px;margin:10px 0}
 
 
 /* Request details are information-first; progress is controlled by completion, not counters. */
@@ -153,6 +152,13 @@
 .planActionRow.dropBefore{box-shadow:inset 0 4px 0 #659362}
 .planActionRow.dropAfter{box-shadow:inset 0 -4px 0 #659362}
 
+.cropReadOverview{padding:13px;margin:10px 0}
+.cropReadGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.cropReadGrid>div{min-width:0}
+.cropReadGrid span{display:block;font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+.cropReadGrid b{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.cropEditToggle{display:block;width:100%;margin:12px 0;font-size:13px;min-height:44px}
+.cropEditFields.hidden{display:none}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -173,7 +179,7 @@
 <script src="https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/recipes.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.15';
+const APP_VERSION='0.11.16';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};
@@ -1327,6 +1333,8 @@ function showCrop(id,opts={}){
   DETAIL_CONTEXT='crops';
   const priorSheet=$('#modalSheet'),refresh=!!opts.refresh&&$('#modal')?.classList.contains('open')&&priorSheet?.dataset.cropDetailId===String(id);
   const origin=opts.origin||(refresh?priorSheet.dataset.cropOrigin:activeScreenId()),returnScroll=Number(opts.returnScroll??(refresh?priorSheet.dataset.cropReturnScroll:window.scrollY))||0,sheetScroll=Number(opts.sheetScroll??(refresh?priorSheet.scrollTop:0))||0;
+  const initialEditing=opts.edit===true||(refresh&&priorSheet.dataset.cropEditMode==='true');
+  const editedBefore=initialEditing||(refresh&&priorSheet.dataset.cropEverEdited==='true');
   if(!refresh)touchRecent('crop',id);
   const e=ent(id),p=player(id),lab=plantLabels(e),fac=facilityFor(e),isCustom=!baseById.has(id)&&customById().has(id),facts=knownFacts().filter(f=>f.output===id||(f.inputs||[]).some(x=>x.entity===id)),masterSeasons=masterSeasonsForId(id),seasons=effectiveSeasons(e),growSummary=cultivationSummary(e)||'未確認',decision=cropStockDecision(e,p,lab);
   modal(`<div class="cropSheetToolbar">
@@ -1336,6 +1344,17 @@ function showCrop(id,opts={}){
     <div class="cropDetailHead"><div class="cropDetailMeta">${seasons.length?seasons.map(s=>`<span class="badge ${seasonClass(s)}">${esc(s)}</span>`).join(''):'<span class="pill">季節未確認</span>'}<span class="pill">${esc(growSummary)}</span>${p.growing?'<span class="pill green">育成中</span>':''}</div></div>
     <div id="cropGrowingBanner" class="cropGrowingBanner ${p.growing?'active':'hidden'}">🌱 ${p.growing?`育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}</div>
     <div id="cropStockDecision" class="cropDecision ${decision.tone}">${cropDecisionHtml(decision)}</div>
+    <div class="card cropReadOverview"><div class="strong small" style="margin-bottom:10px">いまの記録</div>
+      <div class="cropReadGrid">
+        <div><span>種・苗の品質</span><b id="cropReadQuality">${qtext(p.seedQuality)}</b></div>
+        <div><span>${esc(lab.n)}</span><b id="cropReadCount">${p.seedCount==null?'未記録':p.seedCount+'個'}</b></div>
+        <div><span>保管・加工</span><b id="cropReadLocation">${esc(cropStatusSummary(p))}</b></div>
+        <div><span>育成</span><b id="cropReadGrowing">${p.growing?(p.growingCount!=null?'育成中 '+p.growingCount+'個':'育成中・数未入力'):'なし'}</b></div>
+      </div>
+    </div>
+    ${cultivationInfoHtml(e)}
+    <button type="button" class="btn secondary cropEditToggle" id="cropEditToggle" aria-controls="cropEditFields" aria-expanded="${initialEditing?'true':'false'}">${initialEditing?'編集欄を閉じる':'✎ 記録を編集する'}</button>
+    <div id="cropEditFields" class="cropEditFields ${initialEditing?'':'hidden'}">
     <div class="section"><div class="section-head"><h2>在庫・品質</h2><span class="tiny">自動保存</span></div><div class="card cropQuickCard stack">
       <div class="cropQuickGrid">
         ${qStepper(id,'seedQuality',lab.q,p.seedQuality)}
@@ -1344,17 +1363,17 @@ function showCrop(id,opts={}){
       <div class="cropQuickMeta"><div><span class="tiny muted">保管・加工</span><b id="cropQuickLocation">${esc(cropStatusSummary(p))}</b></div><div><span class="tiny muted">育成</span><b id="cropQuickGrowing">${p.growing?`${p.growingCount??'数未入力'}${p.growingCount!=null?'個':''}`:'なし'}</b></div></div>
       ${isCustom?`<div class="field"><label>育つ季節（複数選択）</label><div class="season-grid">${['春','夏','秋','冬'].map(s=>`<button type="button" class="season-chip ${seasonClass(s)} ${(p.knownSeasons||[]).includes(s)?'active':''}" data-season="${s}">${s}</button>`).join('')}</div></div>`:''}
     </div></div>
-    ${cultivationInfoHtml(e)}
     <div class="section"><div class="section-head"><h2>保管・加工</h2></div><div class="card stack">
       <div class="field"><label>状態</label><div class="stateChoice">${[['','未設定'],['stored','保管中'],['processing','加工中']].map(([v,l])=>`<button type="button" class="stateBtn ${p.status===v?'active':''}" data-status="${v}">${l}</button>`).join('')}</div></div>
       <div class="field"><label>保管場所</label><select id="locationSelect"><option value="">未設定</option><option value="warehouse">倉庫</option><option value="blue_windmill">青風車</option><option value="red_windmill">赤風車</option><option value="yellow_windmill">黄風車</option></select><div class="facilityBox" id="facilityBox"></div></div>
     </div></div>
     <div class="section"><div class="section-head"><h2>育成・収穫</h2></div><div class="card stack"><div class="switchline"><div><div class="strong small">育成中</div><div class="tiny">植えているものがある時だけON</div></div><label class="switch"><input id="growing" type="checkbox" ${p.growing?'checked':''}><span class="slider"></span></label></div><div class="field"><label>育成中の数（任意）</label><input id="growingCount" type="number" min="0" inputmode="numeric" value="${p.growingCount??''}" placeholder="空欄でもOK"></div>${qStepper(id,'harvestQuality','収穫作物の品質（必要な時だけ）',p.harvestQuality)}</div></div>
     <div class="section"><div class="section-head"><h2>メモ</h2></div><div class="card"><div class="field"><textarea id="cropNote" placeholder="必要なことだけ">${esc(p.note||'')}</textarea></div></div></div>
+    </div>
     ${facts.length?`<div class="section"><div class="section-head"><h2>自分が知っている加工</h2></div>${facts.map(factCard).join('')}</div>`:''}
     ${isCustom?'<button class="btn danger" id="deleteCustomCrop" style="width:100%">このカスタム品目を削除</button>':''}
     <div class="sheet-actions cropSheetBottomActions"><button class="btn" id="cropSheetCloseBottom">閉じる</button></div>`);
-  const sheet=$('#modalSheet');sheet.classList.add('cropDetailSheet');sheet.dataset.cropDetailId=String(id);sheet.dataset.cropOrigin=origin||'';sheet.dataset.cropReturnScroll=String(returnScroll);sheet.scrollTop=sheetScroll;
+  const sheet=$('#modalSheet');sheet.classList.add('cropDetailSheet');sheet.dataset.cropDetailId=String(id);sheet.dataset.cropOrigin=origin||'';sheet.dataset.cropReturnScroll=String(returnScroll);sheet.dataset.cropEditMode=String(!!initialEditing);sheet.dataset.cropEverEdited=String(!!editedBefore);sheet.scrollTop=sheetScroll;
   let selectedStatus=p.status||'',selectedLocation=p.location||'';
   $('#locationSelect').value=selectedLocation;
   const refreshOverview=()=>{
@@ -1362,15 +1381,28 @@ function showCrop(id,opts={}){
     if(box){box.className=`cropDecision ${d.tone}`;box.innerHTML=cropDecisionHtml(d)}
     if($('#cropQuickLocation'))$('#cropQuickLocation').textContent=cropStatusSummary(p);
     if($('#cropQuickGrowing'))$('#cropQuickGrowing').textContent=p.growing?(p.growingCount!=null?`${p.growingCount}個`:'数未入力'):'なし';
+    if($('#cropReadCount'))$('#cropReadCount').textContent=p.seedCount==null?'未記録':p.seedCount+'個';
+    if($('#cropReadQuality'))$('#cropReadQuality').textContent=qtext(p.seedQuality);
+    if($('#cropReadLocation'))$('#cropReadLocation').textContent=cropStatusSummary(p);
+    if($('#cropReadGrowing'))$('#cropReadGrowing').textContent=p.growing?(p.growingCount!=null?'育成中 '+p.growingCount+'個':'育成中・数未入力'):'なし';
     const growingBanner=$('#cropGrowingBanner');if(growingBanner){growingBanner.classList.toggle('hidden',!p.growing);growingBanner.classList.toggle('active',!!p.growing);growingBanner.textContent=p.growing?`🌱 育成中${p.growingCount!=null?` ・ ${p.growingCount}個`:' ・ 数は未入力'}`:''}
   };
   const refreshLocation=()=>{if(selectedStatus==='processing'&&fac){selectedLocation=fac;$('#locationSelect').value=selectedLocation;$('#locationSelect').disabled=true;$('#facilityBox').innerHTML=`加工中のため場所は <b>${locationLabel(selectedLocation)}</b> に自動設定されます`}else{$('#locationSelect').disabled=false;$('#facilityBox').textContent='保管中は倉庫・各風車から選べます'}};
   const persistCrop=async()=>{p.seedCount=intOrNull($('#seedCount').value);p.knownSeasons=masterSeasons.length?masterSeasons:(isCustom?$$('.season-chip.active').map(x=>x.dataset.season):(p.knownSeasons||[]));p.status=selectedStatus;p.location=selectedStatus==='processing'&&fac?fac:selectedLocation;p.growing=$('#growing').checked;p.growingCount=p.growing?intOrNull($('#growingCount').value):null;p.note=$('#cropNote').value.trim();p.updatedAt=new Date().toISOString();await save();refreshOverview()};
   const closeCrop=async()=>{
-    await persistCrop();closeModal();
+    if(sheet.dataset.cropEverEdited==='true')await persistCrop();
+    closeModal();
     if(origin==='crops'){const y=returnScroll;crops();requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'}))}
   };
   refreshLocation();refreshOverview();
+  $('#cropEditToggle').onclick=()=>{
+    const open=$('#cropEditFields').classList.contains('hidden');
+    $('#cropEditFields').classList.toggle('hidden',!open);
+    $('#cropEditToggle').textContent=open?'編集欄を閉じる':'✎ 記録を編集する';
+    $('#cropEditToggle').setAttribute('aria-expanded',String(open));
+    sheet.dataset.cropEditMode=String(open);
+    if(open)sheet.dataset.cropEverEdited='true';
+  };
   $('#closeCropSheet').onclick=closeCrop;$('#cropSheetCloseBottom').onclick=closeCrop;
   $$('.seedCountAdjust').forEach(b=>b.onclick=async()=>{const input=$('#seedCount'),delta=Number(b.dataset.delta),current=input.value===''?null:intOrNull(input.value);if(current==null&&delta<0)return;input.value=String(Math.max(0,(current??0)+delta));await persistCrop()});
   $$('.season-chip').forEach(b=>b.onclick=async()=>{b.classList.toggle('active');await persistCrop()});
@@ -1430,7 +1462,33 @@ function recipesScreen(){
   $('#recipes').innerHTML=`<div class="pageHead"><h1>料理</h1><p>知っている料理を検索・比較</p><div class="pageHeadMeta"><span>${loaded?'Master接続済み':'簡易表示'}</span><span>既知 ${state.knownRecipes.length}件</span></div></div><input id="recipeSearch" class="search" placeholder="知っている料理から検索" value="${esc(q)}"><div class="controls"><div class="tiny" id="recipeCount">表示 ${arr.length}件 / 既知 ${state.knownRecipes.length}件</div><select id="recipeSort" class="sortSelect"><option value="name">名前順</option><option value="category">カテゴリ順</option><option value="priceDesc">価格 高い順</option><option value="priceAsc">価格 安い順</option></select></div><div class="filters"><button class="filter ${filter==='all'?'active':''}" data-rfilter="all">すべて</button><button class="filter ${filter==='favorite'?'active':''}" data-rfilter="favorite">⭐ お気に入り</button><button class="filter ${filter==='goal'?'active':''}" data-rfilter="goal">目標あり</button><button class="filter ${filter==='archived'?'active':''}" data-rfilter="archived">アーカイブ</button></div><div class="recipeList" id="recipeListBody">${arr.length?arr.map(recipeRow).join(''):'<div class="empty">該当する既知料理はありません</div>'}</div>`;
   $('#recipeSort').value=sort;$('#recipeSearch').oninput=e=>refreshRecipeResults(e.target.value);$('#recipeSort').onchange=async e=>{state.ui.recipeSort=e.target.value;await save();recipesScreen()};$$('[data-rfilter]').forEach(b=>b.onclick=async()=>{state.ui.recipeFilter=b.dataset.rfilter;await save();recipesScreen()});bindRecipeRows()
 }
-function openKnownRecipe(){modal(`<h3>知った料理を登録</h3><p class="small muted">ネタバレ防止のため候補は表示しません。ゲーム内の料理名を最後まで入力してください。</p><div class="field"><label>料理名</label><input id="knownRecipeName" autocomplete="off" placeholder="例：ピザ"></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerRecipe">照合して登録</button></div>`);$('#registerRecipe').onclick=async()=>{const raw=$('#knownRecipeName').value.trim();if(!raw)return;const key=norm(raw),all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);const r=all.find(x=>norm(rname(x.id))===key||norm(x.id)===key);if(!r){toast('料理Masterに完全一致しません');return}if(state.knownRecipes.includes(r.id)){closeModal();showRecipe(r.id);toast('すでに登録済みです');return}state.knownRecipes.push(r.id);for(const id of r.ingredient||[])addKnownConcrete(id);await save();closeModal();showRecipe(r.id);toast(`登録しました：${rname(r.id)}`)}}
+function recipeRegistrationCandidates(raw){
+  const key=norm(raw);if(!key)return[];
+  const all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);
+  const matches=all.filter(r=>norm(rname(r.id)).includes(key)||norm(r.id)===key);
+  const exact=matches.filter(r=>norm(rname(r.id))===key||norm(r.id)===key);
+  if(exact.length===1)return exact;
+  const known=new Set(state.knownRecipes||[]);
+  const familiar=matches.filter(r=>known.has(r.id)).slice(0,5);
+  if(familiar.length)return familiar;
+  // No directory of undiscovered recipes: only one strongly implied prefix.
+  if(key.length>=4&&matches.length===1&&norm(rname(matches[0].id)).startsWith(key))return matches;
+  return[]
+}
+function openKnownRecipe(){modal(`<h3>知った料理を登録</h3><p class="small muted">知っている料理は名前の一部で検索できます。未登録の料理は、十分に名前を入力して1件に絞れたときだけ候補を表示します。</p><div class="field"><label>料理名</label><input id="knownRecipeName" autocomplete="off" placeholder="例：ハーブサンド"><div id="knownRecipeCandidates" role="status" aria-live="polite" style="margin-top:7px"></div></div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">キャンセル</button><button class="btn" id="registerRecipe">照合して登録</button></div>`);
+  const showRecipeCandidates=()=>{
+    const box=$('#knownRecipeCandidates'),raw=$('#knownRecipeName').value;
+    const options=recipeRegistrationCandidates(raw);
+    box.innerHTML=options.length?'<div class="card" style="padding:5px">'+options.map(r=>'<button type="button" class="miniLink knownRecipeCandidate" data-recipe="'+esc(r.id)+'" style="display:block;width:100%;text-align:left;padding:9px 7px">🍳 '+esc(rname(r.id))+(state.knownRecipes.includes(r.id)?' <span class="tiny muted">登録済み</span>':'')+'</button>').join('')+'</div>':raw.trim()?'<div class="tiny muted">候補がない場合は、もう少し名前を入力してください。</div>':'';
+    $$('.knownRecipeCandidate').forEach(b=>b.onclick=()=>{
+      const r=recipeData(b.dataset.recipe);if(!r)return;
+      $('#knownRecipeName').value=rname(r.id);
+      box.textContent='✓ 料理名を選択しました。「照合して登録」を押してください。';
+    })
+  };
+  $('#knownRecipeName').addEventListener('input',showRecipeCandidates);
+  showRecipeCandidates();
+  $('#registerRecipe').onclick=async()=>{const raw=$('#knownRecipeName').value.trim();if(!raw)return;const key=norm(raw),all=RECIPE_ROWS.length?RECIPE_ROWS:Object.values(FALLBACK_RECIPES);const r=all.find(x=>norm(rname(x.id))===key||norm(x.id)===key);if(!r){toast('料理候補を選ぶか、名前を最後まで入力してください');return}if(state.knownRecipes.includes(r.id)){closeModal();showRecipe(r.id);toast('すでに登録済みです');return}state.knownRecipes.push(r.id);for(const id of r.ingredient||[])addKnownConcrete(id);await save();closeModal();showRecipe(r.id);toast(`登録しました：${rname(r.id)}`)}}
 function playerHint(id){const p=state.playerState[id];if(!p)return'';const bits=[];if(p.seedQuality!=null)bits.push(`種 ${qtext(p.seedQuality)}`);if(p.seedCount!=null)bits.push(`${p.seedCount}個`);if(p.status==='processing')bits.push(`加工中・${locationLabel(p.location)}`);else if(p.location)bits.push(locationLabel(p.location));return bits.length?`<div class="tiny" style="margin-top:4px;color:#42603c">種管理：${esc(bits.join(' / '))}</div>`:''}
 function processChainHtml(id,mult=1){const p=processData(id);if(!p)return'';const known=(state.knownProcesses||[]).includes(id);if(!known)return `<div class="chain unknown">加工方法はまだKnowledgeに登録されていません。<br><button class="miniLink revealProcess" data-output="${id}">ゲーム内で確認済みとして登録</button></div>`;const inputs=countIngredients(p.ingredient||[]).map(x=>`${rname(x.id)}${x.qty*mult>1?' ×'+(x.qty*mult):''}`).join(' + ');return `<div class="chain">↳ ${esc(inputs)} → <b>${esc(windmillJa(p.windmill))}</b> → ${esc(rname(id))} ${mult>1?'×'+mult:''}</div>`}
 function recipeChainHtml(id,mult=1){const r=recipeData(id);if(!r)return'';const inputs=countIngredients(r.ingredient||[]).map(x=>`${rname(x.id)}${x.qty*mult>1?' ×'+(x.qty*mult):''}`).join(' + ');return `<div class="chain">↳ ${esc(inputs)} → <b>料理</b> → ${esc(rname(id))} ${mult>1?'×'+mult:''}</div>`}
@@ -1439,12 +1497,12 @@ function groupChainHtml(id,mult=1){
   const members=g.members||[],knownEntities=new Set(state.knownEntities||[]),knownProcesses=new Set(state.knownProcesses||[]),knownRecipes=new Set(state.knownRecipes||[]);
   const candidates=members.filter(mid=>knownEntities.has(mid)||knownProcesses.has(mid)||knownRecipes.has(mid));
   const processed=candidates.find(mid=>processData(mid)&&knownProcesses.has(mid));
-  if(processed)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">手元の既知候補：${esc(rname(processed))}</div>${processChainHtml(processed,mult)}</div>`;
+  if(processed)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">知っている候補：${esc(rname(processed))}</div>${processChainHtml(processed,mult)}</div>`;
   const cooked=candidates.find(mid=>recipeData(mid)&&knownRecipes.has(mid));
-  if(cooked)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">手元の既知候補：${esc(rname(cooked))}</div>${recipeChainHtml(cooked,mult)}</div>`;
+  if(cooked)return `<div class="chain" style="padding:7px 9px"><div class="tiny muted" style="margin-bottom:4px">知っている候補：${esc(rname(cooked))}</div>${recipeChainHtml(cooked,mult)}</div>`;
   return ''
 }
-function ingredientHtml(x,goal=null){const id=x.id,isGroup=groupById.has(id),opts=isGroup?knownGroupOptions(id):[],req=goal?(state.requirements[goal.id]||[]).find(r=>r.targetId===id):null;return `<div class="ingredientLine"><div class="row between"><div class="grow"><div class="small strong">${esc(rname(id))}</div><div class="tiny">${isGroup?'材料グループ':'必要素材'}</div>${req?`<div class="countPair"><span>現在 <b>${req.have}</b></span><span>必要 <b>${req.need}</b></span></div>`:`<div class="countPair"><span></span><span>必要 <b>${x.qty}</b></span></div>`}${opts.length?`<div class="tiny" style="margin-top:4px;color:#42603c">手元の候補：${opts.map(rname).map(esc).join(' / ')}</div>`:''}${isGroup?'':playerHint(id)}</div>${recipeData(id)&&state.knownRecipes.includes(id)?`<button class="btn secondary smallbtn nestedRecipe" data-rid="${id}">料理を見る</button>`:''}</div>${isGroup?groupChainHtml(id,req?.need??x.qty):processChainHtml(id,req?.need??x.qty)}${isGroup?'':recipeChainHtml(id,req?.need??x.qty)}</div>`}
+function ingredientHtml(x,goal=null){const id=x.id,isGroup=groupById.has(id),opts=isGroup?knownGroupOptions(id):[],req=goal?(state.requirements[goal.id]||[]).find(r=>r.targetId===id):null;return `<div class="ingredientLine"><div class="row between"><div class="grow"><div class="small strong">${esc(rname(id))}</div><div class="tiny">${isGroup?'材料グループ':'必要素材'}</div>${req?`<div class="countPair"><span>現在 <b>${req.have}</b></span><span>必要 <b>${req.need}</b></span></div>`:`<div class="countPair"><span></span><span>必要 <b>${x.qty}</b></span></div>`}${opts.length?`<div class="tiny" style="margin-top:4px;color:#42603c">知っている候補：${opts.map(rname).map(esc).join(' / ')}</div>`:''}${isGroup?'':playerHint(id)}</div>${recipeData(id)&&state.knownRecipes.includes(id)?`<button class="btn secondary smallbtn nestedRecipe" data-rid="${id}">料理を見る</button>`:''}</div>${isGroup?groupChainHtml(id,req?.need??x.qty):processChainHtml(id,req?.need??x.qty)}${isGroup?'':recipeChainHtml(id,req?.need??x.qty)}</div>`}
 let CURRENT_RECIPE_ID=null;function bindRecipeDetail(){$$('.revealProcess').forEach(b=>b.onclick=()=>confirmRevealProcess(b.dataset.output));$$('.nestedRecipe').forEach(b=>b.onclick=()=>showRecipe(b.dataset.rid))}
 function showRecipe(id){
   CURRENT_RECIPE_ID=id;const r=recipeData(id);if(!r)return;touchRecent('recipe',id);
@@ -1453,7 +1511,7 @@ function showRecipe(id){
     ${goal?'<div class="badge accent" style="margin:8px 0 4px">目標あり</div>':''}
     ${effect?`<div class="recipeEffectCard"><span class="recipeEffectIcon">✨</span><div><div class="tiny muted">料理効果</div><div class="small strong">${esc(effect)}</div></div></div>`:''}
     <div class="section" style="margin-top:14px"><div class="section-head"><h2>必要なもの</h2></div><div class="card">${ings.map(x=>ingredientHtml(x,goal)).join('')}</div></div>
-    <div class="notice">加工品は、ゲーム内で確認済みの加工方法だけ経路表示します。</div>
+    <div class="notice">候補はアプリに記録した既知情報に応じて更新されます。所持している現物や在庫数を表すものではありません。加工品は、確認済みの加工方法だけ表示します。</div>
     <div class="stack" style="margin-top:12px">${goal?'<button class="btn" id="openRecipeGoal">この料理の目標を開く</button>':'<button class="btn" id="makeRecipeGoal">作りたい → 目標に追加</button>'}<button class="btn secondary" id="archiveRecipe">${meta.archived?'アーカイブから戻す':'アーカイブ'}</button></div>
     <div class="sheet-actions"><button class="btn" id="recipeSheetCloseBottom">閉じる</button></div>`);
   const close=()=>{closeModal();recipesScreen()};
