@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {harness,body,current,saved,clone} from './helpers/memo-harness.mjs';
+import {harness,body,current,saved,clone,html,navSource} from './helpers/memo-harness.mjs';
 
 const cases=[
   ['ピザを作りたい',['ピザ'],['ピザ']],
@@ -178,4 +178,183 @@ test('shared Undo: latest links or existing whole-state operation replaces previ
 test('UI excludes linked recipes before applying the three-candidate limit',()=>{
   const h=setup('ピザ、パン、ご飯、ケーキ');current(h).links=[{kind:'recipe',id:'pizza'}];h.ctx.openCapture('a');
   assert.equal(choices(h).length,3);assert.ok(h.$('#memoLinksCandidates').innerHTML.includes('ケーキ'));
+});
+
+// PR-D: actual sheet handlers, one RAM return, real save queue with controlled Promises.
+function navigation(options={}){
+  const h=setup('ピザを作りたい\n2行目',options);
+  current(h).links=[{kind:'recipe',id:'pizza'},{kind:'recipe',id:'bread'}];
+  h.ctx.state.captures[1].text='別の関連メモ\n非表示の2行目';h.ctx.state.captures[1].links=[{kind:'recipe',id:'pizza'}];
+  return h;
+}
+const back=h=>h.evaluate('memoRecipeReturn');
+const openNames=h=>h.$('#memoLinksSelected').querySelectorAll('.memoLinkOpen');
+async function hit(h,selector){const work=h.$(selector).click();await h.finishWrites();await work}
+async function fromMemo(h){h.ctx.openCapture('a');const work=openNames(h)[0].click();await h.finishWrites();await work}
+async function reverse(h,index=0){const work=h.root.modalSheet.querySelectorAll('.recipeMemoOpen')[index].click();await h.finishWrites();await work}
+function swipe(h){const sheet=h.root.modalSheet;sheet.ontouchstart({touches:[{clientY:0,clientX:0}],target:sheet});sheet.ontouchmove({touches:[{clientY:140,clientX:0}],target:sheet,preventDefault(){}});sheet.ontouchend();h.runTimers(170)}
+
+test('reverse section reads explicit links once, keeps capture order, first lines and escaped text; inactive contents remain private',()=>{
+  const h=navigation();current(h).text='<b>A & "B"</b>\n秘密の2行目';
+  h.ctx.state.captures.push({id:'processed',status:'processed',text:'変換済み秘密',links:[{kind:'recipe',id:'pizza'}]},
+    {id:'archived',status:'archived',text:'アーカイブ秘密',links:[{kind:'recipe',id:'pizza'}]},
+    {id:'unlinked',status:'active',text:'リンクなし秘密',sourceRecipeId:'pizza'});
+  h.ctx.scanCalls=0;h.evaluate('const readCaptureLinks=captureLinks;captureLinks=c=>{scanCalls++;return readCaptureLinks(c)}');
+  h.ctx.showRecipe('pizza');assert.equal(h.ctx.scanCalls,h.ctx.state.captures.length);
+  const markup=h.root.modalSheet.innerHTML;assert.ok(markup.indexOf('この料理のメモ')>markup.indexOf('所持している現物'));
+  assert.ok(markup.indexOf('この料理のメモ')<markup.indexOf('id="makeRecipeGoal"'));assert.ok(markup.includes('&lt;b&gt;A &amp; &quot;B&quot;&lt;/b&gt;'));
+  assert.ok(markup.indexOf('data-capture="a"')<markup.indexOf('data-capture="b"'));
+  for(const text of ['秘密の2行目','非表示の2行目','変換済み秘密','アーカイブ秘密','リンクなし秘密'])assert.equal(markup.includes(text),false);
+  assert.ok(markup.includes('変換済み 1件・アーカイブ 1件'));assert.equal(h.pending.length,0);
+});
+
+test('zero reverse links, unknown/unresolved names or missing recipe data never add a reverse heading',()=>{
+  const h=navigation();h.ctx.state.captures=[];h.ctx.showRecipe('pizza');assert.equal(h.$('#recipeMemoSection'),null);
+  h.ctx.state.captures=[{id:'z',status:'active',text:'秘密',links:[{kind:'recipe',id:'secret'}]}];
+  assert.equal(h.ctx.recipeMemoSection('secret'),'');h.ctx.state.knownRecipes.push('unresolved');assert.equal(h.ctx.recipeMemoSection('unresolved'),'');
+  h.ctx.recipeData=()=>null;assert.equal(h.ctx.recipeMemoSection('pizza'),'');
+});
+
+for(const method of ['top','bottom','background','swipe'])test('N-1/N-2: '+method+' consumes recipe→memo return and restores memo scroll',async()=>{
+  const h=navigation();h.ctx.openCapture('a');h.root.modalSheet.scrollTop=126;const el=body(h);h.input(el,'  ピザの最新本文\n★  ');
+  const child=h.root.modalSheet.querySelector('.subInlineEditable');h.input(child,'  子も最新\n☆  ');openNames(h)[0].click();await h.finishWrites();
+  assert.equal(back(h).kind,'capture');assert.equal(back(h).scrollTop,126);assert.equal(saved(h).captures[0].text,el.value);
+  if(method==='top')await hit(h,'#closeRecipeSheet');if(method==='bottom')await hit(h,'#recipeSheetCloseBottom');
+  if(method==='background'){h.root.modal.dispatch('click');await h.finishWrites()}
+  if(method==='swipe'){swipe(h);await h.finishWrites()}
+  assert.equal(back(h),null);assert.equal(body(h).value,'  ピザの最新本文\n★  ');assert.equal(current(h).children[0].text,'  子も最新\n☆  ');assert.equal(h.root.modalSheet.scrollTop,126);
+});
+
+test('N-3: recipe archive succeeds before returning; failures and repeated close retain sheet/return until retry',async()=>{
+  const h=navigation();await fromMemo(h);h.setFailures(true,true);const token=back(h),sheet=h.root.modalSheet.innerHTML;
+  const first=h.$('#archiveRecipe').click(),second=h.$('#closeRecipeSheet').click();await h.finishWrites();await Promise.all([first,second]);
+  assert.equal(back(h),token);assert.equal(h.root.modalSheet.innerHTML,sheet);assert.equal(h.pending.length,1);
+  h.setFailures(false,false);await hit(h,'#archiveRecipe');assert.equal(back(h),null);assert.ok(body(h));assert.equal(h.ctx.state.recipeMeta.pizza.archived,true);
+});
+
+test('N-4/NV-4: favorite, recipe-goal creation/edit/quantity and process confirmation preserve same-recipe return',async()=>{
+  const h=navigation({recipes:{pizza:{id:'pizza',ingredient:['wheat','wheat','tomato']},bread:{id:'bread',ingredient:[]}}});await fromMemo(h);const token=back(h);
+  await hit(h,'#favoriteRecipe');assert.equal(back(h),token);assert.equal(h.ctx.state.recipeMeta.pizza.favorite,true);
+  await hit(h,'#makeRecipeGoal');h.$('#recipeQty').value='2';await hit(h,'#createRecipeGoal');const goal=h.ctx.state.goals[0];
+  assert.equal(goal.sourceRecipeId,'pizza');assert.equal(goal.targetQty,2);assert.deepEqual(clone(h.ctx.state.requirements[goal.id]).map(x=>x.need),[4,2]);assert.equal(back(h),token);
+  await hit(h,'#sheetEditGoal');h.$('#goalStatus').value='active';h.input(h.$('#goalTitle'),'手動の料理目標');const changed=h.$('#goalTitle').dispatch('change');await h.finishWrites();await changed;await hit(h,'#closeGoalEditor');
+  await hit(h,'#sheetEditRecipeQty');h.$('#editRecipeQty').value='3';await hit(h,'#saveRecipeQty');assert.equal(h.ctx.state.goals[0].title,'手動の料理目標');assert.equal(h.ctx.state.goals[0].targetQty,3);
+  await hit(h,'#sheetCloseBottom');assert.equal(back(h),token);assert.ok(h.$('#openRecipeGoal'));
+  h.ctx.confirmRevealProcess('flour');await hit(h,'#backRevealProcess');assert.equal(back(h),token);
+  h.ctx.confirmRevealProcess('flour');await hit(h,'#revealProcessYes');assert.equal(back(h),token);assert.ok(h.ctx.state.knownProcesses.includes('flour'));
+  await hit(h,'#closeRecipeSheet');assert.equal(back(h),null);assert.ok(body(h));
+});
+
+test('existing sourceRecipeId goal remains separate from explicit memo links',async()=>{
+  const h=navigation();h.ctx.state.goals=[{id:'g',sourceRecipeId:'pizza',targetQty:4,title:'既存料理目標',status:'active'}];h.ctx.state.requirements.g=[{targetId:'wheat',label:'小麦粉',need:4,have:3,sourceRecipeId:'pizza'}];
+  const before=clone(h.ctx.state.goals);await fromMemo(h);assert.ok(h.$('#openRecipeGoal'));await hit(h,'#openRecipeGoal');await hit(h,'#sheetCloseBottom');await hit(h,'#closeRecipeSheet');
+  assert.deepEqual(clone(h.ctx.state.goals),before);assert.equal(h.ctx.state.requirements.g[0].have,3);
+});
+
+test('N-5: opening another recipe discards old memo return; closing it uses existing recipe-list path',async()=>{
+  const h=navigation();await fromMemo(h);h.ctx.showRecipe('bread');assert.equal(back(h),null);await hit(h,'#closeRecipeSheet');assert.equal(h.root.modal.classList.contains('open'),false);assert.ok(h.trace.some(x=>x[0]==='recipes'));
+});
+
+test('N-6: tab navigation discards return; reopening same recipe never revives it',async()=>{
+  const h=navigation();await fromMemo(h);h.root.nav=new (h.root.modal.constructor)('nav',{class:'navbtn','data-nav':'recipes'});
+  h.evaluate(navSource);
+  await h.root.nav.click();assert.equal(back(h),null);h.ctx.showRecipe('pizza');await hit(h,'#closeRecipeSheet');assert.equal(h.root.modal.classList.contains('open'),false);
+});
+
+for(const method of ['button','background','swipe'])test('N-7/NV-1: reverse memo '+method+' flushes, redraws recipe and consumes older A return',async()=>{
+  const h=navigation();await fromMemo(h);h.root.modalSheet.scrollTop=47;await reverse(h,1);assert.equal(back(h).kind,'recipe');assert.equal(back(h).captureId,'b');
+  h.input(body(h),'更新済みのB\n2行目');
+  if(method==='button')h.$('#closeCaptureEditor').click();if(method==='background')h.root.modal.dispatch('click');if(method==='swipe')swipe(h);
+  await h.finishWrites();assert.equal(back(h),null);assert.ok(h.root.modalSheet.innerHTML.includes('更新済みのB'));assert.equal(h.root.modalSheet.scrollTop,47);
+  await hit(h,'#closeRecipeSheet');assert.equal(h.root.modal.classList.contains('open'),false);assert.equal(back(h),null);
+});
+
+for(const operation of ['delete','archive','action','goal'])test('N-8: reverse memo '+operation+' success discards return and keeps existing inbox destination',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h,1);
+  if(operation==='delete')await hit(h,'#deleteCap');if(operation==='archive')await hit(h,'#archiveCaptureDetail');
+  if(operation==='action'||operation==='goal'){h.root.modalSheet.querySelectorAll('.captureOrganize').find(x=>x.dataset.to===operation).click();await h.finishWrites();await hit(h,'#doConvert')}
+  assert.equal(back(h),null);assert.equal(h.root.modal.classList.contains('open'),false);assert.ok(h.root.inbox.innerHTML.includes('メモ'));
+  if(operation==='delete')assert.equal(h.ctx.state.captures.some(c=>c.id==='b'),false);
+  if(operation==='action')assert.equal(h.ctx.state.actions[0].sourceCaptureId,'b');if(operation==='goal')assert.equal(h.ctx.state.goals[0].sourceCaptureId,'b');
+  if(operation==='action'||operation==='goal')assert.equal(Object.hasOwn((operation==='action'?h.ctx.state.actions:h.ctx.state.goals)[0],'links'),false);
+});
+
+test('N-8: cancelling deletion/conversion retains the return and editable memo',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h,1);const token=back(h);h.ctx.confirm=()=>false;await hit(h,'#deleteCap');assert.equal(back(h),token);
+  h.root.modalSheet.querySelector('.captureOrganize').click();await h.finishWrites();assert.ok(h.$('#cancelCaptureConvert'));await hit(h,'#cancelCaptureConvert');assert.equal(back(h),token);assert.ok(body(h));
+  await h.close();assert.equal(back(h),null);assert.ok(h.$('#closeRecipeSheet'));
+});
+
+test('N-9: new memo choices never navigate or create a return',async()=>{
+  const h=navigation();h.ctx.openCapture();const el=body(h);h.input(el,'ピザ');h.runTimers(250);await choices(h)[0].dispatch('change');assert.equal(body(h),el);assert.equal(back(h),null);assert.equal(openNames(h).length,0);assert.equal(h.pending.length,0);
+});
+
+test('NV-2: X→B→Y→B replaces the old X return; closing B then uses inbox',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h);const first=back(h);openNames(h)[1].click();await h.finishWrites();assert.equal(back(h).recipeId,'bread');assert.notEqual(back(h),first);
+  await hit(h,'#closeRecipeSheet');assert.equal(back(h),null);assert.ok(body(h));await h.close();assert.equal(h.root.modal.classList.contains('open'),false);
+});
+
+for(const exit of ['home','settings','calendar','quick'])test('NV-3: '+exit+' preserves input/return on failure, then discards only after successful flush',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h);const token=back(h),el=body(h);h.input(el,'移動直前の本文');h.setFailures(true,true);
+  const go=()=>exit==='home'?h.ctx.openHomeNav('plan'):exit==='settings'?h.ctx.settings():exit==='calendar'?h.ctx.openCalendarSheet():h.ctx.openQuickAdd();
+  go();await h.finishWrites();assert.equal(back(h),token);assert.equal(body(h),el);assert.equal(el.value,'移動直前の本文');
+  h.setFailures(false,false);go();await h.finishWrites();assert.equal(back(h),null);assert.equal(saved(h).captures[0].text,'移動直前の本文');
+});
+
+test('NV-5: delayed old swipe and archive/favorite callbacks cannot close or replace a newer sheet',async()=>{
+  for(const action of ['#favoriteRecipe','#archiveRecipe']){
+  const h=navigation();await fromMemo(h);const oldEnd=h.root.modalSheet.onpointerup;
+  h.root.modalSheet.onpointerdown({pointerType:'mouse',button:0,pointerId:7,clientY:0,clientX:0,target:h.root.modalSheet});h.root.modalSheet.onpointermove({pointerType:'mouse',pointerId:7,clientY:120,clientX:0});
+  const favorite=h.$(action).click();await h.until(()=>h.pending.length===1);await reverse(h,1); // no memo editor yet, so the new sheet opens without another save
+  oldEnd({pointerType:'mouse',pointerId:7});h.runTimers(170);await h.finishWrites();await favorite;assert.ok(body(h));assert.equal(back(h).captureId,'b');
+  }
+});
+
+test('failed reverse-memo close keeps editor, raw input and recipe return until retry',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h);const token=back(h),el=body(h);h.setFailures(true,true);h.input(el,'  保存失敗でも残す\n★  ');await h.close();assert.equal(back(h),token);assert.equal(body(h),el);
+  h.setFailures(false,false);await h.close();assert.equal(back(h),null);assert.ok(h.root.modalSheet.innerHTML.includes('保存失敗でも残す'));
+});
+
+test('failed memo→recipe flush retains the earlier return; input during save reaches newest persisted text',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h);const token=back(h),el=body(h);h.setFailures(true,true);h.input(el,'最初');openNames(h)[1].click();await h.finishWrites();assert.equal(back(h),token);assert.equal(body(h),el);
+  h.setFailures(false,false);openNames(h)[1].click();await h.until(()=>h.pending.filter(x=>!x.done).length===1);h.input(el,'  最新の本文\n☆  ');await h.finishWrites();assert.equal(back(h).recipeId,'bread');assert.equal(saved(h).captures[0].text,'  最新の本文\n☆  ');
+});
+
+test('IME blocks name navigation/return consumption; × only removes, without starting navigation',async()=>{
+  const h=navigation();h.ctx.showRecipe('pizza');await reverse(h);const token=back(h),el=body(h);el.dispatch('compositionstart');h.input(el,'日本語変換中');await openNames(h)[0].click();await h.$('#closeCaptureEditor').click();assert.equal(body(h),el);assert.equal(back(h),token);
+  el.dispatch('compositionend');const work=remove(h)[0].click();await h.finishWrites();await work;assert.equal(body(h),el);assert.equal(back(h),token);assert.equal(current(h).links.some(x=>x.id==='pizza'),false);
+});
+
+test('tap revalidates known recipe/data/link and deleted return memo is never resurrected',async()=>{
+  const h=navigation();h.ctx.openCapture('a');const el=body(h),button=openNames(h)[0];h.ctx.state.knownRecipes=[];await button.click();assert.equal(body(h),el);assert.equal(back(h),null);
+  h.ctx.state.knownRecipes=['pizza','bread'];h.ctx.recipeData=()=>null;await button.click();assert.equal(body(h),el);
+  const other=navigation();await fromMemo(other);other.ctx.state.captures=other.ctx.state.captures.filter(c=>c.id!=='a');await hit(other,'#closeRecipeSheet');assert.equal(back(other),null);assert.equal(other.ctx.state.captures.some(c=>c.id==='a'),false);
+});
+
+test('knowledge changing while flush awaits does not dispose the still-editable memo',async()=>{
+  const h=navigation();h.ctx.openCapture('a');const el=body(h);h.input(el,'保留本文');openNames(h)[0].click();await h.until(()=>h.pending.length===1);h.ctx.state.knownRecipes=[];await h.finishWrites();assert.equal(body(h),el);assert.equal(back(h),null);assert.equal(h.evaluate('[...memoEditors].some(e=>e.body&&!e.disposed)'),true);
+});
+
+test('navigation reads do not change playerState or known lists; state replacement clears the RAM return',async()=>{
+  const h=navigation();const player=clone(h.ctx.state.playerState),known=clone([h.ctx.state.knownEntities,h.ctx.state.knownRecipes,h.ctx.state.knownProcesses]);await fromMemo(h);await reverse(h,1);await h.close();await hit(h,'#closeRecipeSheet');
+  assert.deepEqual(clone(h.ctx.state.playerState),player);assert.deepEqual(clone([h.ctx.state.knownEntities,h.ctx.state.knownRecipes,h.ctx.state.knownProcesses]),known);
+  await fromMemo(h);h.evaluate('replaceMemoState(clone(state))');assert.equal(back(h),null);
+});
+
+test('actual home, memo list, recipe list and recipe search never match/scan memo links',()=>{
+  const h=navigation();const section=(a,b)=>{const start=html.indexOf(a);assert.ok(start>=0);return html.slice(start,html.indexOf(b,start+a.length))};
+  Object.assign(h.ctx,{RECIPE_ROWS:[],todayStripHtml:()=>'',seasonReminderBannerHtml:()=>'',homeProgressHtml:()=>'',bazaarPrepHtml:()=>'',recentStripHtml:()=>'',bindTodayStrip(){},bindRecent(){},bindBazaarPrep(){}});
+  h.evaluate(section('function home(){','function planTags(')+section('function knownRecipeRows(){','function recipeRegistrationCandidates('));
+  h.evaluate('memoRecipeMatches=recipeMemoSection=captureLinks=()=>{throw Error("List rendering must not scan links or match memo recipes")};home();recipesScreen();inbox()');
+  h.input(h.$('#recipeSearch'),'ピザ');assert.ok(h.root.recipes.innerHTML.includes('知っている料理'));assert.ok(h.root.home.innerHTML.includes('未整理メモ'));assert.equal(h.pending.length,0);
+});
+
+test('failed destructive memo actions retain the current sheet and return; retry consumes only on success',async()=>{
+  for(const operation of ['delete','archive','convert']){
+    const h=navigation();h.ctx.showRecipe('pizza');await reverse(h,1);const token=back(h);
+    if(operation==='convert'){h.root.modalSheet.querySelector('.captureOrganize').click();await h.finishWrites()}
+    const selector=operation==='delete'?'#deleteCap':operation==='archive'?'#archiveCaptureDetail':'#doConvert';const sheet=h.root.modalSheet.innerHTML;
+    h.setFailures(true,true);await hit(h,selector);assert.equal(back(h),token);assert.equal(h.root.modalSheet.innerHTML,sheet);
+    h.setFailures(false,false);await hit(h,selector);assert.equal(back(h),null);assert.equal(h.root.modal.classList.contains('open'),false);
+  }
 });

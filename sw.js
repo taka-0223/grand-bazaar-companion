@@ -1,4 +1,4 @@
-const CACHE='grand-bazaar-pwa-v01117-4';
+const CACHE='grand-bazaar-pwa-v01117-5';
 const CORE=['./','./index.html','./manifest.webmanifest','./icon.svg'];
 const REMOTE=[
 'https://cdn.jsdelivr.net/gh/rickychiki/sos-grand-bazaar@52ca676f700ead4494992f17ff7175305b8a6ce3/data/i18n.js',
