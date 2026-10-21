@@ -39,8 +39,8 @@ test('today events and calendar day details show times without altering festival
 test('growing crops stand out in list and detail using existing Player State',()=>{
   assert.ok(html.includes('cropCompact cropOpen clickable ${p.growing?'));
   assert.ok(html.includes('class="cropGrowingBadge"'));
-  assert.ok(html.includes('id="cropGrowingBanner"'));
-  assert.ok(app.includes("growingBanner.classList.toggle('hidden',!p.growing)"));
+  assert.ok(html.includes('class="cropGrowingQuick"'));
+  assert.ok(app.includes("growToggle?.classList.toggle('active',!!p.growing)"));
   assert.ok(app.includes("p.growing=$('#growing').checked"));
   assert.ok(app.includes("p.growingCount=p.growing?intOrNull($('#growingCount').value):null"));
 });
@@ -52,9 +52,9 @@ test('request recognition is explicit and the requester has no tappable suggesti
   assert.ok(!app.includes('requestMasterCandidate'));
   assert.ok(!app.includes('id="requestRequesterSuggestions"'));
   assert.ok(!app.includes('id="requestStatus"'));
-  assert.ok(!app.includes('id="requestObjectiveCurrent"'));
-  assert.ok(!app.includes('class="requestObjectiveStep"'));
-  assert.ok(!app.includes('class="requestObjectiveCheck"'));
+  assert.ok(app.includes('class="requestObjectiveCurrent"'));
+  assert.ok(app.includes('class="requestObjectiveStep requestObjectiveControls"'));
+  assert.ok(app.includes('class="check requestObjectiveCheck"'));
 });
 test('flavor text is optional, user-editable, and never invented from missing Master fields',()=>{
   assert.ok(html.includes('id="requestFlavorText"'));
