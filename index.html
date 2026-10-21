@@ -1642,8 +1642,8 @@ function showRecipe(id){if(deferMemoNavigation(()=>showRecipe(id)))return;
   const close=(savedArchive=false)=>{if(archiving&&savedArchive!==true)return archiving;if(generation!==modalGeneration)return;if(returnMemoRecipe('capture',id))return;closeModal();recipesScreen()};
   $('#closeRecipeSheet').onclick=close;$('#recipeSheetCloseBottom').onclick=close;
   $('#favoriteRecipe').onclick=async()=>{meta.favorite=!meta.favorite;await save();if(generation===modalGeneration)showRecipe(id)};
-  $('#archiveRecipe').onclick=()=>archiving??=(async()=>{archiveTarget??=!recipeMetaFor(id).archived;recipeMetaFor(id).archived=archiveTarget;
-    if(await save()===false){toast('保存できませんでした。もう一度操作してください');return false}
+  $('#archiveRecipe').onclick=()=>archiving??=(async()=>{const archivedBefore=recipeMetaFor(id).archived;archiveTarget??=!archivedBefore;recipeMetaFor(id).archived=archiveTarget;
+    if(await save()===false){recipeMetaFor(id).archived=archivedBefore;toast('保存できませんでした。もう一度操作してください');return false}
     if(generation===modalGeneration){close(true);toast(archiveTarget?'アーカイブしました':'一覧に戻しました')}return true;
   })().finally(()=>{archiving=null});
   $$('.recipeMemoOpen').forEach(b=>b.onclick=e=>{e.stopPropagation();return openRecipeMemo(id,b.dataset.capture)});

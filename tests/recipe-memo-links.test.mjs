@@ -228,7 +228,7 @@ for(const method of ['top','bottom','background','swipe'])test('N-1/N-2: '+metho
 test('N-3: recipe archive succeeds before returning; failures and repeated close retain sheet/return until retry',async()=>{
   const h=navigation();await fromMemo(h);h.setFailures(true,true);const token=back(h),sheet=h.root.modalSheet.innerHTML;
   const first=h.$('#archiveRecipe').click(),second=h.$('#closeRecipeSheet').click();await h.finishWrites();await Promise.all([first,second]);
-  assert.equal(back(h),token);assert.equal(h.root.modalSheet.innerHTML,sheet);assert.equal(h.pending.length,1);
+  assert.equal(back(h),token);assert.equal(h.root.modalSheet.innerHTML,sheet);assert.equal(h.pending.length,1);assert.equal(h.ctx.state.recipeMeta.pizza.archived,false);
   h.setFailures(false,false);await hit(h,'#archiveRecipe');assert.equal(back(h),null);assert.ok(body(h));assert.equal(h.ctx.state.recipeMeta.pizza.archived,true);
 });
 
@@ -357,4 +357,28 @@ test('failed destructive memo actions retain the current sheet and return; retry
     h.setFailures(true,true);await hit(h,selector);assert.equal(back(h),token);assert.equal(h.root.modalSheet.innerHTML,sheet);
     h.setFailures(false,false);await hit(h,selector);assert.equal(back(h),null);assert.equal(h.root.modal.classList.contains('open'),false);
   }
+});
+
+for(const archived of [false,true])test('failed recipe archive restores '+archived+' before Close and unrelated data save',async()=>{
+  const h=navigation();h.ctx.state.recipeMeta.pizza={favorite:false,archived};await fromMemo(h);
+  h.setFailures(true,true);await hit(h,'#archiveRecipe');assert.equal(h.ctx.state.recipeMeta.pizza.archived,archived);
+  assert.ok(h.$('#archiveRecipe'));assert.equal(back(h).kind,'capture');await hit(h,'#closeRecipeSheet');assert.ok(body(h));
+  h.setFailures(false,false);h.input(body(h),'失敗後に保存する別のデータ');await h.close();
+  assert.equal(saved(h).captures[0].text,'失敗後に保存する別のデータ');assert.equal(saved(h).recipeMeta.pizza.archived,archived);
+});
+
+for(const archived of [false,true])test('failed recipe archive restores '+archived+' after another sheet opens during save',async()=>{
+  const h=navigation();h.ctx.state.recipeMeta.pizza={favorite:false,archived};await fromMemo(h);h.setFailures(true,true);
+  const work=h.$('#archiveRecipe').click();await h.until(()=>h.pending.length===1);assert.equal(h.ctx.state.recipeMeta.pizza.archived,!archived);
+  const navigate=h.root.modalSheet.querySelectorAll('.recipeMemoOpen')[1].click();await h.until(()=>!!body(h));
+  const el=body(h),token=back(h);h.ctx.state=clone(h.ctx.state);
+  await h.finishWrites();await Promise.all([work,navigate]);assert.equal(body(h),el);assert.equal(back(h),token);assert.equal(h.ctx.state.recipeMeta.pizza.archived,archived);
+  h.setFailures(false,false);h.input(el,'別シートで追記して保存');await h.close();
+  assert.equal(saved(h).recipeMeta.pizza.archived,archived);assert.equal(saved(h).captures[1].text,'別シートで追記して保存');
+});
+
+test('failed recipe unarchive retries the same target and returns only after success',async()=>{
+  const h=navigation();h.ctx.state.recipeMeta.pizza={favorite:false,archived:true};await fromMemo(h);const token=back(h);h.setFailures(true,true);
+  await hit(h,'#archiveRecipe');assert.equal(h.ctx.state.recipeMeta.pizza.archived,true);assert.equal(back(h),token);assert.ok(h.$('#archiveRecipe'));
+  h.setFailures(false,false);await hit(h,'#archiveRecipe');assert.equal(saved(h).recipeMeta.pizza.archived,false);assert.equal(h.ctx.state.recipeMeta.pizza.archived,false);assert.equal(back(h),null);assert.ok(body(h));
 });
