@@ -169,6 +169,13 @@
 .requestObjectiveRow .check{flex:0 0 auto}
 .requestReadyHint{background:#edf6e9;border-color:#bfd8bb;color:#355c34}
 @media(max-width:360px){.requestObjectiveStep{gap:2px}.requestObjectiveStep button{width:27px}.requestObjectiveStep input{width:46px}.requestObjectiveStep input[data-money="true"]{width:64px}}
+
+/* Pinned notes are a user-chosen home reference, not an 'unprocessed' queue. */
+.capturePinButton{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:6px 10px;font-size:11px;font-weight:800;color:var(--muted);margin:2px 0 10px}
+.capturePinButton.active,.memoPinControl.active{background:#fff4d7;color:#805b19;border-color:#e3ca8a}
+.memoPinControl{width:32px;height:30px;border:1px solid var(--line);background:var(--surface);border-radius:10px;font-size:14px;flex:0 0 auto}
+.homePinnedMemo{padding:8px 0}
+.homePinnedMemo+.homePinnedMemo{border-top:1px solid #eee8dc}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -1389,7 +1396,7 @@ function homeProgressHtml(){
   return `<div class="section"><div class="section-head"><h2>進行中</h2>${all.length>xs.length?`<button class="miniLink homeNav" data-dest="plan">すべて見る</button>`:''}</div><div class="homeProgressList">${xs.map(x=>`<div class="homeProgressRow ${x.ready?'reportReady':''}"><div class="homeProgressMain clickable homeProgressOpen" data-kind="${x.kind}" data-id="${x.id}"><div class="homeProgressTitle">${x.kind==='request'?'🙏':'🎯'} ${esc(x.title)}</div><div class="homeProgressMeta">${esc(x.meta)}</div></div><div class="homeProgressActions">${x.kind==='request'?`<button class="requestQuickDone homeRequestDone" data-id="${x.id}" aria-label="お願いを完了">完了</button>`:'<span>›</span>'}</div></div>`).join('')}</div></div>`
 }
 function home(){
-  const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request'),short=[],memos=state.captures.filter(c=>captureStatus(c)==='active');
+  const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request'),short=[],memos=state.captures.filter(captureOnHome);
   for(const g of goals)for(const r of state.requirements[g.id]||[])if(r.have<r.need)short.push({...r,goal:g.title,goalId:g.id});
   const pinnedView=pinned.slice(0,4),memoView=memos.slice(0,3);
   $('#home').innerHTML=`${todayStripHtml()}${seasonReminderBannerHtml()}
@@ -1397,14 +1404,15 @@ function home(){
   ${homeProgressHtml()}
   <div class="section"><div class="section-head"><h2>不足</h2></div><div class="card">${short.length?short.slice(0,4).map(r=>`<div class="row between clickable homeGoal" data-id="${r.goalId}" style="padding:7px 0"><div><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="tiny">${esc(r.goal)}</div></div><div class="countPair" style="min-width:108px"><span>現在 <b>${r.have}</b></span><span>必要 <b>${r.need}</b></span></div></div>`).join(''):'<div class="empty">追跡中の不足はありません</div>'}</div></div>
   ${bazaarPrepHtml()}
-  <div class="section"><div class="section-head"><h2>未整理メモ</h2>${memos.length>memoView.length?'<button class="miniLink homeNav" data-dest="inbox">すべて見る</button>':''}</div><div class="card">${memoView.length?memoView.map(c=>`<div class="row between clickable homeCapture" data-id="${c.id}" style="padding:7px 0"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">ありません</div>'}</div></div>
+  <div class="section"><div class="section-head"><h2>📌 固定メモ</h2>${memos.length>memoView.length?'<button class="miniLink" id="homeAllPinnedMemos">すべて見る</button>':''}</div><div class="card">${memoView.length?memoView.map(c=>`<div class="row between clickable homeCapture homePinnedMemo" data-id="${c.id}"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">固定メモはありません。メモから📌を付けるとここに表示されます。</div>'}</div></div>
   ${recentStripHtml()}`;
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.homeActionOpen').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id,'home'));
   $$('.homeGoal').forEach(x=>x.onclick=()=>openGoalSheet(x.dataset.id,'home'));
   $$('.homeProgressOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
   $$('.homeRequestDone').forEach(x=>x.onclick=e=>{e.stopPropagation();completeRequestById(x.dataset.id,'home')});
-  $$('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
+  $('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
+  $('#homeAllPinnedMemos')?.addEventListener('click',async()=>{state.ui.memoFilter='pinned';await save();openHomeNav('inbox')});
   $$('.homeNav').forEach(x=>x.onclick=()=>openHomeNav(x.dataset.dest));
   bindTodayStrip();bindSeasonReminderUi();bindRecent();bindBazaarPrep()
 }
@@ -1896,6 +1904,19 @@ function openAction(goalId=null,id=null,origin=null){if(deferMemoNavigation(()=>
   }
 }
 function captureStatus(c){return c.status||(c.processed?'processed':'active')}
+function captureOnHome(c){return !!c.pinned&&captureStatus(c)!=='archived'}
+function toggleCapturePin(id,returnTo='inbox'){
+  const c=state.captures.find(x=>x.id===id);if(!c)return Promise.resolve(false);
+  const next=!c.pinned,op=memoOperation('メモのピン留めを元に戻せます',()=>{
+    c.pinned=next;c.updatedAt=new Date().toISOString()
+  });
+  return leaveMemoEditors(()=>{
+    if(returnTo==='editor')openCapture(id);
+    else if(returnTo==='home')home();
+    else inbox();
+    toast(next?'ホームに固定しました':'ホームの固定を外しました')
+  },op)
+}
 // Exactly one RAM-only return; consumed before opening its destination.
 function canOpenMemoRecipe(id){return !!memoRecipeName(id)&&!!recipeData(id)}
 function recipeMemoSection(id){
@@ -2035,14 +2056,15 @@ function bindInlineSubMemoEditing(root=document){
   return editor
 }
 function inbox(){if([...memoEditors].some(e=>!e.body&&(e.dirty||e.composing))&&deferMemoNavigation(inbox))return;
-  const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ'};
-  $('#inbox').innerHTML=`<div class="pageHead"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておく</p></div><div class="filters"><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="memoCardHead"><div class="small">${esc(c.text)}</div><button class="memoMore capMenu" data-id="${c.id}" aria-label="メモの操作">⋯</button></div>${captureChildrenExpanded(c)}</div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>${seasonReminderInboxHtml()}`;
+  const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>filter==='pinned'?captureOnHome(c):captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ',pinned:'ピン留め'};
+  $('#inbox').innerHTML=`<div class="pageHead"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておく</p></div><div class="filters"><button class="filter ${filter==='pinned'?'active':''}" data-mfilter="pinned">📌 ピン留め</button><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="memoCardHead"><div class="small">${esc(c.text)}</div><button type="button" class="memoPinControl capPin ${c.pinned?'active':''}" data-id="${c.id}" aria-label="${c.pinned?'ピン留め解除':'ホームにピン留め'}" aria-pressed="${!!c.pinned}">📌</button><button class="memoMore capMenu" data-id="${c.id}" aria-label="メモの操作">⋯</button></div>${captureChildrenExpanded(c)}</div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>${seasonReminderInboxHtml()}`;
   bindSeasonReminderUi();
   $$('[data-mfilter]').forEach(b=>b.onclick=async()=>{state.ui.memoFilter=b.dataset.mfilter;await save();inbox()});
   $$('.subListCheck').forEach(b=>{b.onclick=e=>e.stopPropagation();b.onchange=async()=>{const c=state.captures.find(x=>x.id===b.dataset.parent),ch=c?.children?.find(x=>x.id===b.dataset.child);if(!c||!ch)return;ch.done=b.checked;c.updatedAt=new Date().toISOString();await save();inbox()}});
   $$('.capOpen').forEach(b=>b.onclick=()=>openCapture(b.dataset.id));
   bindInlineSubMemoEditing($('#inbox'));
-  $$('.capMenu').forEach(b=>b.onclick=e=>{e.stopPropagation();openCaptureActions(b.dataset.id)})
+  $('.capPin').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleCapturePin(b.dataset.id)});
+  $('.capMenu').forEach(b=>b.onclick=e=>{e.stopPropagation();openCaptureActions(b.dataset.id)})
 }
 function openCaptureActions(id){if(deferMemoNavigation(()=>openCaptureActions(id)))return;
   const c=state.captures.find(x=>x.id===id);if(!c)return;const status=captureStatus(c);
@@ -2051,8 +2073,9 @@ function openCaptureActions(id){if(deferMemoNavigation(()=>openCaptureActions(id
     :status==='archived'
       ?'<button class="btn secondary" id="captureMenuRestore">元の状態へ戻す</button>'
       :'<button class="btn ghost" id="captureMenuArchive">アーカイブ</button>';
-  modal(`<h3>メモの操作</h3><div class="notice">${esc(c.text)}</div><div class="stack" style="margin-top:12px">${buttons}</div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">閉じる</button></div>`);
-  $$('.captureActionChoice').forEach(b=>b.onclick=()=>confirmConvert(id,b.dataset.to));
+  modal(`<h3>メモの操作</h3><div class="notice">${esc(c.text)}</div><div class="stack" style="margin-top:12px"><button class="btn secondary" id="captureMenuPin">${c.pinned?'📌 ピン留めを外す':'📌 ホームにピン留め'}</button>${buttons}</div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">閉じる</button></div>`);
+  $('#captureMenuPin').onclick=()=>toggleCapturePin(id);
+  $('.captureActionChoice').forEach(b=>b.onclick=()=>confirmConvert(id,b.dataset.to));
   const archive=memoOperation(null,()=>{const c=state.captures.find(x=>x.id===id);if(c){c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString()}});
   const restore=memoOperation(null,()=>{const c=state.captures.find(x=>x.id===id);if(c){c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString()}});
   $('#captureMenuArchive')?.addEventListener('click',()=>leaveMemoEditors(()=>{closeModal();inbox();toast('アーカイブしました')},archive));
@@ -2075,7 +2098,7 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
       ?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn secondary" id="restoreCaptureDetail" style="width:100%">アーカイブから戻す</button></div>`
       :`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><button class="btn ghost" id="archiveCaptureDetail" style="width:100%">アーカイブ</button></div>`
   ):'';
-  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?'<div class="editorSaveHint">本文と追加済みのサブメモは自動保存されます</div>':''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div><div class="small muted" style="margin-top:10px">料理との関連付け</div><div id="memoLinksSelected"></div><div id="memoLinksCandidates"></div><button type="button" class="miniLink" id="memoLinksSearch">＋料理をつなげる</button><div id="memoLinksSearchField" class="hidden"><input id="memoLinksQuery" class="search" placeholder="知っている料理から検索"><div id="memoLinksResults"></div></div><div class="tiny muted" id="memoLinksStatus" role="status"></div><button type="button" class="miniLink hidden" id="memoLinksRetry">関連付けの保存を再試行</button>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div><div id="subDraftStatus" class="tiny muted" role="status" style="margin-top:6px">「追加」を押すまで保存されません。</div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
+  modal(`<h3>${id?'メモを編集':'メモを追加'}</h3>${id?`<button type="button" id="toggleCapturePin" class="capturePinButton ${c.pinned?'active':''}" aria-pressed="${!!c.pinned}">${c.pinned?'📌 ホームに固定中':'📌 ホームに固定'}</button><div class="editorSaveHint">本文と追加済みのサブメモは自動保存されます</div>`:''}<div class="field"><textarea id="capText" placeholder="思いついたことをそのまま">${esc(c.text)}</textarea></div><div class="small muted" style="margin-top:10px">料理との関連付け</div><div id="memoLinksSelected"></div><div id="memoLinksCandidates"></div><button type="button" class="miniLink" id="memoLinksSearch">＋料理をつなげる</button><div id="memoLinksSearchField" class="hidden"><input id="memoLinksQuery" class="search" placeholder="知っている料理から検索"><div id="memoLinksResults"></div></div><div class="tiny muted" id="memoLinksStatus" role="status"></div><button type="button" class="miniLink hidden" id="memoLinksRetry">関連付けの保存を再試行</button>${organize}${id?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>サブメモ</h2></div><div class="card">${children.length?children.map(ch=>`<div class="actionrow"><input class="check subCheck" type="checkbox" data-child="${ch.id}" ${ch.done?'checked':''}><div class="grow subMemoText subInlineEditable ${ch.done?'done':''}" contenteditable="true" role="textbox" spellcheck="false" data-parent="${id}" data-child="${ch.id}">${esc(ch.text)}</div><button class="iconAction subDelete" data-child="${ch.id}">×</button></div>`).join(''):'<div class="empty">まだありません</div>'}<div class="row" style="margin-top:10px"><input id="subText" class="search" placeholder="サブメモを追加"><button class="btn secondary smallbtn" id="addSub">追加</button></div><div id="subDraftStatus" class="tiny muted" role="status" style="margin-top:6px">「追加」を押すまで保存されません。</div></div></div>`:''}<div class="sheet-actions">${id?'<button class="btn danger" id="deleteCap">削除</button>':''}<button class="btn secondary" id="closeCaptureEditor">${id?'閉じる':'キャンセル'}</button>${id?'':'<button class="btn" id="addCaptureRecord">追加</button>'}</div>`);
   const body=$('#capText'),subInput=$('#subText'),linkDraft={};let draftId=null,subDraftId=null,subDraftAdded=false;
   const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)})),...(subInput?[{el:subInput,captureId:id,childId:()=>subDraftId,active:()=>subDraftAdded,autosave:false,required:true,read:()=>subInput.value}]:[])];
   const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput,$('#memoLinksQuery')].filter(Boolean)});
@@ -2083,6 +2106,7 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
   const finish=()=>{memoRecipeReturn=null;closeModal();inbox()};
   $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(()=>{if(!returnMemoRecipe('recipe',id))finish()});
   if(id){
+    $('#toggleCapturePin')?.addEventListener('click',()=>toggleCapturePin(id,'editor'));
     const archive=memoOperation('メモのアーカイブを元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(c){c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString()}});
     const restore=memoOperation('メモの復元を元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(c){c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString()}});
     const remove=memoOperation('メモ削除を元に戻せます',()=>{state.captures=state.captures.filter(x=>x.id!==id)});
