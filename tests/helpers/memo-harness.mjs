@@ -14,6 +14,11 @@ const hydrate=section('async function hydrate(){','const APP_ENTITY_LABELS=');
 const reorder=section('function moveActionInPlan(','function bindActionReorder(');
 const importSource=section('function importJson(','function activeScreenId(');
 const homeNav=section('function openHomeNav(','const CAL_SEASONS=');
+const recipe=section('let CURRENT_RECIPE_ID=', 'function plan(){');
+const goals=section('function returnToGoal(', 'function openRequestPlan(');
+const settings=section('async function settings(){','async function exportJson(){');
+const calendar=section('function openCalendarSheet(){','function openTodayDayEditor(){');
+const quick=section('function activeScreenId(){','function bindGoalOpen(');
 const navStart=html.lastIndexOf("document.querySelectorAll('.navbtn').forEach");
 const navSource=html.slice(navStart,html.indexOf(';render();hydrate();',navStart)+1);
 const decode=s=>s.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&amp;/g,'&');
@@ -23,7 +28,7 @@ function fixture(){return {schemaVersion:7,updatedAt:'2026-01-01T00:00:00Z',ui:{
   captures:[{id:'a',text:'  元の本文\n★  ',status:'active',children:[{id:'child',text:'元の子',done:false}]},
     {id:'b',text:'別のメモ',status:'active',children:[]}],
   goals:[],actions:[{id:'one',text:'1',done:false},{id:'two',text:'2',done:false}],requirements:{},
-  playerState:{synthetic:{count:3}},knownRecipes:['synthetic']};}
+  playerState:{synthetic:{count:3}},knownRecipes:['synthetic'],knownEntities:[],knownProcesses:[],recipeMeta:{}};}
 class Element{
   constructor(id='',attrs={}){this.id=id;this.dataset={};this.value='';this.textContent='';this.listeners=new Map();this.style={};this.scrollTop=0;this.offsetHeight=600;this.scrollHeight=600;this.clientHeight=600;this.classes=new Set((attrs.class||'').split(' ').filter(Boolean));this.nodes=[];
     this.classList={add:(...ns)=>ns.forEach(n=>this.classes.add(n)),remove:(...ns)=>ns.forEach(n=>this.classes.delete(n)),contains:n=>this.classes.has(n),toggle:(n,on)=>{if(on??!this.classes.has(n))this.classes.add(n);else this.classes.delete(n)}};
@@ -41,18 +46,18 @@ class Element{
   closest(){return null}
   setPointerCapture(){}
   releasePointerCapture(){}
-  set innerHTML(markup){this.markup=markup;this.nodes=[];const tag=/<(input|textarea|button|div)\b([^>]*)(?:>([^<]*)|\/?>)/g;let m;
+  set innerHTML(markup){this.markup=markup;this.nodes=[];const tag=/<(input|textarea|select|button|div)\b([^>]*)(?:>([^<]*)|\/?>)/g;let m;
     while((m=tag.exec(markup))){const attrs={};for(const a of m[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g))attrs[a[1]]=a[2]??'';
       const el=new Element(attrs.id||'',attrs);el.textContent=decode(m[3]||'');if(m[1]==='textarea')el.value=el.textContent;this.nodes.push(el)}
   }
   get innerHTML(){return this.markup||''}
 }
-function harness({localFails=false,idbFails=false,names={}}={}){
+function harness({localFails=false,idbFails=false,names={},recipes=null}={}){
   let localThrows=localFails,dbFails=idbFails;
   const local=new Map(),durable=new Map(),pending=[],timers=new Map(),trace=[];let timerId=0;
-  const root={};for(const id of ['modal','modalSheet','inbox','undo','undoBtn','undoText','saveStatus'])root[id]=new Element(id);
-  const document={querySelectorAll:q=>[...Object.values(root),...root.modalSheet.nodes,...root.inbox.nodes].filter(el=>q.startsWith('.')?el.classes.has(q.slice(1)):el.id===q.slice(1)),documentElement:{style:{setProperty(){}}}};
-  const $=q=>q.startsWith('#')?(root[q.slice(1)]||root.modalSheet.querySelector(q)||root.inbox.querySelector(q)):document.querySelectorAll(q)[0];
+  const root={};for(const id of ['modal','modalSheet','inbox','undo','undoBtn','undoText','saveStatus','home','recipes'])root[id]=new Element(id);
+  const document={querySelectorAll:q=>Object.values(root).flatMap(el=>[el,...el.nodes]).filter(el=>q.startsWith('.')?el.classes.has(q.slice(1)):el.id===q.slice(1)),documentElement:{style:{setProperty(){}}}};
+  const $=q=>q.startsWith('#')?(document.querySelectorAll(q)[0]||null):document.querySelectorAll(q)[0];
   const indexedDB={open(){const req={};queueMicrotask(()=>{req.result={objectStoreNames:{contains:()=>true},close(){},transaction(_store,mode){const tx={};tx.objectStore=()=>({put(value,key){const record=clone(value);pending.push({record,key,resolve(ok=!dbFails){if(ok){durable.set(key,record);tx.oncomplete?.()}else tx.onerror?.()}})},get(key){const r={};queueMicrotask(()=>{r.result=durable.get(key)||null;r.onsuccess?.()});return r}});return tx}};req.onsuccess?.()});return req}};
   const window={indexedDB,addEventListener(){}};
   const ctx={state:fixture(),undoSnapshot:null,undoTimer:null,needsStableMigration:false,window,document,indexedDB,
@@ -61,6 +66,15 @@ function harness({localFails=false,idbFails=false,names={}}={}){
     $,$$:q=>document.querySelectorAll(q),clone,migrate:clone,captureMigrationSnapshot(){},
     PERF_DIAG:{begin:()=>0,record(){},markReady(){}},
     setTimeout(fn,ms){const id=++timerId;timers.set(id,{fn,ms});return id},clearTimeout:id=>timers.delete(id),
+    recipeData:id=>recipes?recipes[id]||null:names[id]?{id,ingredient:[]}:null,
+    processData:id=>id==='flour'?{ingredient:['wheat'],windmill:'blue'}:null,
+    recipeMetaFor:id=>ctx.state.recipeMeta[id]||(ctx.state.recipeMeta[id]={favorite:false,archived:false}),
+    groupById:new Map(),recipeCategory:()=> '主食',recipePrice:()=>null,recipeEffectLabel:()=>'',ingredientHtml:x=>'<div>材料 '+x.qty+'</div>',
+    recipesScreen:()=>trace.push(['recipes']),addKnownConcrete:id=>{if(!ctx.state.knownEntities.includes(id))ctx.state.knownEntities.push(id)},
+    planKind:()=> 'goal',isBazaarGoal:()=>false,bindDerivedActions(){},
+    APP_VERSION:'test',bytes:()=> '0 B',storageHealth:async()=>({}),currentReleaseInfo:async()=>({}),updatePerfDiagnostics(){},exportJson(){},
+    seasonCalendarHtml:()=>'<div>合成カレンダー</div>',bindCalendar(){},home:()=>trace.push(['home']),
+    activeScreenId:()=> 'inbox',openKnownRecipe:()=>trace.push(['register']),openAddKnown:()=>trace.push(['addKnown']),
     rname:id=>names[id]||id,toast:text=>trace.push(['toast',text]),esc:escape,touchRecent:()=>trace.push(['recent']),
     confirm:()=>true,confirmDelete:(_msg,fn)=>fn(),Element,getComputedStyle:()=>({overflowY:'visible'}),performance:{now:()=>100},
     seasonReminderInboxHtml:()=>'',bindSeasonReminderUi(){},
@@ -71,7 +85,7 @@ function harness({localFails=false,idbFails=false,names={}}={}){
   };Object.assign(window,{setTimeout:ctx.setTimeout,closeModal:undefined});
   // window is the vm global for the real closeModal assignment.
   Object.assign(ctx,{closeModal:(...args)=>window.closeModal(...args)});
-  runInNewContext(section('function norm(', 'function findByName(')+storage+editors+undo+capture+drag+modal+hydrate+reorder+importSource+homeNav,ctx);
+  runInNewContext(section('function norm(', 'function findByName(')+storage+editors+undo+capture+drag+modal+hydrate+reorder+importSource+homeNav+section('function countIngredients(','function recipeRow(')+recipe+goals+quick+settings+calendar,ctx);
   const evaluate=src=>runInNewContext(src,ctx);
   return {ctx,root,$,local,durable,pending,timers,trace,evaluate,
     input(el,text){if(el.classes.has('subInlineEditable'))el.textContent=text;else el.value=text;return el.dispatch('input')},

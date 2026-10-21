@@ -432,10 +432,10 @@ function bindAutosave(elements,persist,delay=400){
 }
 // RAM-only editor lifecycle. save() remains the sole whole-state persistence queue.
 const memoEditors=new Set();
-let memoExitPromise=null,memoEditRevision=0,memoStateGeneration=0,memoPendingSave=null,memoLinksUndo=null;
+let memoExitPromise=null,memoEditRevision=0,memoStateGeneration=0,memoPendingSave=null,memoLinksUndo=null,memoRecipeReturn=null;
 function invalidateMemoUndo(){memoEditRevision++;undoSnapshot=null;if(!memoLinksUndo){clearTimeout(undoTimer);$('#undo')?.classList.remove('show')}}
 function disposeMemoEditors(){for(const editor of [...memoEditors])editor.dispose()}
-function replaceMemoState(next){disposeMemoEditors();memoStateGeneration++;memoPendingSave=null;memoLinksUndo=null;invalidateMemoUndo();state=next}
+function replaceMemoState(next){disposeMemoEditors();memoStateGeneration++;memoPendingSave=null;memoLinksUndo=null;memoRecipeReturn=null;invalidateMemoUndo();state=next}
 async function flushMemoEditors(){
   const editors=[...memoEditors];
   do{
@@ -636,7 +636,7 @@ $('#undoBtn').onclick=async()=>{
   else toast('保存できませんでした。元に戻した内容は端末保存を再試行してください');
 };
 function show(id){const current=$('.screen.active')?.id||null;document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.querySelectorAll('.navbtn').forEach(x=>x.classList.toggle('active',x.dataset.nav===id));if(current!==id)window.scrollTo({top:0,behavior:'instant'})}
-function openHomeNav(dest){const t=PERF_DIAG.begin();if(deferMemoNavigation(()=>openHomeNav(dest)))return;closeModal();show(dest);renderScreen(dest);PERF_DIAG.record('tab',t)}
+function openHomeNav(dest){const t=PERF_DIAG.begin();if(deferMemoNavigation(()=>openHomeNav(dest)))return;memoRecipeReturn=null;closeModal();show(dest);renderScreen(dest);PERF_DIAG.record('tab',t)}
 const CAL_SEASONS=['春','夏','秋','冬'],CAL_WEEKDAYS=['日','月','火','水','木','金','土'];
 const CAL_BIRTHDAYS={
 '春':{5:['カゲツ'],16:['シェルファ'],18:['メリーニ'],20:['エーリッヒ'],25:['サニア']},
@@ -814,7 +814,7 @@ function todayStripHtml(){
   }
   return `<div class="todayStrip">${head}${status}${planHtml}</div>`
 }
-function openCalendarSheet(){if(deferMemoNavigation(()=>openCalendarSheet()))return;
+function openCalendarSheet(){if(deferMemoNavigation(()=>openCalendarSheet()))return;memoRecipeReturn=null;
   CALENDAR_RETURN_CONTEXT='calendar';
   modal(`<div id="calendarSheetMarker"><div class="row between" style="margin-bottom:8px"><div><div class="tiny muted">暦</div><h3 style="margin:2px 0 0">月間カレンダー</h3></div><button class="iconAction" id="closeCalendarSheet" aria-label="閉じる">×</button></div>${seasonCalendarHtml()}<div class="sheet-actions"><button class="btn" id="closeCalendarSheetBottom">閉じる</button></div></div>`);
   const close=()=>{CALENDAR_RETURN_CONTEXT='home';closeModal();home()};
@@ -880,7 +880,7 @@ function calendarCellWeatherHtml(wd={}){const weather=WEATHER_TYPES.includes(wd.
 function seasonCalendarHtml(){const cal=calendarState(),season=cal.viewSeason||state.season||cal.today?.season||'春',year=cal.year,notes=calendarNotes(year,season),weather=calendarWeather(year,season),today=cal.today?.year===year&&cal.today?.season===season?Number(cal.today.day):null,first=calWeekday(year,season,1),days=Array.from({length:31},(_,i)=>i+1),week=['日','月','火','水','木','金','土'];return `<div class="section"><div class="section-head"><div class="calendarControls"><button class="yearBtn" id="calMonthPrev" aria-label="前の月">‹</button><h2 style="margin:0">📅 ${year}年目 ${season}の月</h2><button class="yearBtn" id="calMonthNext" aria-label="次の月">›</button></div><div class="tiny muted">${today?`今日 ${today}日`:cal.today?.season?`今日：${cal.today.year}年目 ${cal.today.season}${cal.today.day}日`:'今日 未設定'}</div></div><div class="card calendarCard"><div class="calendarGrid">${week.map((w,i)=>`<div class="calWeekday ${i===0?'sun':i===6?'sat':''}">${w}</div>`).join('')}${Array.from({length:first},()=>'<div class="calBlank"></div>').join('')}${days.map(d=>{const note=String(notes[d]||'').trim(),entries=dayEntries(year,season,d),wd=weather[String(d)]||{};return `<button class="calDay ${today===d?'today':''} ${note?'hasNote':''}" data-day="${d}"><div class="calNum">${d}</div>${calendarCellWeatherHtml(wd)}<div class="calTags">${entries.slice(0,3).map(e=>`<div class="calTag ${e.type}">${e.icon} ${esc(e.label)}</div>`).join('')}${note?`<div class="calNote">📝 ${esc(note)}</div>`:''}</div></button>`}).join('')}</div><div class="calendarLegend"><span><i class="todayDot"></i>今日</span><span>🎪 バザール</span><span>🎉 イベント</span><span>🎂 誕生日</span><span><i class="noteDot"></i>自分のメモ</span><span>☀ 晴 / ☁ 曇 / 🌧 雨 / ❄ 雪 / 🌀 台風 / 🌨 吹雪</span><span>風：なし / そよ / 強風 / 嵐</span></div></div></div>`}
 function calendarDayNeighbor(year,season,day,delta){const abs=calAbs(Number(year),season,Number(day))+Number(delta||0);return abs<0?null:calFromAbs(abs)}
 function bindCalendarDaySwipe(onNavigate){const surface=$('#calendarDaySwipeSurface');if(!surface)return;let startX=0,startY=0,tracking=false,blocked=false;surface.addEventListener('touchstart',e=>{if(e.touches.length!==1)return;const target=e.target instanceof Element?e.target:null;blocked=!!target?.closest('input,textarea,select,button,label,a');const t=e.touches[0];startX=t.clientX;startY=t.clientY;tracking=true},{passive:true});surface.addEventListener('touchend',e=>{if(!tracking){return}tracking=false;if(blocked||e.changedTouches.length!==1)return;const t=e.changedTouches[0],dx=t.clientX-startX,dy=t.clientY-startY;if(Math.abs(dx)<56||Math.abs(dx)<=Math.abs(dy)*1.25)return;onNavigate(dx<0?1:-1)},{passive:true})}
-function openCalendarDay(day,opts={}){if(deferMemoNavigation(()=>openCalendarDay(day,opts)))return;
+function openCalendarDay(day,opts={}){if(deferMemoNavigation(()=>openCalendarDay(day,opts)))return;memoRecipeReturn=null;
   const cal=calendarState(),season=opts.season||cal.viewSeason||state.season||'春',year=Math.max(1,Number(opts.year||cal.year)||1),notes=calendarNotes(year,season),weather=calendarWeather(year,season),saved=weather[String(day)]||{},isToday=cal.today?.year===year&&cal.today?.season===season&&Number(cal.today.day)===Number(day),entries=dayEntries(year,season,day),prev=calendarDayNeighbor(year,season,day,-1),next=calendarDayNeighbor(year,season,day,1);
   cal.year=year;cal.viewSeason=season;
   let selectedWeather=saved.weather||'',selectedWind=Number.isInteger(saved.wind)?saved.wind:null,navigating=false;
@@ -1627,6 +1627,7 @@ function groupChainHtml(id,mult=1){
 function ingredientHtml(x,goal=null){const id=x.id,isGroup=groupById.has(id),opts=isGroup?knownGroupOptions(id):[],req=goal?(state.requirements[goal.id]||[]).find(r=>r.targetId===id):null;return `<div class="ingredientLine"><div class="row between"><div class="grow"><div class="small strong">${esc(rname(id))}</div><div class="tiny">${isGroup?'材料グループ':'必要素材'}</div>${req?`<div class="countPair"><span>現在 <b>${req.have}</b></span><span>必要 <b>${req.need}</b></span></div>`:`<div class="countPair"><span></span><span>必要 <b>${x.qty}</b></span></div>`}${opts.length?`<div class="tiny" style="margin-top:4px;color:#42603c">知っている候補：${opts.map(rname).map(esc).join(' / ')}</div>`:''}${isGroup?'':playerHint(id)}</div>${recipeData(id)&&state.knownRecipes.includes(id)?`<button class="btn secondary smallbtn nestedRecipe" data-rid="${id}">料理を見る</button>`:''}</div>${isGroup?groupChainHtml(id,req?.need??x.qty):processChainHtml(id,req?.need??x.qty)}${isGroup?'':recipeChainHtml(id,req?.need??x.qty)}</div>`}
 let CURRENT_RECIPE_ID=null;function bindRecipeDetail(){$$('.revealProcess').forEach(b=>b.onclick=()=>confirmRevealProcess(b.dataset.output));$$('.nestedRecipe').forEach(b=>b.onclick=()=>showRecipe(b.dataset.rid))}
 function showRecipe(id){if(deferMemoNavigation(()=>showRecipe(id)))return;
+  if(memoRecipeReturn&&(memoRecipeReturn.kind!=='capture'||memoRecipeReturn.recipeId!==id))memoRecipeReturn=null;
   CURRENT_RECIPE_ID=id;const r=recipeData(id);if(!r)return;touchRecent('recipe',id);
   const goal=recipeGoalFor(id),meta=recipeMetaFor(id),mult=Math.max(1,goal?.targetQty||1),ings=countIngredients(r.ingredient||[]).map(x=>({...x,qty:x.qty*mult})),price=recipePrice(r),effect=recipeEffectLabel(id,r);
   modal(`<div class="row between" style="align-items:flex-start"><div class="grow"><div class="tiny muted">${esc(recipeCategory(r.category))}${price!=null?` ・ 価格 ${recipePriceLabel(r)}`:''}${goal?` ・ ×${mult}`:''}</div><h3 style="margin:3px 0 0">${esc(rname(id))}</h3></div><div class="row" style="gap:5px"><button class="favStar ${meta.favorite?'active':''}" id="favoriteRecipe">${meta.favorite?'⭐':'☆'}</button><button class="iconAction" id="closeRecipeSheet" aria-label="閉じる">×</button></div></div>
@@ -1634,12 +1635,18 @@ function showRecipe(id){if(deferMemoNavigation(()=>showRecipe(id)))return;
     ${effect?`<div class="recipeEffectCard"><span class="recipeEffectIcon">✨</span><div><div class="tiny muted">料理効果</div><div class="small strong">${esc(effect)}</div></div></div>`:''}
     <div class="section" style="margin-top:14px"><div class="section-head"><h2>必要なもの</h2></div><div class="card">${ings.map(x=>ingredientHtml(x,goal)).join('')}</div></div>
     <div class="notice">候補はアプリに記録した既知情報に応じて更新されます。所持している現物や在庫数を表すものではありません。加工品は、確認済みの加工方法だけ表示します。</div>
+    ${recipeMemoSection(id)}
     <div class="stack" style="margin-top:12px">${goal?'<button class="btn" id="openRecipeGoal">この料理の目標を開く</button>':'<button class="btn" id="makeRecipeGoal">作りたい → 目標に追加</button>'}<button class="btn secondary" id="archiveRecipe">${meta.archived?'アーカイブから戻す':'アーカイブ'}</button></div>
     <div class="sheet-actions"><button class="btn" id="recipeSheetCloseBottom">閉じる</button></div>`);
-  const close=()=>{closeModal();recipesScreen()};
+  const generation=modalGeneration;let archiveTarget=null,archiving=null;
+  const close=(savedArchive=false)=>{if(archiving&&savedArchive!==true)return archiving;if(generation!==modalGeneration)return;if(returnMemoRecipe('capture',id))return;closeModal();recipesScreen()};
   $('#closeRecipeSheet').onclick=close;$('#recipeSheetCloseBottom').onclick=close;
-  $('#favoriteRecipe').onclick=async()=>{meta.favorite=!meta.favorite;await save();showRecipe(id)};
-  $('#archiveRecipe').onclick=async()=>{meta.archived=!meta.archived;await save();close();toast(meta.archived?'アーカイブしました':'一覧に戻しました')};
+  $('#favoriteRecipe').onclick=async()=>{meta.favorite=!meta.favorite;await save();if(generation===modalGeneration)showRecipe(id)};
+  $('#archiveRecipe').onclick=()=>archiving??=(async()=>{const archivedBefore=recipeMetaFor(id).archived;archiveTarget??=!archivedBefore;recipeMetaFor(id).archived=archiveTarget;
+    if(await save()===false){recipeMetaFor(id).archived=archivedBefore;toast('保存できませんでした。もう一度操作してください');return false}
+    if(generation===modalGeneration){close(true);toast(archiveTarget?'アーカイブしました':'一覧に戻しました')}return true;
+  })().finally(()=>{archiving=null});
+  $$('.recipeMemoOpen').forEach(b=>b.onclick=e=>{e.stopPropagation();return openRecipeMemo(id,b.dataset.capture)});
   if(goal)$('#openRecipeGoal').onclick=()=>{GOAL_PARENT_RECIPE_ID=id;openGoalSheet(goal.id,'recipe')};
   else $('#makeRecipeGoal').onclick=()=>openRecipeGoal(id);
   bindRecipeDetail()
@@ -1849,6 +1856,38 @@ function openAction(goalId=null,id=null,origin=null){if(deferMemoNavigation(()=>
   }
 }
 function captureStatus(c){return c.status||(c.processed?'processed':'active')}
+// Exactly one RAM-only return; consumed before opening its destination.
+function canOpenMemoRecipe(id){return !!memoRecipeName(id)&&!!recipeData(id)}
+function recipeMemoSection(id){
+  if(!canOpenMemoRecipe(id))return '';
+  const active=[];let processed=0,archived=0;
+  for(const c of state.captures){
+    if(!captureLinks(c).some(link=>link.id===id))continue;
+    if(c.status==='active')active.push(c);else if(c.status==='processed')processed++;else if(c.status==='archived')archived++;
+  }
+  if(!active.length&&!processed&&!archived)return '';
+  return `<div class="section" id="recipeMemoSection" style="margin-top:14px"><div class="section-head"><h2>この料理のメモ</h2></div><div class="card">${active.map(c=>`<button type="button" class="miniLink recipeMemoOpen" data-capture="${esc(c.id)}" aria-label="メモを編集：${esc(String(c.text||'').split(/\r\n?|\n/,1)[0])}" style="display:block;width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:8px 0">${esc(String(c.text||'').split(/\r\n?|\n/,1)[0])}</button>`).join('')}${processed||archived?`<div class="tiny muted">変換済み ${processed}件・アーカイブ ${archived}件</div>`:''}</div></div>`;
+}
+function openMemoRecipe(captureId,recipeId){
+  const valid=()=>canOpenMemoRecipe(recipeId)&&state.captures.some(c=>c.id===captureId&&captureLinks(c).some(link=>link.id===recipeId));
+  if(!valid())return Promise.resolve(false);const sheet=$('#modalSheet');
+  return leaveMemoEditors(()=>{memoRecipeReturn={kind:'capture',captureId,recipeId,scrollTop:sheet.scrollTop};showRecipe(recipeId)},valid);
+}
+function openRecipeMemo(recipeId,captureId){
+  const valid=()=>canOpenMemoRecipe(recipeId)&&state.captures.some(c=>c.id===captureId&&c.status==='active'&&captureLinks(c).some(link=>link.id===recipeId));
+  if(!valid())return Promise.resolve(false);
+  return leaveMemoEditors(()=>{memoRecipeReturn={kind:'recipe',recipeId,captureId,scrollTop:$('#modalSheet').scrollTop};openCapture(captureId)},valid);
+}
+function returnMemoRecipe(kind,id){
+  const back=memoRecipeReturn;
+  if(!back||back.kind!==kind||(kind==='capture'?back.recipeId:back.captureId)!==id)return false;
+  memoRecipeReturn=null;
+  if(kind==='capture'){
+    if(!state.captures.some(c=>c.id===back.captureId))return false;
+    openCapture(back.captureId);
+  }else{if(!canOpenMemoRecipe(back.recipeId))return false;showRecipe(back.recipeId)}
+  $('#modalSheet').scrollTop=back.scrollTop;return true;
+}
 // Read adapters never normalize or repair persisted links.
 function captureLinks(c){
   const seen=new Set();return (Array.isArray(c?.links)?c.links:[]).filter(x=>{
@@ -1922,9 +1961,10 @@ function bindMemoRecipeLinks(editor,id,draft){
   const refresh=()=>{
     if(editor.disposed)return;
     const c=record(),links=captureLinks(c),invalid=c&&Object.hasOwn(c,'links')&&!Array.isArray(c.links),linked=links.map(x=>x.id);
-    selected.innerHTML=!id?links.map((x,i)=>`<label class="small" style="display:inline-flex;align-items:center;margin:4px 10px 4px 0"><input type="checkbox" class="memoLinkDraftChoice" data-index="${i}" checked> ${esc(memoRecipeName(x.id)||'未確認のつながり')}</label>`).join(''):links.map((x,i)=>`<span class="small" style="display:inline-flex;align-items:center;margin-right:10px">${esc(memoRecipeName(x.id)||'未確認のつながり')}<button type="button" class="miniLink memoLinkRemove" data-index="${i}" aria-label="${esc(memoRecipeName(x.id)||'未確認のつながり')}の関連付けを解除">×</button></span>`).join('');
+    selected.innerHTML=!id?links.map((x,i)=>`<label class="small" style="display:inline-flex;align-items:center;margin:4px 10px 4px 0"><input type="checkbox" class="memoLinkDraftChoice" data-index="${i}" checked> ${esc(memoRecipeName(x.id)||'未確認のつながり')}</label>`).join(''):links.map((x,i)=>`<span class="small" style="display:inline-flex;align-items:center;margin-right:10px">${canOpenMemoRecipe(x.id)?`<button type="button" class="memoLinkOpen" data-index="${i}" aria-label="${esc(memoRecipeName(x.id))}の料理詳細を開く" style="padding:0;border:0;background:transparent;font:inherit;text-align:left">${esc(memoRecipeName(x.id))}</button>`:esc(memoRecipeName(x.id)||'未確認のつながり')}<button type="button" class="miniLink memoLinkRemove" data-index="${i}" aria-label="${esc(memoRecipeName(x.id)||'未確認のつながり')}の関連付けを解除">×</button></span>`).join('');
     selected.querySelectorAll('.memoLinkDraftChoice').forEach(el=>el.onchange=()=>{el.checked=true;return choose(links[Number(el.dataset.index)].id,false)});
-    selected.querySelectorAll('.memoLinkRemove').forEach(el=>el.onclick=()=>choose(links[Number(el.dataset.index)].id,false));
+    selected.querySelectorAll('.memoLinkOpen').forEach(el=>el.onclick=e=>{e.stopPropagation();if(!editor.disposed)return openMemoRecipe(id,links[Number(el.dataset.index)].id)});
+    selected.querySelectorAll('.memoLinkRemove').forEach(el=>el.onclick=e=>{e.stopPropagation();return choose(links[Number(el.dataset.index)].id,false)});
     choices(candidates,invalid?[]:matches.filter(recipeId=>!linked.includes(recipeId)&&memoRecipeName(recipeId)).slice(0,3));
     choices(results,invalid?[]:searchMemoRecipes(searching?query.value:'',linked));
     if(searching&&norm(query.value)&&!results.innerHTML)results.textContent='知っている料理に見つかりません。料理タブで登録できます';
@@ -1980,12 +2020,14 @@ function openCaptureActions(id){if(deferMemoNavigation(()=>openCaptureActions(id
 }
 function confirmConvert(id,to){if(deferMemoNavigation(()=>confirmConvert(id,to)))return;
   const c=state.captures.find(x=>x.id===id);if(!c)return;const label=to==='goal'?'目標':'やること';
-  modal(`<h3>${label}へ変換しますか？</h3><div class="notice">${esc(c.text)}</div><p class="small muted">元メモは「変換済み」として保持します。</p><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">戻る</button><button class="btn" id="doConvert">変換する</button></div>`);
+  modal(`<h3>${label}へ変換しますか？</h3><div class="notice">${esc(c.text)}</div><p class="small muted">元メモは「変換済み」として保持します。</p><div class="sheet-actions"><button class="btn secondary" id="cancelCaptureConvert">戻る</button><button class="btn" id="doConvert">変換する</button></div>`);
+  $('#cancelCaptureConvert').onclick=()=>{if(memoRecipeReturn?.kind==='recipe'&&memoRecipeReturn.captureId===id)openCapture(id);else closeModal()};
   const targetId=(to==='goal'?'g':'a')+Date.now();
   const convert=memoOperation('メモ変換を元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(!c)return;if(to==='goal')state.goals.unshift({id:targetId,title:c.text,status:'active',blocker:'',kind:'goal',tags:[],season:'',sourceCaptureId:id});else state.actions.unshift({id:targetId,text:c.text,done:false,goalId:null,pinned:false,sourceCaptureId:id});c.processed=true;c.status='processed';c.updatedAt=new Date().toISOString()});
-  $('#doConvert').onclick=()=>leaveMemoEditors(()=>{closeModal();inbox()},convert);
+  $('#doConvert').onclick=()=>leaveMemoEditors(()=>{memoRecipeReturn=null;closeModal();inbox()},convert);
 }
 function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return;
+  if(memoRecipeReturn&&(memoRecipeReturn.kind!=='recipe'||memoRecipeReturn.captureId!==id))memoRecipeReturn=null;
   const c=id?state.captures.find(x=>x.id===id):{text:'',status:'active',processed:false,children:[]};if(id&&!c)return;if(id)touchRecent('capture',id);const children=c.children||[],status=id?captureStatus(c):'active';
   const organize=id?(status==='active'
     ?`<div class="section" style="margin-top:14px"><div class="section-head"><h2>このメモを整理</h2></div><div class="editorActionGrid"><button class="editorActionTile captureOrganize" data-to="goal"><span>🎯</span>目標へ</button><button class="editorActionTile captureOrganize" data-to="action"><span>✓</span>やることへ</button><button class="editorArchive" id="archiveCaptureDetail">アーカイブ</button></div></div>`
@@ -1998,8 +2040,8 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
   const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)})),...(subInput?[{el:subInput,captureId:id,childId:()=>subDraftId,active:()=>subDraftAdded,autosave:false,required:true,read:()=>subInput.value}]:[])];
   const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput,$('#memoLinksQuery')].filter(Boolean)});
   bindMemoRecipeLinks(editor,id,linkDraft);
-  const finish=()=>{closeModal();inbox()};
-  $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(finish);
+  const finish=()=>{memoRecipeReturn=null;closeModal();inbox()};
+  $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(()=>{if(!returnMemoRecipe('recipe',id))finish()});
   if(id){
     const archive=memoOperation('メモのアーカイブを元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(c){c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString()}});
     const restore=memoOperation('メモの復元を元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(c){c.status=c.archivedFrom||'active';c.processed=c.status==='processed';c.archivedFrom=null;c.updatedAt=new Date().toISOString()}});
@@ -2111,7 +2153,7 @@ function modal(content){if(deferMemoNavigation(()=>modal(content)))return;modalG
 window.closeModal=()=>{if(deferMemoNavigation(closeModal))return;modalGeneration++;const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling','cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.style.transform=''}}
 function dismissModalContextually(){
   const sheet=$('#modalSheet');if(!sheet){closeModal();return}
-  const selectors=['#closeSettings','#closeSettingsBottom','#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeCropSheet','#cropSheetCloseBottom','#closeRecipeSheet','#recipeSheetCloseBottom','#cancelRecipeGoal','#backRevealProcess','#cancelRecipeQty','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#cancelCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit'];
+  const selectors=['#closeSettings','#closeSettingsBottom','#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeCropSheet','#cropSheetCloseBottom','#closeRecipeSheet','#recipeSheetCloseBottom','#cancelRecipeGoal','#backRevealProcess','#cancelRecipeQty','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#cancelCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit','#cancelCaptureConvert'];
   const target=selectors.map(q=>sheet.querySelector(q)).find(Boolean);
   if(target){target.click();return}
   closeModal()
@@ -2187,7 +2229,7 @@ async function applyAppUpdate(btn=null){
   }
 }
 function updatePerfDiagnostics(){const el=$('#perfDiagnosticsReport');if(el)el.textContent=PERF_DIAG.report(APP_VERSION)}
-async function settings(){if(deferMemoNavigation(()=>settings()))return;
+async function settings(){if(deferMemoNavigation(()=>settings()))return;memoRecipeReturn=null;
   const [h,release]=await Promise.all([storageHealth(),currentReleaseInfo()]);
   const lastBackup=state.ui?.lastBackupAt?new Date(state.ui.lastBackupAt).toLocaleString('ja-JP'):'まだありません';
   const releaseNotes=Array.isArray(release?.notes)?release.notes:[],history=Array.isArray(release?.history)?release.history:[];
@@ -2263,7 +2305,7 @@ async function exportJson(){
 }
 function importJson(ev){const f=ev.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=async()=>{try{const raw=JSON.parse(r.result);const x=migrate(raw?.state||raw);if(!x)throw Error('schema');const apply=async()=>{replaceMemoState(x);state.ui=state.ui||{};syncLinkedRequestMasterDetails();const persist=memoOperation(null,()=>{});if(await persist()){closeModal();render();toast('バックアップを読み込みました')}else toast('保存できませんでした。読み込んだ内容は端末保存を再試行してください')};if(!deferMemoNavigation(apply))await apply()}catch(e){alert('対応しているバックアップとして読み込めませんでした')}};r.readAsText(f)}
 function activeScreenId(){return $('.screen.active')?.id||'home'}
-function openQuickAdd(){if(deferMemoNavigation(()=>openQuickAdd()))return;
+function openQuickAdd(){if(deferMemoNavigation(()=>openQuickAdd()))return;memoRecipeReturn=null;
   const raw=activeScreenId(),screen=raw==='detail'?(DETAIL_CONTEXT||'home'):raw;
   if(screen==='crops'){openAddKnown();return}
   if(screen==='recipes'){openKnownRecipe();return}
@@ -2279,7 +2321,7 @@ function bindGoalOpen(){$$('.goalOpen').forEach(b=>b.onclick=()=>openGoalSheet(b
 const SCREEN_RENDERERS={home,crops,recipes:recipesScreen,plan,inbox};
 function renderScreen(id){const draw=SCREEN_RENDERERS[id];if(draw){const t=PERF_DIAG.begin();draw();PERF_DIAG.record('render',t)}}
 function render(){state=migrate(state)||clone(INITIAL);const plantNormalized=reconcileKnownPlantMaster(),bazaarNormalized=normalizeLegacyBazaarGoals(),groupsNormalized=normalizeIngredientGroupKnowledge(),requestsSynced=syncLinkedRequestMasterDetails();syncRecipeKnowledge();const currentCal=calendarState();if(calendarHasToday(currentCal.today))state.season=currentCal.today.season;$('#seasonSelect').value=state.season||'';setSeasonSelectClass();syncHeaderSeasonUi();const active=$('.navbtn.active')?.dataset.nav||'home';renderScreen(active);show(active);updateSaveStatus();if(plantNormalized||bazaarNormalized||groupsNormalized||requestsSynced)save()}
-$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{if(deferMemoNavigation(()=>b.onclick()))return;closeModal();const t=PERF_DIAG.begin();show(b.dataset.nav);renderScreen(b.dataset.nav);PERF_DIAG.record('tab',t)});render();hydrate();
+$('#seasonSelect').onchange=async e=>{const c=calendarState();if(calendarHasToday(c.today)&&!e.target.value){e.target.value=c.today.season;return}state.season=e.target.value;if(calendarHasToday(c.today)&&state.season)c.today={...c.today,season:state.season};if(state.season)c.viewSeason=state.season;await save();setSeasonSelectClass();render()};$('#seasonContextBtn').onclick=openCalendarSheet;$('#settingsBtn').onclick=settings;$('#quickAdd').onclick=openQuickAdd;document.querySelectorAll('.navbtn').forEach(b=>b.onclick=()=>{if(deferMemoNavigation(()=>b.onclick()))return;memoRecipeReturn=null;closeModal();const t=PERF_DIAG.begin();show(b.dataset.nav);renderScreen(b.dataset.nav);PERF_DIAG.record('tab',t)});render();hydrate();
 </script>
 <script>
 let deferredInstallPrompt=null;
