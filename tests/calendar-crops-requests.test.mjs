@@ -67,3 +67,41 @@ test('flavor text is optional, user-editable, and never invented from missing Ma
   assert.equal(full.requests.some(r=>r.flavorText),false);
   assert.ok(app.includes("r.status='completed'"));
 });
+
+
+test('request quantities and checkboxes are tracked separately from resident reporting',()=>{
+  const begin=app.indexOf('function requestTypeLabel('),end=app.indexOf('function requestCardHtml(',begin);
+  const rowStart=app.indexOf('function requestObjectiveRow('),rowEnd=app.indexOf('function completeRequestById(',rowStart);
+  assert.ok(begin>=0&&end>begin&&rowStart>=0&&rowEnd>rowStart);
+  const context={esc:String};vm.runInNewContext(app.slice(begin,end)+app.slice(rowStart,rowEnd),context);
+  const r={status:'active',objectives:[
+    {type:'item_quantity',label:'牛乳',target:3,current:2},
+    {type:'check',label:'住人の頼み',target:1,current:0}
+  ]};
+  assert.equal(context.requestReportReady(r),false);
+  assert.match(context.requestObjectiveRow(r,r.objectives[0],0),/requestObjectiveCurrent/);
+  assert.match(context.requestObjectiveRow(r,r.objectives[0],0),/value="2"/);
+  assert.match(context.requestObjectiveRow(r,r.objectives[1],1),/requestObjectiveCheck/);
+  r.objectives[0].current=3;r.objectives[1].current=1;
+  assert.equal(context.requestReportReady(r),true);
+  assert.ok(app.includes('requestReadyHint'));
+  assert.ok(app.includes('報告して完了にする'));
+  assert.ok(app.includes("r.status='completed'"),'Completing the request remains an explicit action');
+});
+test('weather and wind selections autosave without submitting the calendar note',()=>{
+  const start=app.indexOf('function openCalendarDay('),end=app.indexOf('async function changeCalendarMonth(',start);
+  const editor=app.slice(start,end);assert.ok(start>=0&&end>start);
+  assert.match(editor,/const persistWeatherOnly=async\(\)=>\{writeCalendarWeather\(year,season,day,selectedWeather,selectedWind\);if\(!await save\(\)\)/);
+  assert.equal(editor.split('void persistWeatherOnly()').length-1,2,'Both weather and wind should save on tap');
+  assert.ok(editor.includes("$('#saveCalDay').onclick"),'Note save stays available');
+});
+test('crop growing toggle is small and available before stock details',()=>{
+  const start=app.indexOf('function showCrop('),end=app.indexOf('function intOrNull(',start);
+  const sheet=app.slice(start,end);
+  assert.ok(sheet.indexOf('class="cropGrowingInline')<sheet.indexOf('id="seedCount"'));
+  assert.ok(sheet.includes('id="growing"'));
+  assert.ok(!sheet.includes('id="cropGrowingBanner"'));
+  assert.ok(html.includes('#crops .filters,#recipes .filters{margin-bottom:12px}'));
+  assert.ok(html.includes('#crops .filters.isScrolling'));
+  assert.ok(html.includes('-webkit-tap-highlight-color:transparent'));
+});
