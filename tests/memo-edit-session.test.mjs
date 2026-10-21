@@ -320,3 +320,18 @@ test('submemo Add: whitespace-only revision cannot silently confirm the earlier 
 
 // Parses all of the app, not just the extracted test sections.
 test('full inline app is syntactically valid',()=>{const start=html.indexOf('const MASTER=JSON.parse');new Script(html.slice(start,html.indexOf('</script>',start)))});
+
+
+test('pinning a memo waits for edits and remains available after changing status',async()=>{
+  const h=harness();h.ctx.openCapture('a');h.input(body(h),'固定しておく申し送り');
+  const action=h.$('#toggleCapturePin').click();await h.finishWrites();await action;
+  assert.equal(saved(h).captures.find(x=>x.id==='a').text,'固定しておく申し送り');
+  assert.equal(saved(h).captures.find(x=>x.id==='a').pinned,true);
+  const now=h.ctx.state.captures.find(x=>x.id==='a');
+  assert.equal(h.ctx.captureOnHome(now),true);
+  now.status='processed';assert.equal(h.ctx.captureOnHome(now),true);
+  now.status='archived';assert.equal(h.ctx.captureOnHome(now),false);
+  now.status='active';
+  const unpin=h.$('#toggleCapturePin').click();await h.finishWrites();await unpin;
+  assert.equal(saved(h).captures.find(x=>x.id==='a').pinned,false);
+});

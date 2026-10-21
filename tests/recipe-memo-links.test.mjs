@@ -343,10 +343,10 @@ test('navigation reads do not change playerState or known lists; state replaceme
 
 test('actual home, memo list, recipe list and recipe search never match/scan memo links',()=>{
   const h=navigation();const section=(a,b)=>{const start=html.indexOf(a);assert.ok(start>=0);return html.slice(start,html.indexOf(b,start+a.length))};
-  Object.assign(h.ctx,{RECIPE_ROWS:[],todayStripHtml:()=>'',seasonReminderBannerHtml:()=>'',homeProgressHtml:()=>'',bazaarPrepHtml:()=>'',recentStripHtml:()=>'',bindTodayStrip(){},bindRecent(){},bindBazaarPrep(){}});
+  Object.assign(h.ctx,{RECIPE_ROWS:[],todayStripHtml:()=>'',seasonReminderBannerHtml:()=>'',homeProgressHtml:()=>'',bazaarPrepHtml:()=>'',recentStripHtml:()=>'',bindTodayStrip(){},bindRecent(){},bindBazaarPrep(){},captureOnHome:c=>!!c.pinned&&c.status!=='archived'});
   h.evaluate(section('function home(){','function planTags(')+section('function knownRecipeRows(){','function recipeRegistrationCandidates('));
   h.evaluate('memoRecipeMatches=recipeMemoSection=captureLinks=()=>{throw Error("List rendering must not scan links or match memo recipes")};home();recipesScreen();inbox()');
-  h.input(h.$('#recipeSearch'),'ピザ');assert.ok(h.root.recipes.innerHTML.includes('知っている料理'));assert.ok(h.root.home.innerHTML.includes('未整理メモ'));assert.equal(h.pending.length,0);
+  h.input(h.$('#recipeSearch'),'ピザ');assert.ok(h.root.recipes.innerHTML.includes('知っている料理'));assert.ok(h.root.home.innerHTML.includes('固定メモ'));assert.equal(h.pending.length,0);
 });
 
 test('failed destructive memo actions retain the current sheet and return; retry consumes only on success',async()=>{

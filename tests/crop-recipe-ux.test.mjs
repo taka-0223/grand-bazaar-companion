@@ -78,7 +78,7 @@ test('tapping an existing crop opens its editable details immediately, without a
   assert.ok(show.includes('id="cropNote"'));
   assert.ok(show.includes('id="locationSelect"'));
   assert.ok(show.includes('id="cropStockDecision"'));
-  assert.ok(show.includes('id="cropGrowingBanner"'),'Keep existing growing badge');
+  assert.ok(show.includes('class="cropGrowingInline'),'Growing toggle should be compact and near the top');
   assert.ok(!show.includes('id="cropEditToggle"'),'No new tap to open editing');
   assert.ok(!show.includes('id="cropEditFields"'),'Editable fields should be visible by default');
   assert.ok(!show.includes('cropReadOverview'),'Undo the newly introduced summary/editor detour');
@@ -86,7 +86,7 @@ test('tapping an existing crop opens its editable details immediately, without a
   assert.ok(show.includes("bindAutosave([$('#seedCount'),$('#growingCount'),$('#cropNote')],persistCrop)"));
   assert.ok(!html.includes('.cropCompact.growing{background:'),'Green row background must stay removed');
   assert.ok(html.includes('class="cropGrowingBadge"'));
-  assert.ok(!html.includes('.cropGrowingBanner.active{background:#e3f2df'));
+  assert.ok(!show.includes('id="cropGrowingBanner"'),'Remove the oversized growing banner');
 });
 
 test('new crop registration opens the name form without forcing keyboard focus and returns to list',async()=>{
