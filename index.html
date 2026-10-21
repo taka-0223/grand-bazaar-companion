@@ -1283,9 +1283,13 @@ function openRequestRecord(id=null){if(deferMemoNavigation(()=>openRequestRecord
   }
 }
 function requestObjectiveRow(r,o,i){
-  const target=Math.max(1,Number(o.target)||1);
-  const quantity=o.type==='check'?'':(o.type==='money_amount'?target+'G':target>1?' ×'+target:'');
-  return `<div class="actionrow"><div class="grow ${r.archived?'':'clickable requestObjectiveEdit'}" data-i="${i}"><div class="small strong">${esc(o.label)}${quantity?'<span class="tiny muted"> '+esc(quantity)+'</span>':''}</div><div class="tiny muted">${requestTypeLabel(o.type)}</div></div></div>`
+  const target=Math.max(1,Number(o.target)||1),current=Math.min(target,requestObjectiveProgress(o)),locked=r.archived||r.status==='completed';
+  const qty=o.type==='money_amount'?`目標 ${target}G`:target>1?`目標 ${target}`:'';
+  const editor=`<div class="grow ${locked?'':'clickable requestObjectiveEdit'}" data-i="${i}"><div class="small strong">${esc(o.label)}</div><div class="requestObjectiveProgress">${esc(requestTypeLabel(o.type))}${qty?' ・ '+esc(qty):''}</div></div>`;
+  const control=o.type==='check'
+    ?`<input type="checkbox" class="check requestObjectiveCheck" data-i="${i}" aria-label="${esc(o.label)}を達成" ${current?'checked':''} ${locked?'disabled':''}>`
+    :`<div class="requestObjectiveStep requestObjectiveControls"><button type="button" class="requestObjectiveAdjust" data-i="${i}" data-delta="-1" aria-label="${esc(o.label)}を1減らす" ${locked||current===0?'disabled':''}>−</button><input class="requestObjectiveCurrent" data-i="${i}" data-money="${o.type==='money_amount'}" type="number" inputmode="numeric" min="0" max="${target}" value="${current}" aria-label="${esc(o.label)}の現在数" ${locked?'disabled':''}><button type="button" class="requestObjectiveAdjust" data-i="${i}" data-delta="1" aria-label="${esc(o.label)}を1増やす" ${locked||current>=target?'disabled':''}>＋</button></div>`;
+  return `<div class="actionrow requestObjectiveRow">${editor}${control}</div>`
 }
 function completeRequestById(id,origin=null){
   const r=requestsState().find(x=>x.id===id);if(!r||r.status==='completed')return;
@@ -1301,9 +1305,9 @@ function showRequestRecord(id,origin=null){if(deferMemoNavigation(()=>showReques
     ${r.archived&&!r.inferred?'<div class="tiny muted" style="margin-bottom:10px">アーカイブ済み</div>':''}
     <div class="section"><div class="section-head"><h2>お願いの文章</h2></div><div class="card requestFlavorDisplay">${flavor?esc(flavor):'<span class="tiny muted">まだ記録されていません。編集からゲーム内の文章を追加できます。</span>'}</div></div>
     ${r.reward?`<div class="card" style="margin-bottom:12px"><div class="tiny muted">報酬</div><div class="small strong" style="margin-top:4px">${esc(r.reward)}</div></div>`:''}
-    <div class="section"><div class="section-head"><h2>達成条件</h2>${r.archived?'':'<button class="btn secondary smallbtn" id="addRequestObjective">＋追加</button>'}</div><div class="card">${objs.length?objs.map((o,i)=>requestObjectiveRow(r,o,i)).join(''):'<div class="empty">まだありません</div>'}</div></div>
+    <div class="section"><div class="section-head"><h2>達成条件</h2><span class="tiny" id="requestProgressSummary">${objs.filter(requestObjectiveDone).length}/${objs.length} 達成</span>${r.archived?'':'<button class="btn secondary smallbtn" id="addRequestObjective">＋追加</button>'}</div><div class="card">${objs.length?objs.map((o,i)=>requestObjectiveRow(r,o,i)).join(''):'<div class="empty">まだありません</div>'}</div><div id="requestReadyHint" class="notice requestReadyHint ${!done&&!r.archived&&requestReportReady(r)?'':'hidden'}" style="margin-top:8px">✓ 条件達成！ あとは${esc(r.requester||'住人')}に会って報告するだけです。</div></div>
     <div class="section"><div class="section-head"><h2>メモ</h2><div class="tiny muted">自動保存</div></div><div class="card"><div class="field"><textarea id="requestNote" placeholder="このお願いについて覚えておきたいこと">${esc(r.note||'')}</textarea></div></div></div>
-    <div class="goalCompleteBox">${r.archived?'<button class="btn secondary goalCompleteAction" id="restoreRequestArchive">アーカイブから戻す</button>':done?'<button class="btn secondary goalCompleteAction" id="reopenRequest">進行中に戻す</button>':'<button class="btn goalCompleteAction" id="completeRequest"><span class="goalCompleteIcon">✓</span>このお願いを完了する</button>'}</div>
+    <div class="goalCompleteBox">${r.archived?'<button class="btn secondary goalCompleteAction" id="restoreRequestArchive">アーカイブから戻す</button>':done?'<button class="btn secondary goalCompleteAction" id="reopenRequest">進行中に戻す</button>' :`<button class="btn goalCompleteAction" id="completeRequest"><span class="goalCompleteIcon">✓</span>${requestReportReady(r)?'報告して完了にする':'このお願いを完了する'}</button>`}</div>
     <div class="sheet-actions"><button class="btn secondary" id="editRequestMeta">タイトル・依頼人</button><button class="btn" id="closeRequestDetail">閉じる</button></div>`);
 
   const close=()=>{closeModal();if(returnScreen==='plan')plan();else home()};
@@ -1311,7 +1315,26 @@ function showRequestRecord(id,origin=null){if(deferMemoNavigation(()=>showReques
   $('#editRequestMeta').onclick=()=>openRequestRecord(id);
   $('#matchRequestMaster')?.addEventListener('click',()=>openRequestRecord(id));
   $('#addRequestObjective')?.addEventListener('click',()=>openRequestObjective(id));
-  $$('.requestObjectiveEdit').forEach(b=>b.onclick=()=>{if(!r.archived)openRequestObjective(id,+b.dataset.i)});
+  $('.requestObjectiveEdit').forEach(b=>b.onclick=()=>{if(!r.archived)openRequestObjective(id,+b.dataset.i)});
+  const refreshProgress=()=>{
+    const completed=objs.filter(requestObjectiveDone).length,ready=!r.archived&&!done&&requestReportReady(r);
+    const summary=$('#requestProgressSummary');if(summary)summary.textContent=`${completed}/${objs.length} 達成`;
+    $('#requestReadyHint')?.classList.toggle('hidden',!ready);
+    const complete=$('#completeRequest');if(complete)complete.innerHTML=`<span class="goalCompleteIcon">✓</span>${ready?'報告して完了にする':'このお願いを完了する'}`;
+    $('.requestObjectiveAdjust').forEach(b=>{const o=objs[Number(b.dataset.i)],n=requestObjectiveProgress(o),max=Math.max(1,Number(o.target)||1);b.disabled=Number(b.dataset.delta)<0?n<=0:n>=max});
+    $('.requestObjectiveCurrent').forEach(input=>{input.value=String(requestObjectiveProgress(objs[Number(input.dataset.i)]))});
+  };
+  const setProgress=async(i,raw)=>{
+    const o=objs[i];if(!o||r.archived||done)return;
+    const target=Math.max(1,Number(o.target)||1),next=Math.max(0,Math.min(target,Number.isFinite(Number(raw))?Math.trunc(Number(raw)):0));
+    if(requestObjectiveProgress(o)===next){refreshProgress();return}
+    o.current=next;r.updatedAt=new Date().toISOString();refreshProgress();
+    if(!await save())toast('保存できませんでした。再試行してください');
+  };
+  $('.requestObjectiveCheck').forEach(b=>b.onchange=()=>setProgress(Number(b.dataset.i),b.checked?1:0));
+  $('.requestObjectiveCurrent').forEach(b=>b.onchange=()=>setProgress(Number(b.dataset.i),b.value));
+  $('.requestObjectiveAdjust').forEach(b=>b.onclick=()=>setProgress(Number(b.dataset.i),requestObjectiveProgress(objs[Number(b.dataset.i)])+Number(b.dataset.delta)));
+
   bindAutosave([$('#requestNote')],async()=>{r.note=$('#requestNote').value;r.updatedAt=new Date().toISOString();await save()});
   $('#completeRequest')?.addEventListener('click',()=>completeRequestById(id,returnScreen));
   $('#reopenRequest')?.addEventListener('click',async()=>{await withUndo('お願いの再開を元に戻せます',()=>{r.status='active';r.completedAt=null});showRequestRecord(id,returnScreen);toast('お願いを進行中に戻しました')});
