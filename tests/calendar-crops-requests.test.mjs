@@ -206,8 +206,8 @@ test('calendar note autosave flushes before closing and before switching days',a
     $:selector=>controls[selector]||null,
     $$:selector=>controls[selector]||[],
     async leaveMemoEditors(callback){
-      for(const editor of [...this.memoEditors])if(!await editor.flush())return false;
-      for(const editor of [...this.memoEditors])editor.dispose();
+      for(const editor of [...ctx.memoEditors])if(!await editor.flush())return false;
+      for(const editor of [...ctx.memoEditors])editor.dispose();
       await callback();return true
     },
     openCalendarSheet:()=>events.push('back to calendar'),closeModal:()=>events.push('close'),
