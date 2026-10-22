@@ -56,6 +56,31 @@ test('request recognition is explicit and the requester has no tappable suggesti
   assert.ok(app.includes('class="requestObjectiveStep requestObjectiveControls"'));
   assert.ok(app.includes('class="check requestObjectiveCheck"'));
 });
+test('Harold tea request matches both sourced title variants without showing unconfirmed requests',()=>{
+  const master=full.requests.find(r=>r.id==='rqm_gw_108');
+  assert.ok(master);
+  assert.equal(master.title,'おいしい紅茶と仕事をしたい');
+  assert.ok(master.aliases?.includes('おいしいお茶と仕事をしたい'));
+  assert.equal(master.requester,'ハロルド');
+  assert.equal(master.objectives[0].label,'任意のお茶缶（品質1）');
+  assert.equal(master.reward,'カレー粉×10');
+
+  const normStart=app.indexOf('function norm('),normEnd=app.indexOf('function findByName(',normStart);
+  const reqStart=app.indexOf('function requestNorm('),reqEnd=app.indexOf('function requestObjectiveCanonicalShape(',reqStart);
+  assert.ok(normStart>=0&&normEnd>normStart&&reqStart>=0&&reqEnd>reqStart);
+  const context={REQUEST_MASTER:full.requests};
+  vm.runInNewContext(app.slice(normStart,normEnd)+'\n'+app.slice(reqStart,reqEnd),context);
+  const matches=(title,requester)=>Array.from(context.requestMasterMatches(title,requester),r=>r.id);
+
+  assert.deepEqual(matches('おいしい紅茶と仕事をしたい','ハロルド'),[master.id]);
+  assert.deepEqual(matches('おいしいお茶と仕事をしたい','ハロルド'),[master.id]);
+  assert.deepEqual(matches('おいしいお茶','ハロルド'),[master.id]);
+  assert.deepEqual(matches('おいしいお茶',''),[],'Incomplete title cannot expose an unknown request without requester');
+  assert.deepEqual(matches('おいしいお茶と仕事をしたい','エンジュ'),[],'Requester must match');
+  assert.deepEqual(matches('おいしい緑茶と仕事をしたい','ハロルド'),[],'Unregistered variations are not silently accepted');
+  assert.deepEqual(matches('おいしい','ハロルド'),[],'Multiple possible requests remain hidden');
+  assert.equal(context.requestTitleMatchesMasterValue('おいしいお茶と仕事をしたい',master),true);
+});
 test('flavor text is optional, user-editable, and never invented from missing Master fields',()=>{
   assert.ok(html.includes('id="requestFlavorText"'));
   assert.ok(app.includes("r.flavorText=$('#requestFlavorText').value"));
