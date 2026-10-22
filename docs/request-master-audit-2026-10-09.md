@@ -47,3 +47,10 @@
 ## 再監査結果の扱い
 
 今回のチェックで直ちに確定・上書きすべき新しい必要素材の誤りは発見されなかったため、**`index.html` と `release.json` は変更しない**。作戦ツールのUI改修と競合しないよう、このPRでは監査記録と回帰テストのみ追加する。
+
+## 追補（2026-10-22）：ハロルドのお茶のお願いの別表記
+
+- `rqm_gw_108` は GameWith と AppMedia では「おいしい紅茶と仕事をしたい」だが、H1G と Ver.1.5.0 のプレイ日記では「おいしいお茶と仕事をしたい」と記載されている。ゲーム内スクリーンショットによる正式表記の確定は未実施。
+- Master の既存タイトルは維持し、後者を `aliases` に追加した。既存の「正規化したタイトルと依頼人の完全一致、または依頼人が一致する一意の部分一致」ルールを利用する。近似度による自動選択や未知のお願い候補の表示は追加しない。
+- `id`、`requester`、達成条件、報酬、進捗移行情報、Player State の保存スキーマは不変。起動用 Runtime Master は従来の生成コマンドで再投影する。
+- 表記の参照元：[GameWith](https://gamewith.jp/bokumono-grabaza/517913)、[AppMedia](https://appmedia.jp/bokumono_grabaza/79248434)、[H1G](https://h1g.jp/bokumono_grabaza/おいしいお茶と仕事をしたい)、[プレイ日記](https://blog.ruricat.com/grabaza-006/)。
