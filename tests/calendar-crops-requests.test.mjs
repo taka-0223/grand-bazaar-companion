@@ -168,3 +168,67 @@ test('home shortages derive from the same editable request objectives and existi
   assert.ok(app.includes("showRequestRecord(x.dataset.id,'home')"),'Request shortage opens its request detail');
   assert.ok(app.includes("openGoalSheet(x.dataset.id,'home')"),'Goal shortage still opens its goal detail');
 });
+
+
+test('calendar note autosave flushes before closing and before switching days',async()=>{
+  const saveStart=app.indexOf('function bindAutosave('),saveEnd=app.indexOf('// RAM-only editor lifecycle.',saveStart);
+  const dayStart=app.indexOf('function openCalendarDay('),dayEnd=app.indexOf('async function changeCalendarMonth(',dayStart);
+  assert.ok(saveStart>=0&&saveEnd>saveStart&&dayStart>=0&&dayEnd>dayStart);
+  const listeners=()=>new Map();
+  const element=(value='')=>{
+    const calls=listeners();
+    return{value,style:{},dataset:{},classList:{toggle(){}},addEventListener:(ev,fn)=>{
+      if(!calls.has(ev))calls.set(ev,[]);calls.get(ev).push(fn)
+    },removeEventListener:(ev,fn)=>calls.set(ev,(calls.get(ev)||[]).filter(x=>x!==fn)),
+    dispatch:(ev)=>Promise.all((calls.get(ev)||[]).map(fn=>fn()))}
+  };
+  const notes={},weather={},saves=[],events=[],timers=new Map(),calendar={year:1,viewSeason:'冬',today:{year:1,season:'冬',day:4}};
+  let seq=0,controls={},markup='';
+  const ctx={
+    state:{season:'冬'},memoRecipeReturn:null,memoEditors:new Set(),CALENDAR_RETURN_CONTEXT:'calendar',
+    CAL_WEEKDAYS:['日','月','火','水','木','金','土'],WEATHER_TYPES:['晴れ','雨'],WIND_LEVELS:[0,1,2],
+    calendarState:()=>calendar,calendarNotes:()=>notes,calendarWeather:()=>weather,
+    calendarDayNeighbor:(_y,_s,day,delta)=>day+delta>0&&day+delta<=31?{year:1,season:'冬',day:day+delta}:null,
+    calendarHasToday:()=>true,dayEntries:()=>[],calWeekday:()=>0,esc:String,
+    weatherSymbol:w=>w,windName:n=>String(n),windMeterHtml:n=>String(n),
+    writeCalendarWeather:(_y,_s,day,forecast,wind)=>weather[day]={weather:forecast,wind},
+    deferMemoNavigation:()=>false,bindCalendarDaySwipe:()=>{},updateSaveStatus:()=>{},
+    setTimeout:(fn)=>{const id=++seq;timers.set(id,fn);return id},
+    clearTimeout:id=>timers.delete(id),
+    async save(){saves.push(JSON.parse(JSON.stringify({notes,weather})));return true},
+    modal(html){markup=html;controls={};
+      for(const id of ['calMemo','calendarDayPrev','calendarDayNext','cancelCalDay','setTodayBtn']){
+        controls['#'+id]=element(id==='calMemo'?String(notes[Number(markup.match(/の月 (\d+)日/)[1])]||''):'')
+      }
+      controls['.dayWeather']=[Object.assign(element(),{dataset:{weather:'晴れ'}}),Object.assign(element(),{dataset:{weather:'雨'}})];
+      controls['.dayWind']=[0,1,2].map(n=>Object.assign(element(),{dataset:{wind:String(n)}}))
+    },
+    $:selector=>controls[selector]||null,
+    $$:selector=>controls[selector]||[],
+    async leaveMemoEditors(callback){
+      for(const editor of [...this.memoEditors])if(!await editor.flush())return false;
+      for(const editor of [...this.memoEditors])editor.dispose();
+      await callback();return true
+    },
+    openCalendarSheet:()=>events.push('back to calendar'),closeModal:()=>events.push('close'),
+    home:()=>{},render:()=>{},toast:()=>{},openResidentCard:()=>{}
+  };
+  vm.runInNewContext(app.slice(saveStart,saveEnd)+'\n'+app.slice(dayStart,dayEnd),ctx);
+  ctx.openCalendarDay(5,{year:1,season:'冬'});
+  assert.equal(ctx.memoEditors.size,1);
+  assert.ok(!markup.includes('id="saveCalDay"'));
+  controls['#calMemo'].value='一行目\n二行目';
+  await controls['#calMemo'].dispatch('input');
+  assert.equal(notes[5],'一行目\n二行目','Latest note is staged synchronously for beforeunload');
+  assert.equal(saves.length,0,'Typing is debounced');
+  await controls['#calendarDayNext'].onclick();
+  assert.equal(saves[0].notes[5],'一行目\n二行目','Swipe must flush before changing dates');
+  assert.equal(ctx.memoEditors.size,1,'New day editor becomes active');
+  controls['#calMemo'].value='翌日メモ';
+  await controls['#calMemo'].dispatch('input');
+  await controls['#cancelCalDay'].onclick();
+  assert.equal(saves.at(-1).notes[6],'翌日メモ','Back must flush current date');
+  assert.deepEqual(events,['back to calendar']);
+  assert.equal(ctx.memoEditors.size,0);
+  assert.equal(timers.size,0,'No delayed save should target a discarded calendar editor');
+});
