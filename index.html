@@ -978,7 +978,7 @@ function openCalendarDay(day,opts={}){if(deferMemoNavigation(()=>openCalendarDay
     else{cal.today={year,season,day:Number(day)};cal.year=year;cal.viewSeason=season;state.season=season}
     await save();render();closeDay();toast(isToday?'今日を解除しました':`${year}年目 ${season}${day}日を今日にしました`)
   });
-  $('.residentOpen').forEach(b=>b.onclick=()=>leaveMemoEditors(()=>openResidentCard(b.dataset.resident,day)));
+  $$('.residentOpen').forEach(b=>b.onclick=()=>leaveMemoEditors(()=>openResidentCard(b.dataset.resident,day)));
 
 }
 async function changeCalendarMonth(delta){const c=calendarState(),i=CAL_SEASONS.indexOf(c.viewSeason||'春'),next=i+delta;if(next<0){if(c.year<=1)return;c.year-=1;c.viewSeason='冬'}else if(next>3){c.year+=1;c.viewSeason='春'}else c.viewSeason=CAL_SEASONS[next];await save();if(CALENDAR_RETURN_CONTEXT==='calendar')openCalendarSheet();else home()}
@@ -1494,7 +1494,7 @@ function home(){
   ${recentStripHtml()}`;
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.homeActionOpen').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id,'home'));
-  $('.homeShortageOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
+  $$('.homeShortageOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
   $('#homeShortagesToggle')?.addEventListener('click',()=>{state.ui.homeShortagesExpanded=!state.ui.homeShortagesExpanded;home()});
   $$('.homeProgressOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
   $$('.homeRequestDone').forEach(x=>x.onclick=e=>{e.stopPropagation();completeRequestById(x.dataset.id,'home')});
