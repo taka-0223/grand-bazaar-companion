@@ -125,6 +125,13 @@ test('weather, wind and calendar notes autosave without a Save button',()=>{
   assert.ok(editor.includes("const back=()=>leaveMemoEditors(closeDay)"));
   assert.ok(editor.includes("const ok=await leaveMemoEditors(async()=>"),'Swipes save before changing dates');
   assert.ok(editor.includes("$('#setTodayBtn').onclick=()=>leaveMemoEditors("),'Today change flushes memo too');
+  assert.ok(editor.includes('id="closeCalDay"'),'Calendar has a top-right close button');
+  assert.ok(editor.includes('class="miniLink calendarTodayAction'),'Today action is a small text control');
+  assert.ok(editor.indexOf('id="setTodayBtn"')<editor.indexOf('id="calMemo"'),'Today action belongs near date header');
+  assert.ok(!editor.includes('id="cancelCalDay"'),'Bottom Back button is gone');
+  assert.ok(!editor.includes('class="sheet-actions"'),'Calendar detail has no large action footer');
+  assert.ok(editor.includes("$('#closeCalDay').onclick=back"),'Close button must flush memo before closing');
+  assert.ok(app.includes("'#closeCalDay','#closeRequestEditor'"),'Backdrop and swipe dismissal use the same safe close action');
 });
 test('crop growing toggle is small and available before stock details',()=>{
   const start=app.indexOf('function showCrop('),end=app.indexOf('function intOrNull(',start);
@@ -197,7 +204,7 @@ test('calendar note autosave flushes before closing and before switching days',a
     clearTimeout:id=>timers.delete(id),
     async save(){saves.push(JSON.parse(JSON.stringify({notes,weather})));return true},
     modal(html){markup=html;controls={};
-      for(const id of ['calMemo','calendarDayPrev','calendarDayNext','cancelCalDay','setTodayBtn']){
+      for(const id of ['calMemo','calendarDayPrev','calendarDayNext','closeCalDay','setTodayBtn']){
         controls['#'+id]=element(id==='calMemo'?String(notes[Number(markup.match(/の月 (\d+)日/)[1])]||''):'')
       }
       controls['.dayWeather']=[Object.assign(element(),{dataset:{weather:'晴れ'}}),Object.assign(element(),{dataset:{weather:'雨'}})];
@@ -217,6 +224,9 @@ test('calendar note autosave flushes before closing and before switching days',a
   ctx.openCalendarDay(5,{year:1,season:'冬'});
   assert.equal(ctx.memoEditors.size,1);
   assert.ok(!markup.includes('id="saveCalDay"'));
+  assert.ok(!markup.includes('id="cancelCalDay"'));
+  assert.ok(markup.includes('id="closeCalDay"'));
+  assert.ok(markup.includes('id="setTodayBtn">今日に設定</button>'));
   controls['#calMemo'].value='一行目\n二行目';
   await controls['#calMemo'].dispatch('input');
   assert.equal(notes[5],'一行目\n二行目','Latest note is staged synchronously for beforeunload');
@@ -226,9 +236,15 @@ test('calendar note autosave flushes before closing and before switching days',a
   assert.equal(ctx.memoEditors.size,1,'New day editor becomes active');
   controls['#calMemo'].value='翌日メモ';
   await controls['#calMemo'].dispatch('input');
-  await controls['#cancelCalDay'].onclick();
-  assert.equal(saves.at(-1).notes[6],'翌日メモ','Back must flush current date');
+  await controls['#closeCalDay'].onclick();
+  assert.equal(saves.at(-1).notes[6],'翌日メモ','Close must flush current date');
   assert.deepEqual(events,['back to calendar']);
   assert.equal(ctx.memoEditors.size,0);
   assert.equal(timers.size,0,'No delayed save should target a discarded calendar editor');
+  ctx.openCalendarDay(4,{year:1,season:'冬'});
+  assert.ok(markup.includes('id="setTodayBtn">今日を解除</button>'),'Already-selected date keeps small reset action');
+  assert.ok(markup.includes('📍 今日として設定中'));
+  await controls['#setTodayBtn'].onclick();
+  assert.equal(calendar.today.day,null,'Reset must still clear the saved Today date');
+  assert.equal(ctx.memoEditors.size,0,'The compact action must safely finish editor cleanup');
 });
