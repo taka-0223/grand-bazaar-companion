@@ -193,6 +193,12 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .cropGrowingInline{display:inline-flex;align-items:center;gap:5px;padding:6px 9px;border:1px solid var(--line);border-radius:999px;background:var(--surface2);font-size:11px;font-weight:850;cursor:pointer}
 .cropGrowingInline input{width:15px;height:15px;margin:0;accent-color:var(--accent)}
 .cropGrowingInline.active{background:#e7f3e4;border-color:#b2ceb0;color:#35613b}
+
+/* Unified home shortage list (requests + plan requirements). */
+.homeShortageOpen+.homeShortageOpen{border-top:1px solid #eee8dc}
+.homeShortageOpen .countPair{min-width:116px;flex:0 0 auto;gap:9px;margin:0}
+.homeShortageOpen .small{overflow-wrap:anywhere}
+@media(max-width:390px){.homeShortageOpen .countPair{min-width:0;gap:7px;font-size:10px}.homeShortageOpen .countPair b{font-size:11px}}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -1413,20 +1419,47 @@ function homeProgressHtml(){
   if(!xs.length)return `<div class="section"><div class="section-head"><h2>進行中</h2></div><div class="card empty">進行中のお願い・目標はありません</div></div>`;
   return `<div class="section"><div class="section-head"><h2>進行中</h2>${all.length>xs.length?`<button class="miniLink homeNav" data-dest="plan">すべて見る</button>`:''}</div><div class="homeProgressList">${xs.map(x=>`<div class="homeProgressRow ${x.ready?'reportReady':''}"><div class="homeProgressMain clickable homeProgressOpen" data-kind="${x.kind}" data-id="${x.id}"><div class="homeProgressTitle">${x.kind==='request'?'🙏':'🎯'} ${esc(x.title)}</div><div class="homeProgressMeta">${esc(x.meta)}</div></div><div class="homeProgressActions">${x.kind==='request'?`<button class="requestQuickDone homeRequestDone" data-id="${x.id}" aria-label="お願いを完了">完了</button>`:'<span>›</span>'}</div></div>`).join('')}</div></div>`
 }
+function homeShortageItems(){
+  const shortages=[];
+  for(const r of requestsState()){
+    if(r.archived||r.status==='completed')continue;
+    for(const o of r.objectives||[]){
+      const need=Math.max(1,Number(o.target)||1),have=Math.min(need,requestObjectiveProgress(o));
+      if(have>=need)continue;
+      shortages.push({kind:'request',id:r.id,title:r.title,label:o.label||'達成条件',have,need,type:o.type||'check',quality:''})
+    }
+  }
+  for(const g of state.goals||[]){
+    if(['done','someday'].includes(g.status)||planKind(g)==='request')continue;
+    for(const item of state.requirements[g.id]||[]){
+      const have=Math.max(0,Number(item.have)||0),need=Math.max(0,Number(item.need)||0);
+      if(have>=need)continue;
+      shortages.push({kind:'goal',id:g.id,title:g.title,label:item.label||'必要素材',quality:item.quality||'',have,need,type:'goal'})
+    }
+  }
+  return shortages
+}
+function homeShortageRowHtml(item){
+  const isRequest=item.kind==='request',count=item.type==='check'
+    ?'<span class="tiny muted">未達成</span>'
+    :'<div class="countPair"><span>現在 <b>'+item.have+'</b></span><span>必要 <b>'+item.need+(item.type==='money_amount'?'G':'')+'</b></span></div>';
+  return `<div class="row between clickable homeShortageOpen" data-kind="${item.kind}" data-id="${esc(item.id)}" style="padding:7px 0;gap:8px"><div class="grow" style="min-width:0"><div class="small strong">${isRequest?'🙏 ':''}${esc(item.label)} ${esc(item.quality)}</div><div class="tiny muted">${isRequest?'お願い：':'目標：'}${esc(item.title)}</div></div>${count}</div>`
+}
 function home(){
-  const pinned=state.actions.filter(a=>!a.done&&a.pinned),goals=state.goals.filter(g=>!['done','someday'].includes(g.status)&&planKind(g)!=='request'),short=[],memos=state.captures.filter(captureOnHome);
-  for(const g of goals)for(const r of state.requirements[g.id]||[])if(r.have<r.need)short.push({...r,goal:g.title,goalId:g.id});
+  const pinned=state.actions.filter(a=>!a.done&&a.pinned),short=homeShortageItems(),memos=state.captures.filter(captureOnHome);
+  const shortagesExpanded=!!state.ui.homeShortagesExpanded,shortageView=shortagesExpanded?short:short.slice(0,4);
   const pinnedView=pinned.slice(0,4),memoView=memos.slice(0,3);
   $('#home').innerHTML=`${todayStripHtml()}${seasonReminderBannerHtml()}
   <div class="section"><div class="section-head"><h2>⭐ 今やる</h2>${pinned.length>pinnedView.length?'<button class="miniLink homeNav" data-dest="plan">すべて見る</button>':''}</div>${pinnedView.length?`<div class="card">${pinnedView.map(a=>`<div class="actionrow"><input class="check actionCheck" type="checkbox" data-id="${a.id}"><div class="grow clickable homeActionOpen" data-id="${a.id}"><div class="small strong">${esc(a.text)}</div>${a.goalId?`<div class="tiny">${esc(state.goals.find(g=>g.id===a.goalId)?.title||'')}</div>`:''}</div><div>›</div></div>`).join('')}</div>`:'<button class="homeEmptyLine homeNav" data-dest="plan"><span>★を付けた「やること」がここに表示されます</span><span>›</span></button>'}</div>
   ${homeProgressHtml()}
-  <div class="section"><div class="section-head"><h2>不足</h2></div><div class="card">${short.length?short.slice(0,4).map(r=>`<div class="row between clickable homeGoal" data-id="${r.goalId}" style="padding:7px 0"><div><div class="small strong">${esc(r.label)} ${esc(r.quality||'')}</div><div class="tiny">${esc(r.goal)}</div></div><div class="countPair" style="min-width:108px"><span>現在 <b>${r.have}</b></span><span>必要 <b>${r.need}</b></span></div></div>`).join(''):'<div class="empty">追跡中の不足はありません</div>'}</div></div>
+  <div class="section"><div class="section-head"><h2>不足</h2>${short.length>4?`<button type="button" class="miniLink" id="homeShortagesToggle">${shortagesExpanded?'閉じる':`すべて見る（${short.length}件）`}</button>`:''}</div><div class="card">${shortageView.length?shortageView.map(homeShortageRowHtml).join(''):'<div class="empty">追跡中の不足はありません</div>'}</div></div>
   ${bazaarPrepHtml()}
   <div class="section"><div class="section-head"><h2>📌 固定メモ</h2>${memos.length>memoView.length?'<button class="miniLink" id="homeAllPinnedMemos">すべて見る</button>':''}</div><div class="card">${memoView.length?memoView.map(c=>`<div class="row between clickable homeCapture homePinnedMemo" data-id="${c.id}"><div class="grow"><div class="small">${esc(c.text)}</div>${captureChildrenSummary(c)}</div><div>›</div></div>`).join(''):'<div class="empty">固定メモはありません。メモから📌を付けるとここに表示されます。</div>'}</div></div>
   ${recentStripHtml()}`;
   $$('.actionCheck').forEach(x=>x.onchange=()=>toggleAction(x.dataset.id,x.checked));
   $$('.homeActionOpen').forEach(x=>x.onclick=()=>openAction(null,x.dataset.id,'home'));
-  $$('.homeGoal').forEach(x=>x.onclick=()=>openGoalSheet(x.dataset.id,'home'));
+  $('.homeShortageOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
+  $('#homeShortagesToggle')?.addEventListener('click',()=>{state.ui.homeShortagesExpanded=!state.ui.homeShortagesExpanded;home()});
   $$('.homeProgressOpen').forEach(x=>x.onclick=()=>x.dataset.kind==='request'?showRequestRecord(x.dataset.id,'home'):openGoalSheet(x.dataset.id,'home'));
   $$('.homeRequestDone').forEach(x=>x.onclick=e=>{e.stopPropagation();completeRequestById(x.dataset.id,'home')});
   $$('.homeCapture').forEach(x=>x.onclick=()=>openCapture(x.dataset.id));
