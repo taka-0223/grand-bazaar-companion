@@ -335,3 +335,17 @@ test('pinning a memo waits for edits and remains available after changing status
   const unpin=h.$('#toggleCapturePin').click();await h.finishWrites();await unpin;
   assert.equal(saved(h).captures.find(x=>x.id==='a').pinned,false);
 });
+
+test('memo display preserves authored newlines and edit body expands without inner scrolling',async()=>{
+  assert.match(html,/\.memoCardHead \.small,\.homePinnedMemo \.small,\.captureTextDisplay\{white-space:pre-wrap/);
+  assert.match(html,/#capText\.captureBodyAutoGrow\{height:auto;min-height:82px;max-height:none;overflow-y:hidden/);
+  const h=harness();h.ctx.openCapture('a');
+  const el=body(h);
+  assert.equal(el.classList.contains('captureBodyAutoGrow'),true);
+  el.scrollHeight=900;
+  h.input(el,'申し送り\n1行目\n2行目');
+  assert.equal(el.style.height,'902px','Textarea should follow measured scrollHeight');
+  await h.close();
+  assert.equal(saved(h).captures.find(x=>x.id==='a').text,'申し送り\n1行目\n2行目');
+  assert.ok(html.includes('class="notice captureTextDisplay"'),'Confirmation and action sheets also preserve newlines');
+});

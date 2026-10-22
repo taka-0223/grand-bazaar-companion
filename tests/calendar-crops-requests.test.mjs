@@ -113,12 +113,18 @@ test('request quantities and checkboxes are tracked separately from resident rep
   assert.ok(app.includes('報告して完了にする'));
   assert.ok(app.includes("r.status='completed'"),'Completing the request remains an explicit action');
 });
-test('weather and wind selections autosave without submitting the calendar note',()=>{
+test('weather, wind and calendar notes autosave without a Save button',()=>{
   const start=app.indexOf('function openCalendarDay('),end=app.indexOf('async function changeCalendarMonth(',start);
   const editor=app.slice(start,end);assert.ok(start>=0&&end>start);
   assert.match(editor,/const persistWeatherOnly=async\(\)=>\{writeCalendarWeather\(year,season,day,selectedWeather,selectedWind\);if\(!await save\(\)\)/);
   assert.equal(editor.split('void persistWeatherOnly()').length-1,2,'Both weather and wind should save on tap');
-  assert.ok(editor.includes("$('#saveCalDay').onclick"),'Note save stays available');
+  assert.ok(!editor.includes('id="saveCalDay"'),'Redundant save action is removed');
+  assert.ok(editor.includes('const noteAutosave=bindAutosave('));
+  assert.ok(editor.includes('memoEditors.add(calendarNoteGuard)'),'Exit guard preserves unsaved input');
+  assert.ok(editor.includes("noteField.addEventListener('input',stageNote)"));
+  assert.ok(editor.includes("const back=()=>leaveMemoEditors(closeDay)"));
+  assert.ok(editor.includes("const ok=await leaveMemoEditors(async()=>"),'Swipes save before changing dates');
+  assert.ok(editor.includes("$('#setTodayBtn').onclick=()=>leaveMemoEditors("),'Today change flushes memo too');
 });
 test('crop growing toggle is small and available before stock details',()=>{
   const start=app.indexOf('function showCrop('),end=app.indexOf('function intOrNull(',start);
@@ -129,4 +135,100 @@ test('crop growing toggle is small and available before stock details',()=>{
   assert.ok(html.includes('#crops .filters,#recipes .filters{margin-bottom:12px}'));
   assert.ok(html.includes('#crops .filters.isScrolling'));
   assert.ok(html.includes('-webkit-tap-highlight-color:transparent'));
+});
+
+test('home shortages derive from the same editable request objectives and existing goal requirements',()=>{
+  const start=app.indexOf('function homeShortageItems('),end=app.indexOf('function home(){',start);
+  assert.ok(start>=0&&end>start);
+  const state={
+    requests:[
+      {id:'req1',title:'冬のお願い',status:'active',objectives:[
+        {type:'item_quantity',label:'ミルク',current:2,target:5},
+        {type:'action_count',label:'挨拶',current:1,target:3},
+        {type:'check',label:'確認済み',current:1,target:1}]},
+      {id:'reqDone',title:'報告済み',status:'completed',objectives:[{type:'check',label:'対象外',current:0,target:1}]},
+      {id:'reqArchive',title:'保管',archived:true,status:'active',objectives:[{type:'check',label:'対象外2',current:0,target:1}]}
+    ],
+    goals:[{id:'goal1',title:'道具強化',status:'active'}],
+    requirements:{goal1:[{label:'木材',have:1,need:4,quality:'★2'}]}
+  };
+  const ctx={state,requestsState:()=>state.requests,
+    requestObjectiveProgress:o=>o.type==='check'?(o.current?1:0):Math.max(0,Number(o.current)||0),
+    planKind:()=> 'plan',esc:String};
+  vm.runInNewContext(app.slice(start,end),ctx);
+  let shortages=Array.from(ctx.homeShortageItems());
+  assert.deepEqual(shortages.map(x=>x.label),['ミルク','挨拶','木材']);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/現在 <b>2<\/b>/);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/必要 <b>5<\/b>/);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/data-kind="request"/);
+  state.requests[0].objectives[0].current=5;
+  state.requests[0].objectives[1].current=3;
+  shortages=Array.from(ctx.homeShortageItems());
+  assert.deepEqual(shortages.map(x=>x.label),['木材'],'Fulfilled requests must disappear from shortage list before resident report');
+  assert.ok(app.includes("showRequestRecord(x.dataset.id,'home')"),'Request shortage opens its request detail');
+  assert.ok(app.includes("openGoalSheet(x.dataset.id,'home')"),'Goal shortage still opens its goal detail');
+});
+
+
+test('calendar note autosave flushes before closing and before switching days',async()=>{
+  const saveStart=app.indexOf('function bindAutosave('),saveEnd=app.indexOf('// RAM-only editor lifecycle.',saveStart);
+  const dayStart=app.indexOf('function openCalendarDay('),dayEnd=app.indexOf('async function changeCalendarMonth(',dayStart);
+  assert.ok(saveStart>=0&&saveEnd>saveStart&&dayStart>=0&&dayEnd>dayStart);
+  const listeners=()=>new Map();
+  const element=(value='')=>{
+    const calls=listeners();
+    return{value,style:{},dataset:{},classList:{toggle(){}},addEventListener:(ev,fn)=>{
+      if(!calls.has(ev))calls.set(ev,[]);calls.get(ev).push(fn)
+    },removeEventListener:(ev,fn)=>calls.set(ev,(calls.get(ev)||[]).filter(x=>x!==fn)),
+    dispatch:(ev)=>Promise.all((calls.get(ev)||[]).map(fn=>fn()))}
+  };
+  const notes={},weather={},saves=[],events=[],timers=new Map(),calendar={year:1,viewSeason:'冬',today:{year:1,season:'冬',day:4}};
+  let seq=0,controls={},markup='';
+  const ctx={
+    state:{season:'冬'},memoRecipeReturn:null,memoEditors:new Set(),CALENDAR_RETURN_CONTEXT:'calendar',
+    CAL_WEEKDAYS:['日','月','火','水','木','金','土'],WEATHER_TYPES:['晴れ','雨'],WIND_LEVELS:[0,1,2],
+    calendarState:()=>calendar,calendarNotes:()=>notes,calendarWeather:()=>weather,
+    calendarDayNeighbor:(_y,_s,day,delta)=>day+delta>0&&day+delta<=31?{year:1,season:'冬',day:day+delta}:null,
+    calendarHasToday:()=>true,dayEntries:()=>[],calWeekday:()=>0,esc:String,
+    weatherSymbol:w=>w,windName:n=>String(n),windMeterHtml:n=>String(n),
+    writeCalendarWeather:(_y,_s,day,forecast,wind)=>weather[day]={weather:forecast,wind},
+    deferMemoNavigation:()=>false,bindCalendarDaySwipe:()=>{},updateSaveStatus:()=>{},
+    setTimeout:(fn)=>{const id=++seq;timers.set(id,fn);return id},
+    clearTimeout:id=>timers.delete(id),
+    async save(){saves.push(JSON.parse(JSON.stringify({notes,weather})));return true},
+    modal(html){markup=html;controls={};
+      for(const id of ['calMemo','calendarDayPrev','calendarDayNext','cancelCalDay','setTodayBtn']){
+        controls['#'+id]=element(id==='calMemo'?String(notes[Number(markup.match(/の月 (\d+)日/)[1])]||''):'')
+      }
+      controls['.dayWeather']=[Object.assign(element(),{dataset:{weather:'晴れ'}}),Object.assign(element(),{dataset:{weather:'雨'}})];
+      controls['.dayWind']=[0,1,2].map(n=>Object.assign(element(),{dataset:{wind:String(n)}}))
+    },
+    $:selector=>controls[selector]||null,
+    $$:selector=>controls[selector]||[],
+    async leaveMemoEditors(callback){
+      for(const editor of [...ctx.memoEditors])if(!await editor.flush())return false;
+      for(const editor of [...ctx.memoEditors])editor.dispose();
+      await callback();return true
+    },
+    openCalendarSheet:()=>events.push('back to calendar'),closeModal:()=>events.push('close'),
+    home:()=>{},render:()=>{},toast:()=>{},openResidentCard:()=>{}
+  };
+  vm.runInNewContext(app.slice(saveStart,saveEnd)+'\n'+app.slice(dayStart,dayEnd),ctx);
+  ctx.openCalendarDay(5,{year:1,season:'冬'});
+  assert.equal(ctx.memoEditors.size,1);
+  assert.ok(!markup.includes('id="saveCalDay"'));
+  controls['#calMemo'].value='一行目\n二行目';
+  await controls['#calMemo'].dispatch('input');
+  assert.equal(notes[5],'一行目\n二行目','Latest note is staged synchronously for beforeunload');
+  assert.equal(saves.length,0,'Typing is debounced');
+  await controls['#calendarDayNext'].onclick();
+  assert.equal(saves[0].notes[5],'一行目\n二行目','Swipe must flush before changing dates');
+  assert.equal(ctx.memoEditors.size,1,'New day editor becomes active');
+  controls['#calMemo'].value='翌日メモ';
+  await controls['#calMemo'].dispatch('input');
+  await controls['#cancelCalDay'].onclick();
+  assert.equal(saves.at(-1).notes[6],'翌日メモ','Back must flush current date');
+  assert.deepEqual(events,['back to calendar']);
+  assert.equal(ctx.memoEditors.size,0);
+  assert.equal(timers.size,0,'No delayed save should target a discarded calendar editor');
 });
