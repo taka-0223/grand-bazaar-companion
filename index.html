@@ -199,6 +199,11 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .homeShortageOpen .countPair{min-width:116px;flex:0 0 auto;gap:9px;margin:0}
 .homeShortageOpen .small{overflow-wrap:anywhere}
 @media(max-width:390px){.homeShortageOpen .countPair{min-width:0;gap:7px;font-size:10px}.homeShortageOpen .countPair b{font-size:11px}}
+
+/* Preserve authored line breaks in displayed notes, not just in the editor. */
+.memoCardHead .small,.homePinnedMemo .small,.captureTextDisplay{white-space:pre-wrap;overflow-wrap:anywhere}
+/* Grow the capture body to its whole contents; the bottom sheet scrolls instead. */
+#capText.captureBodyAutoGrow{height:auto;min-height:82px;max-height:none;overflow-y:hidden;resize:none}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
 <main><section id="home" class="screen active"></section><section id="crops" class="screen"></section><section id="recipes" class="screen"></section><section id="plan" class="screen"></section><section id="inbox" class="screen"></section><section id="detail" class="screen"></section></main>
@@ -951,7 +956,7 @@ function openCalendarDay(day,opts={}){if(deferMemoNavigation(()=>openCalendarDay
     get composing(){return noteAutosave.composing},
     get dirty(){return noteField.value!==lastSavedNote},
     async flush(){return noteAutosave.flush()},
-    dispose(){noteAutosave.dispose();memoEditors.delete(calendarNoteGuard)}
+    dispose(){noteField.removeEventListener('input',stageNote);noteAutosave.dispose();memoEditors.delete(calendarNoteGuard)}
   };
   memoEditors.add(calendarNoteGuard);
   const navigate=async delta=>{
@@ -2165,7 +2170,7 @@ function openCaptureActions(id){if(deferMemoNavigation(()=>openCaptureActions(id
     :status==='archived'
       ?'<button class="btn secondary" id="captureMenuRestore">元の状態へ戻す</button>'
       :'<button class="btn ghost" id="captureMenuArchive">アーカイブ</button>';
-  modal(`<h3>メモの操作</h3><div class="notice">${esc(c.text)}</div><div class="stack" style="margin-top:12px"><button class="btn secondary" id="captureMenuPin">${c.pinned?'📌 ピン留めを外す':'📌 ホームにピン留め'}</button>${buttons}</div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">閉じる</button></div>`);
+  modal(`<h3>メモの操作</h3><div class="notice captureTextDisplay">${esc(c.text)}</div><div class="stack" style="margin-top:12px"><button class="btn secondary" id="captureMenuPin">${c.pinned?'📌 ピン留めを外す':'📌 ホームにピン留め'}</button>${buttons}</div><div class="sheet-actions"><button class="btn secondary" onclick="closeModal()">閉じる</button></div>`);
   $('#captureMenuPin').onclick=()=>toggleCapturePin(id);
   $$('.captureActionChoice').forEach(b=>b.onclick=()=>confirmConvert(id,b.dataset.to));
   const archive=memoOperation(null,()=>{const c=state.captures.find(x=>x.id===id);if(c){c.archivedFrom=captureStatus(c);c.status='archived';c.updatedAt=new Date().toISOString()}});
@@ -2175,11 +2180,31 @@ function openCaptureActions(id){if(deferMemoNavigation(()=>openCaptureActions(id
 }
 function confirmConvert(id,to){if(deferMemoNavigation(()=>confirmConvert(id,to)))return;
   const c=state.captures.find(x=>x.id===id);if(!c)return;const label=to==='goal'?'目標':'やること';
-  modal(`<h3>${label}へ変換しますか？</h3><div class="notice">${esc(c.text)}</div><p class="small muted">元メモは「変換済み」として保持します。</p><div class="sheet-actions"><button class="btn secondary" id="cancelCaptureConvert">戻る</button><button class="btn" id="doConvert">変換する</button></div>`);
+  modal(`<h3>${label}へ変換しますか？</h3><div class="notice captureTextDisplay">${esc(c.text)}</div><p class="small muted">元メモは「変換済み」として保持します。</p><div class="sheet-actions"><button class="btn secondary" id="cancelCaptureConvert">戻る</button><button class="btn" id="doConvert">変換する</button></div>`);
   $('#cancelCaptureConvert').onclick=()=>{if(memoRecipeReturn?.kind==='recipe'&&memoRecipeReturn.captureId===id)openCapture(id);else closeModal()};
   const targetId=(to==='goal'?'g':'a')+Date.now();
   const convert=memoOperation('メモ変換を元に戻せます',()=>{const c=state.captures.find(x=>x.id===id);if(!c)return;if(to==='goal')state.goals.unshift({id:targetId,title:c.text,status:'active',blocker:'',kind:'goal',tags:[],season:'',sourceCaptureId:id});else state.actions.unshift({id:targetId,text:c.text,done:false,goalId:null,pinned:false,sourceCaptureId:id});c.processed=true;c.status='processed';c.updatedAt=new Date().toISOString()});
   $('#doConvert').onclick=()=>leaveMemoEditors(()=>{memoRecipeReturn=null;closeModal();inbox()},convert);
+}
+function bindMemoBodyAutoGrow(body,editor){
+  if(!body)return;
+  body.classList.add('captureBodyAutoGrow');
+  const grow=()=>{
+    body.style.height='auto';
+    const natural=Number(body.scrollHeight)||0;
+    if(natural>0)body.style.height=Math.max(82,natural+2)+'px'
+  };
+  body.addEventListener('input',grow);
+  body.addEventListener('compositionend',grow);
+  window.addEventListener('resize',grow);
+  const previousDispose=editor.dispose;
+  editor.dispose=()=>{
+    body.removeEventListener('input',grow);
+    body.removeEventListener('compositionend',grow);
+    window.removeEventListener?.('resize',grow);
+    previousDispose()
+  };
+  grow()
 }
 function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return;
   if(memoRecipeReturn&&(memoRecipeReturn.kind!=='recipe'||memoRecipeReturn.captureId!==id))memoRecipeReturn=null;
@@ -2194,6 +2219,7 @@ function openCapture(id=null){if(deferMemoNavigation(()=>openCapture(id)))return
   const body=$('#capText'),subInput=$('#subText'),linkDraft={};let draftId=null,subDraftId=null,subDraftAdded=false;
   const fields=[{el:body,captureId:()=>id||draftId,read:()=>body.value},...[...$('#modalSheet').querySelectorAll('.subInlineEditable')].map(el=>({el,captureId:id,childId:el.dataset.child,read:()=>readSubMemoText(el)})),...(subInput?[{el:subInput,captureId:id,childId:()=>subDraftId,active:()=>subDraftAdded,autosave:false,required:true,read:()=>subInput.value}]:[])];
   const editor=createMemoEditor(fields,{captureId:id,body,extra:[body,subInput,$('#memoLinksQuery')].filter(Boolean)});
+  bindMemoBodyAutoGrow(body,editor);
   bindMemoRecipeLinks(editor,id,linkDraft);
   const finish=()=>{memoRecipeReturn=null;closeModal();inbox()};
   $('#closeCaptureEditor').onclick=()=>leaveMemoEditors(()=>{if(!returnMemoRecipe('recipe',id))finish()});
