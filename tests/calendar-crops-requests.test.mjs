@@ -113,12 +113,18 @@ test('request quantities and checkboxes are tracked separately from resident rep
   assert.ok(app.includes('報告して完了にする'));
   assert.ok(app.includes("r.status='completed'"),'Completing the request remains an explicit action');
 });
-test('weather and wind selections autosave without submitting the calendar note',()=>{
+test('weather, wind and calendar notes autosave without a Save button',()=>{
   const start=app.indexOf('function openCalendarDay('),end=app.indexOf('async function changeCalendarMonth(',start);
   const editor=app.slice(start,end);assert.ok(start>=0&&end>start);
   assert.match(editor,/const persistWeatherOnly=async\(\)=>\{writeCalendarWeather\(year,season,day,selectedWeather,selectedWind\);if\(!await save\(\)\)/);
   assert.equal(editor.split('void persistWeatherOnly()').length-1,2,'Both weather and wind should save on tap');
-  assert.ok(editor.includes("$('#saveCalDay').onclick"),'Note save stays available');
+  assert.ok(!editor.includes('id="saveCalDay"'),'Redundant save action is removed');
+  assert.ok(editor.includes('const noteAutosave=bindAutosave('));
+  assert.ok(editor.includes('memoEditors.add(calendarNoteGuard)'),'Exit guard preserves unsaved input');
+  assert.ok(editor.includes("noteField.addEventListener('input',stageNote)"));
+  assert.ok(editor.includes("const back=()=>leaveMemoEditors(closeDay)"));
+  assert.ok(editor.includes("const ok=await leaveMemoEditors(async()=>"),'Swipes save before changing dates');
+  assert.ok(editor.includes("$('#setTodayBtn').onclick=()=>leaveMemoEditors("),'Today change flushes memo too');
 });
 test('crop growing toggle is small and available before stock details',()=>{
   const start=app.indexOf('function showCrop('),end=app.indexOf('function intOrNull(',start);
@@ -129,4 +135,36 @@ test('crop growing toggle is small and available before stock details',()=>{
   assert.ok(html.includes('#crops .filters,#recipes .filters{margin-bottom:12px}'));
   assert.ok(html.includes('#crops .filters.isScrolling'));
   assert.ok(html.includes('-webkit-tap-highlight-color:transparent'));
+});
+
+test('home shortages derive from the same editable request objectives and existing goal requirements',()=>{
+  const start=app.indexOf('function homeShortageItems('),end=app.indexOf('function home(){',start);
+  assert.ok(start>=0&&end>start);
+  const state={
+    requests:[
+      {id:'req1',title:'冬のお願い',status:'active',objectives:[
+        {type:'item_quantity',label:'ミルク',current:2,target:5},
+        {type:'action_count',label:'挨拶',current:1,target:3},
+        {type:'check',label:'確認済み',current:1,target:1}]},
+      {id:'reqDone',title:'報告済み',status:'completed',objectives:[{type:'check',label:'対象外',current:0,target:1}]},
+      {id:'reqArchive',title:'保管',archived:true,status:'active',objectives:[{type:'check',label:'対象外2',current:0,target:1}]}
+    ],
+    goals:[{id:'goal1',title:'道具強化',status:'active'}],
+    requirements:{goal1:[{label:'木材',have:1,need:4,quality:'★2'}]}
+  };
+  const ctx={state,requestsState:()=>state.requests,
+    requestObjectiveProgress:o=>o.type==='check'?(o.current?1:0):Math.max(0,Number(o.current)||0),
+    planKind:()=> 'plan',esc:String};
+  vm.runInNewContext(app.slice(start,end),ctx);
+  let shortages=Array.from(ctx.homeShortageItems());
+  assert.deepEqual(shortages.map(x=>x.label),['ミルク','挨拶','木材']);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/現在 <b>2<\/b>/);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/必要 <b>5<\/b>/);
+  assert.match(ctx.homeShortageRowHtml(shortages[0]),/data-kind="request"/);
+  state.requests[0].objectives[0].current=5;
+  state.requests[0].objectives[1].current=3;
+  shortages=Array.from(ctx.homeShortageItems());
+  assert.deepEqual(shortages.map(x=>x.label),['木材'],'Fulfilled requests must disappear from shortage list before resident report');
+  assert.ok(app.includes("showRequestRecord(x.dataset.id,'home')"),'Request shortage opens its request detail');
+  assert.ok(app.includes("openGoalSheet(x.dataset.id,'home')"),'Goal shortage still opens its goal detail');
 });
