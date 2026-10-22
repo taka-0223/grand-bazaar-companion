@@ -931,19 +931,50 @@ function openCalendarDay(day,opts={}){if(deferMemoNavigation(()=>openCalendarDay
   const cal=calendarState(),season=opts.season||cal.viewSeason||state.season||'春',year=Math.max(1,Number(opts.year||cal.year)||1),notes=calendarNotes(year,season),weather=calendarWeather(year,season),saved=weather[String(day)]||{},isToday=cal.today?.year===year&&cal.today?.season===season&&Number(cal.today.day)===Number(day),entries=dayEntries(year,season,day),prev=calendarDayNeighbor(year,season,day,-1),next=calendarDayNeighbor(year,season,day,1);
   cal.year=year;cal.viewSeason=season;
   let selectedWeather=saved.weather||'',selectedWind=Number.isInteger(saved.wind)?saved.wind:null,navigating=false;
-  modal(`<div id="calendarDaySwipeSurface"><div class="calendarDayHeader"><button class="calendarDayNav" id="calendarDayPrev" aria-label="前の日" ${prev?'':'disabled'}>‹</button><h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3><button class="calendarDayNav" id="calendarDayNext" aria-label="次の日">›</button></div><div class="calendarSwipeHint">左右スワイプで前後の日へ</div>${entries.length?`<div class="card">${entries.map(calendarEntryDetails).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風量</div><div class="small strong" style="margin-top:9px">天気</div><div class="weatherChoiceGrid">${WEATHER_TYPES.map(w=>`<button type="button" class="weatherChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}"><span class="weatherChoiceIcon">${weatherSymbol(w)||'○'}</span><span>${w}</span></button>`).join('')}</div><div class="small strong" style="margin-top:14px">風量</div><div class="windChoiceGrid">${WIND_LEVELS.map(w=>`<button type="button" class="windChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}" aria-label="風量 ${windName(w)}">${windMeterHtml(w)}<span class="windLevelText">${windName(w)}</span></button>`).join('')}</div></div><div class="field" style="margin-top:12px"><label>この日のメモ</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" id="cancelCalDay">戻る</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button><button class="btn" id="saveCalDay">保存</button></div></div>`);
-  const back=()=>{if(CALENDAR_RETURN_CONTEXT==='calendar')openCalendarSheet();else{closeModal();home()}};
+  modal(`<div id="calendarDaySwipeSurface"><div class="calendarDayHeader"><button class="calendarDayNav" id="calendarDayPrev" aria-label="前の日" ${prev?'':'disabled'}>‹</button><h3>${year}年目 ${season}の月 ${day}日（${CAL_WEEKDAYS[calWeekday(year,season,day)]}）</h3><button class="calendarDayNav" id="calendarDayNext" aria-label="次の日">›</button></div><div class="calendarSwipeHint">左右スワイプで前後の日へ</div>${entries.length?`<div class="card">${entries.map(calendarEntryDetails).join('')}</div>`:''}<div class="dayWeatherBlock"><div class="tiny muted">天気と風量</div><div class="small strong" style="margin-top:9px">天気</div><div class="weatherChoiceGrid">${WEATHER_TYPES.map(w=>`<button type="button" class="weatherChoice dayWeather ${selectedWeather===w?'active':''}" data-weather="${w}"><span class="weatherChoiceIcon">${weatherSymbol(w)||'○'}</span><span>${w}</span></button>`).join('')}</div><div class="small strong" style="margin-top:14px">風量</div><div class="windChoiceGrid">${WIND_LEVELS.map(w=>`<button type="button" class="windChoice dayWind ${selectedWind===w?'active':''}" data-wind="${w}" aria-label="風量 ${windName(w)}">${windMeterHtml(w)}<span class="windLevelText">${windName(w)}</span></button>`).join('')}</div></div><div class="field" style="margin-top:12px"><label>この日のメモ（自動保存）</label><textarea id="calMemo" placeholder="予定・やること">${esc(notes[day]||'')}</textarea></div><div class="sheet-actions"><button class="btn secondary" id="cancelCalDay">戻る</button><button class="btn secondary" id="setTodayBtn">${isToday?'今日を解除':'今日に設定'}</button></div></div>`);
+  const closeDay=()=>{if(CALENDAR_RETURN_CONTEXT==='calendar')openCalendarSheet();else{closeModal();home()}};
+  const back=()=>leaveMemoEditors(closeDay);
   const refreshWeatherButtons=()=>{$$('.dayWeather').forEach(b=>b.classList.toggle('active',b.dataset.weather===selectedWeather));$$('.dayWind').forEach(b=>b.classList.toggle('active',Number(b.dataset.wind)===selectedWind))};
-  const persistCurrent=async()=>{const v=$('#calMemo')?.value.trim()||'';if(v)notes[day]=v;else delete notes[day];writeCalendarWeather(year,season,day,selectedWeather,selectedWind);await save()};
-  const navigate=async delta=>{if(navigating)return;const target=calendarDayNeighbor(year,season,day,delta);if(!target)return;navigating=true;const v=$('#calMemo')?.value.trim()||'';if(v)notes[day]=v;else delete notes[day];writeCalendarWeather(year,season,day,selectedWeather,selectedWind);cal.year=target.year;cal.viewSeason=target.season;await save();openCalendarDay(target.day,{year:target.year,season:target.season})};
+  // Calendar note uses the existing edit/exit queue: close, swipe, navigation and
+  // switching sheets must commit the latest text before disposing the editor.
+  const noteField=$('#calMemo');let lastSavedNote=String(notes[day]||'');
+  const stageNote=()=>{const raw=noteField.value;if(raw.trim())notes[day]=raw;else delete notes[day]};
+  noteField.addEventListener('input',stageNote);
+  const persistNote=async()=>{
+    if(noteField.value===lastSavedNote)return true;
+    stageNote();const snapshot=noteField.value,ok=await save();
+    if(ok)lastSavedNote=snapshot;
+    return ok
+  };
+  const noteAutosave=bindAutosave([noteField],persistNote,350);
+  const calendarNoteGuard={
+    get composing(){return noteAutosave.composing},
+    get dirty(){return noteField.value!==lastSavedNote},
+    async flush(){return noteAutosave.flush()},
+    dispose(){noteAutosave.dispose();memoEditors.delete(calendarNoteGuard)}
+  };
+  memoEditors.add(calendarNoteGuard);
+  const navigate=async delta=>{
+    if(navigating)return;const target=calendarDayNeighbor(year,season,day,delta);if(!target)return;
+    navigating=true;
+    const ok=await leaveMemoEditors(async()=>{
+      cal.year=target.year;cal.viewSeason=target.season;await save();
+      openCalendarDay(target.day,{year:target.year,season:target.season})
+    });
+    if(!ok)navigating=false
+  };
   const persistWeatherOnly=async()=>{writeCalendarWeather(year,season,day,selectedWeather,selectedWind);if(!await save())toast('天気・風量を保存できませんでした')};
   $$('.dayWeather').forEach(b=>b.onclick=()=>{selectedWeather=selectedWeather===b.dataset.weather?'':b.dataset.weather;refreshWeatherButtons();void persistWeatherOnly()});
   $$('.dayWind').forEach(b=>b.onclick=()=>{const v=Number(b.dataset.wind);selectedWind=selectedWind===v?null:v;refreshWeatherButtons();void persistWeatherOnly()});
   $('#calendarDayPrev').onclick=()=>navigate(-1);$('#calendarDayNext').onclick=()=>navigate(1);bindCalendarDaySwipe(navigate);
   $('#cancelCalDay').onclick=back;
-  $('#setTodayBtn').onclick=async()=>{if(isToday)cal.today={year:cal.year,season:'',day:null};else{cal.today={year,season,day:Number(day)};cal.year=year;cal.viewSeason=season;state.season=season}await save();render();back();toast(isToday?'今日を解除しました':`${year}年目 ${season}${day}日を今日にしました`)};
-  $$('.residentOpen').forEach(b=>b.onclick=()=>openResidentCard(b.dataset.resident,day));
-  $('#saveCalDay').onclick=async()=>{await persistCurrent();back();toast('カレンダーを保存しました')}
+  $('#setTodayBtn').onclick=()=>leaveMemoEditors(async()=>{
+    if(isToday)cal.today={year:cal.year,season:'',day:null};
+    else{cal.today={year,season,day:Number(day)};cal.year=year;cal.viewSeason=season;state.season=season}
+    await save();render();closeDay();toast(isToday?'今日を解除しました':`${year}年目 ${season}${day}日を今日にしました`)
+  });
+  $('.residentOpen').forEach(b=>b.onclick=()=>leaveMemoEditors(()=>openResidentCard(b.dataset.resident,day)));
+
 }
 async function changeCalendarMonth(delta){const c=calendarState(),i=CAL_SEASONS.indexOf(c.viewSeason||'春'),next=i+delta;if(next<0){if(c.year<=1)return;c.year-=1;c.viewSeason='冬'}else if(next>3){c.year+=1;c.viewSeason='春'}else c.viewSeason=CAL_SEASONS[next];await save();if(CALENDAR_RETURN_CONTEXT==='calendar')openCalendarSheet();else home()}
 function bindCalendar(){$$('.calDay').forEach(x=>x.onclick=()=>openCalendarDay(Number(x.dataset.day)));$('#calMonthPrev')?.addEventListener('click',()=>changeCalendarMonth(-1));$('#calMonthNext')?.addEventListener('click',()=>changeCalendarMonth(1))}
