@@ -1,0 +1,127 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {runInNewContext,Script} from 'node:vm';
+import {projectRecordMaster} from '../lib/record-master-projection.mjs';
+
+const data=path=>JSON.parse(readFileSync(path,'utf8'));
+const master=projectRecordMaster(
+  data('data/board-master.full.v1.json'),data('data/tool-upgrades.v1.json'),
+  data('data/bazaar-facilities.v1.json'),data('data/bazaar-shops.v1.json')
+);
+const source=readFileSync('record-book.js','utf8');
+const plain=x=>JSON.parse(JSON.stringify(x));
+
+function fixture(){
+  const sandbox={
+    RECORD_MASTER:master,state:{ui:{},playerRecords:{}},
+    MASTER:{animals:[]},
+    norm:s=>String(s).normalize('NFKC').trim().toLowerCase().replace(/[\s　・･\-_]+/g,''),
+  };
+  runInNewContext(source,sandbox);
+  return {sandbox,eval:code=>runInNewContext(code,sandbox)};
+}
+
+test('record Master is generated reproducibly from audited catalogs',()=>{
+  new Script(readFileSync('record-master.js','utf8'));
+  const actual=runInNewContext(readFileSync('record-master.js','utf8')+'\nRECORD_MASTER');
+  assert.deepEqual(plain(actual),master);
+  assert.equal(master.tools.length,8);
+  assert.equal(master.tools.filter(t=>t.upgradable).length,5);
+  assert.equal(master.upgrades.length,37);
+  assert.equal(master.facilities.length,38);
+  assert.deepEqual(master.tools.map(t=>t.id),
+    ['hoe','watering_can','sickle','fishing_rod','hatchet','brush','milker','clippers']);
+  assert.ok(master.upgrades.every(u=>u.materials.every(m=>m.name_ja&&Number.isInteger(m.quantity)&&m.quantity>0)));
+  assert.ok(master.facilities.every(f=>Number.isInteger(f.price_g)&&f.price_g>=0));
+  assert.ok(!('residents' in master));
+});
+
+test('field crop structure survives normalization with existing legacy notes and entries',()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords={
+    fields:{note:'果樹の予備',entries:[{id:'old',title:'畑の手帳'}],crops:[{id:'crop1',name:'オリーブ',count:16}]},
+    tools:{ownedStageById:{hoe:'gold'},customStageById:{watering_can:'自分の呼び方'}}
+  };
+  f.eval('normalizePlayerRecords(state)');
+  assert.deepEqual(plain(f.sandbox.state.playerRecords.fields),{
+    note:'果樹の予備',entries:[{id:'old',title:'畑の手帳'}],
+    crops:[{id:'crop1',name:'オリーブ',count:16}]
+  });
+  assert.equal(f.sandbox.state.playerRecords.tools.ownedStageById.hoe,'gold');
+  assert.equal(f.sandbox.state.playerRecords.tools.customStageById.watering_can,'自分の呼び方');
+});
+
+test('facility Master match requires exact entered shop and upgrade name',()=>{
+  const f=fixture();
+  const match=plain(f.eval('recordBookFacilityMatch("カバンを広げる","ウィルバー")'));
+  assert.equal(match.id,'fac_wilbur_bag_1');
+  assert.equal(match.price_g,5000);
+  assert.equal(f.eval('recordBookFacilityMatch("カバンを広げる","ゴラン")'),null);
+  assert.equal(f.eval('recordBookFacilityMatch("カバン","ウィルバー")'),null);
+  assert.equal(f.eval('recordBookFacilityMatch("カバンを広げる","")'),null);
+});
+
+test('facility completed/discovered IDs follow player-authored entries only',()=>{
+  const f=fixture();
+  const r={discoveredIds:[],completedIds:[],discoveredShopIds:[],customEntries:[
+    {id:'one',masterId:'fac_wilbur_bag_1',shopId:'shop_wilbur',completed:true},
+    {id:'custom',masterId:null,shopName:'牧場の近所',completed:false}
+  ]};
+  f.sandbox.state.playerRecords.facilities=r;
+  f.eval('recordBookSyncFacilityIds(state.playerRecords.facilities)');
+  assert.deepEqual(plain(r.discoveredIds),['fac_wilbur_bag_1']);
+  assert.deepEqual(plain(r.completedIds),['fac_wilbur_bag_1']);
+  assert.deepEqual(plain(r.discoveredShopIds),['shop_wilbur']);
+  r.customEntries[0].completed=false;
+  f.eval('recordBookSyncFacilityIds(state.playerRecords.facilities)');
+  assert.deepEqual(plain(r.completedIds),[]);
+  r.customEntries=[];
+  f.eval('recordBookSyncFacilityIds(state.playerRecords.facilities,"fac_wilbur_bag_1")');
+  assert.deepEqual(plain(r.discoveredIds),[]);
+  assert.deepEqual(plain(r.completedIds),[]);
+});
+
+test('tool grade resolver recognizes owned stages but never autocompletes unknown upgrades',()=>{
+  const f=fixture();
+  assert.deepEqual(plain(f.eval('recordBookToolResolve("hoe","オリハルコン")')),
+    {stage:'orichalcum',custom:'',upgradeId:'tool_upgrade_hoe_orichalcum'});
+  assert.deepEqual(plain(f.eval('recordBookToolResolve("watering_can","銀のじょうろ")')),
+    {stage:'silver',custom:'',upgradeId:'tool_upgrade_watering_can_silver'});
+  assert.deepEqual(plain(f.eval('recordBookToolResolve("hoe","まだ知らないグレード")')),
+    {stage:null,custom:'まだ知らないグレード'});
+  assert.deepEqual(plain(f.eval('recordBookToolResolve("milker","初期")')),
+    {stage:'base',custom:''});
+  assert.deepEqual(plain(f.eval('recordBookToolResolve("hoe","")')),
+    {stage:null,custom:''});
+});
+
+test('upgrade material references expose only stages explicitly discovered by player',()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords.tools={ownedStageById:{},customStageById:{},notesById:{},discoveredUpgradeIds:[]};
+  assert.deepEqual(plain(f.eval('recordBookDiscoveredForTool("hoe",state.playerRecords.tools)')),[]);
+  f.sandbox.state.playerRecords.tools.discoveredUpgradeIds=['tool_upgrade_hoe_copper'];
+  const visible=plain(f.eval('recordBookDiscoveredForTool("hoe",state.playerRecords.tools)'));
+  assert.equal(visible.length,1);
+  assert.equal(visible[0].name_ja,'銅のクワ');
+  assert.ok(visible[0].materials.length>0);
+  assert.ok(!visible.some(u=>u.stage==='silver'));
+  assert.deepEqual(plain(f.eval('recordBookDiscoveredForTool("watering_can",state.playerRecords.tools)')),[]);
+});
+
+test('tap sorting, crop count, compact ranks, species shortcuts and no spoiled lists are wired',()=>{
+  const html=readFileSync('index.html','utf8');
+  const worker=readFileSync('sw.js','utf8');
+  assert.ok(source.includes('recordSortButton'));
+  assert.ok(source.includes('data-sort="birthday"'));
+  assert.ok(source.includes('recordCropCount'));
+  assert.ok(source.includes('recordKnownSpecies'));
+  assert.ok(source.includes('recordRankSelect'));
+  assert.ok(source.includes('recordFacilityToggle'));
+  assert.ok(source.includes('recordToolKnownRecipes'));
+  assert.ok(!source.includes('RECORD_MASTER.facilities.map('));
+  assert.ok(!source.includes('RECORD_MASTER.shops.map('));
+  assert.ok(!source.includes('RECORD_MASTER.upgrades.map('));
+  assert.ok(html.includes('<script src="./record-master.js"></script>'));
+  assert.ok(worker.includes("'./record-master.js'"));
+});

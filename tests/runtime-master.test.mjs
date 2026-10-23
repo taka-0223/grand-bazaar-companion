@@ -52,7 +52,7 @@ test('all explicit app Master references resolve, and inline JS is syntactically
 });
 test('Player State, offline cache and request spoiler guards remain in place',()=>{
   const worker=readFileSync('sw.js','utf8');
-  assert.ok(worker.includes("const CORE=['./','./index.html','./record-book.js'"));
+  assert.ok(worker.includes("const CORE=['./','./index.html','./record-master.js','./record-book.js'"));
   assert.ok(!worker.includes('board-master.full.v1.json'));
   assert.ok(html.includes("const STORAGE='gb-board-data'"));
   assert.ok(html.includes("function requestMasterMatches"));

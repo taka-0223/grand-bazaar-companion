@@ -25,6 +25,7 @@ function fixture(overrides={}){
 test('standalone record UI script is syntactically valid and loaded before the main app bootstrap',()=>{
   new Script(source);
   assert.ok(html.indexOf('<script src="./record-book.js"></script>')<html.indexOf('const MASTER=JSON.parse'));
+  assert.ok(html.indexOf('<script src="./record-master.js"></script>')<html.indexOf('<script src="./record-book.js"></script>'));
   assert.ok(html.includes('normalizePlayerRecords(x);'));
   assert.ok(html.includes("if(typeof renderRecordBookView==='function'&&renderRecordBookView())return;"));
   assert.ok(html.includes('renderRecordBookHub();'));
@@ -36,9 +37,9 @@ test('optional playerRecords normalization preserves schema 7 and prior user sta
   assert.equal(f.sandbox.state.schemaVersion,7);
   assert.deepEqual(plain(f.sandbox.state.captures),[{id:'note-existing',text:'残しておく'}]);
   assert.deepEqual(plain(f.sandbox.state.playerRecords),{
-    fields:{note:'',entries:[]},barn:{animals:[],contestRankByAnimalId:{}},
+    fields:{note:'',entries:[],crops:[]},barn:{animals:[],contestRankByAnimalId:{}},
     facilities:{discoveredIds:[],completedIds:[],discoveredShopIds:[],notesById:{},customEntries:[]},
-    tools:{ownedStageById:{},discoveredUpgradeIds:[],notesById:{}}
+    tools:{ownedStageById:{},discoveredUpgradeIds:[],notesById:{},customStageById:{}}
   });
   f.sandbox.state.playerRecords.fields.note='手前の畑\n翌日は水やり';
   f.sandbox.state.playerRecords.barn.animals=[{id:'a1',speciesName:'ニワトリ',nickname:'タマ'}];
