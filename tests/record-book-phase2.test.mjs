@@ -323,3 +323,85 @@ test('undo is a temporary shared action, not a permanently visible crop control'
   assert.ok(html.includes('<div id="undo" class="undo">'));
   assert.ok(!html.includes('.recordCropUndo{'));
 });
+
+test('harvest is a prominent button next to the crop name, and Undo remains temporary',()=>{
+  const start=source.indexOf('function renderRecordFields(){');
+  const end=source.indexOf('async function recordBookAdjustCrop',start);
+  assert.ok(start>=0&&end>start);
+  const render=source.slice(start,end);
+  assert.match(render, /recordCropIdentity[\s\S]*?recordCropRow[\s\S]*?recordCropHarvest[\s\S]*?recordCropStepper/);
+  const afterBottom=render.slice(render.indexOf('<div class="recordCropBottom">'));
+  assert.ok(!afterBottom.includes('<button class="recordCropHarvest"'));
+  assert.ok(source.includes("$$('.recordCropHarvest').forEach("));
+  assert.ok(source.includes("withUndo('収穫を元に戻せます'"));
+});
+test('crop name suggestions use existing field records and player-discovered seed knowledge only',()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords={fields:{crops:[{id:'a',name:'オリーブ'},{id:'b',name:'トマト',archived:true}]}};
+  f.sandbox.state.knownEntities=['tomato_seeds','secret_seed','unseen_tomato'];
+  f.sandbox.state.playerState={tomato_seeds:{seedCount:4}};
+  f.sandbox.ent=id=>({tomato_seeds:{id,kind:'seed',name_ja:'トマトの種'},
+    secret_seed:{id,kind:'seed',name_ja:'未発見の種'},unseen_tomato:{id,kind:'crop',name_ja:'未発見の野菜'}})[id]||null;
+  f.sandbox.cultivationSource=e=>e;
+  f.sandbox.name=id=>({tomato_seeds:'トマトの種'})[id]||id;
+  const names=plain(f.eval('recordBookKnownCropNames()'));
+  assert.ok(names.includes('オリーブ'));
+  assert.ok(names.includes('トマト'));
+  assert.ok(!names.some(x=>x.includes('未発見')));
+  assert.equal(names.filter(x=>x==='トマト').length,1);
+});
+test('facility suggestions require prior player discovery and respect the entered contractor',()=>{
+  const f=fixture();
+  const discovered=master.facilities.find(x=>x.name_ja&&x.shop_id==='shop_wilbur');
+  assert.ok(discovered);
+  f.sandbox.state.playerRecords={facilities:{
+    discoveredIds:[],completedIds:[],discoveredShopIds:[],
+    customEntries:[{id:'f1',title:'倉庫を自分で改良',shopName:'ウィルバー'},
+                   {id:'f2',title:'土の改良を記録',shopName:'ゴラン'}]}};
+  const privateNames=plain(f.eval('recordBookKnownFacilityNames("ウィルバー")'));
+  assert.deepEqual(privateNames,['倉庫を自分で改良']);
+  assert.ok(!privateNames.includes(discovered.name_ja));
+  assert.deepEqual(plain(f.eval('recordBookKnownFacilityNames("ゴラン")')),['土の改良を記録']);
+  const shopNames=plain(f.eval('recordBookKnownShopNames()'));
+  assert.deepEqual(shopNames,['ウィルバー','ゴラン']);
+  f.sandbox.state.playerRecords.facilities.discoveredIds=[discovered.id];
+  const withMaster=plain(f.eval('recordBookKnownFacilityNames("ウィルバー")'));
+  assert.ok(withMaster.includes(discovered.name_ja));
+});
+test('tool grade suggestions never reveal unknown future upgrade stages',()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords={tools:{
+    ownedStageById:{hoe:'gold'},customStageById:{},discoveredUpgradeIds:[],notesById:{}
+  }};
+  let labels=plain(f.eval('recordBookKnownToolGrades("hoe")'));
+  assert.ok(labels.includes('金のクワ'));
+  assert.ok(!labels.some(x=>x.includes('オリハルコン')));
+  assert.ok(!labels.some(x=>x.includes('究極')));
+  assert.deepEqual(plain(f.eval('recordBookKnownToolGrades("watering_can")')),[]);
+  f.sandbox.state.playerRecords.tools.discoveredUpgradeIds=['tool_upgrade_hoe_copper'];
+  labels=plain(f.eval('recordBookKnownToolGrades("hoe")'));
+  assert.ok(labels.includes('銅のクワ'));
+  assert.ok(!labels.some(x=>x.includes('銀のクワ')));
+});
+test('suggestion chips filter names and fill the input when tapped',()=>{
+  const f=fixture();
+  const listeners={};
+  const input={value:'オ',addEventListener(type,cb){listeners[type]=cb},
+    dispatchEvent(e){listeners[e.type]?.(e)}};
+  const box={hidden:true,_html:'',items:[],set innerHTML(v){this._html=v;this.items=[]},
+    get innerHTML(){return this._html},append(b){this.items.push(b)}};
+  f.sandbox.$=q=>({'#recordCropName':input,'#recordCropNameSuggestions':box})[q];
+  f.sandbox.document={createElement(type){
+    assert.equal(type,'button');
+    return {addEventListener(kind,cb){this[kind]=cb},type:'',textContent:'',className:''};
+  }};
+  f.sandbox.Event=class{constructor(type){this.type=type}};
+  f.sandbox.inputChoices=()=>['オリーブ','オレンジ','未発見の作物'];
+  f.eval('recordBookBindKnownSuggestions("recordCropName",inputChoices)');
+  listeners.input();
+  assert.equal(box.hidden,false);
+  assert.deepEqual(box.items.map(b=>b.textContent),['オリーブ','オレンジ']);
+  box.items[0].click();
+  assert.equal(input.value,'オリーブ');
+  assert.equal(box.hidden,true);
+});

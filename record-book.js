@@ -160,16 +160,16 @@ function renderRecordFields(){
   recordBookPage(recordBookShell('畑','育てているものと数を記録')+
     `<div class="recordBookToolbar"><span class="small muted">育成中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
     ${current.length?`<div class="recordBookList">${current.map(c=>`<div class="recordCropItem ${c.harvested?'recordCropDone':''}" data-id="${esc(c.id)}">
-      <div class="recordCropTop"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集">
+      <div class="recordCropTop"><div class="recordCropIdentity"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集">
         <span class="strong">${esc(c.name)}</span><span class="tiny muted">${c.harvested?'✓ 収穫済み':'編集 ›'}</span></button>
+        ${c.harvested?'':`<button class="recordCropHarvest" type="button" data-id="${esc(c.id)}">🌾 収穫</button>`}</div>
         <div class="recordCropStepper"><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="-1" aria-label="${esc(c.name)}を1減らす">−</button>
           <b aria-label="栽培数">${Math.max(0,Number(c.count)||0)}</b><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="1" aria-label="${esc(c.name)}を1増やす">＋</button></div></div>
       <div class="recordCropBottom">${c.harvested?`
         <span class="recordCropHarvestedLabel">✓ 収穫済み${c.harvestCount?`（${Number(c.harvestCount)}回）`:''}</span>
         <div class="recordCropActions"><button class="recordCropResume" type="button" data-id="${esc(c.id)}">↻ 再び育成中</button>
           <button class="recordCropArchive" type="button" data-id="${esc(c.id)}">アーカイブ</button></div>`:
-        `<button class="recordCropHarvest" type="button" data-id="${esc(c.id)}">収穫</button>
-          <span class="tiny muted">${c.harvestCount?`これまで ${Number(c.harvestCount)}回収穫`:'収穫後も数は自動変更しません'}</span>`}</div></div>`).join('')}</div>`:
+        `<span class="tiny muted">${c.harvestCount?`これまで ${Number(c.harvestCount)}回収穫`:'収穫後も栽培数は変わりません'}</span>`}</div></div>`).join('')}</div>`:
       '<div class="notice">育てている作物や果樹を登録してください。畑の数や区画は決め打ちしません。収穫済みは必要なときにアーカイブできます。</div>'}
     ${archived.length?`<details class="recordCropArchived"><summary>アーカイブ済み（${archived.length}件）</summary>
       <div class="recordBookList">${archived.map(c=>`<div class="recordCropArchivedRow">
@@ -230,13 +230,103 @@ async function recordBookSetCropFlags(id,flags){
   if(await save())renderRecordFields();
   else{Object.assign(entry,backup);toast('保存できませんでした。もう一度お試しください')}
 }
+function recordBookUniqueKnownLabels(items){
+  const names=new Map();
+  for(const item of items||[]){
+    const label=String(item||'').trim();
+    if(label&&!names.has(norm(label)))names.set(norm(label),label);
+  }
+  return [...names.values()];
+}
+// Candidates MUST come from things the player has registered or explicitly learned.
+// Never enumerate unseen Master rows as a search/autocomplete corpus.
+function recordBookKnownCropNames(){
+  const r=normalizePlayerRecords(state).fields;
+  const names=r.crops.map(c=>c?.name);
+  for(const id of state.knownEntities||[]){
+    if(!Object.prototype.hasOwnProperty.call(state.playerState||{},id))continue;
+    const e=typeof ent==='function'?ent(id):(typeof baseById!=='undefined'?baseById.get(id):null);
+    if(!e||!['crop','seed','fruit','seedling','flower','flower_seed','mushroom'].includes(e.kind))continue;
+    const source=typeof cultivationSource==='function'?cultivationSource(e):e;
+    const text=(typeof name==='function'&&source?.id?name(source.id):source?.name_ja||e.name_ja||'');
+    if(text)names.push(String(text).replace(/(?:の種|の苗|の菌)$/,''));
+  }
+  return recordBookUniqueKnownLabels(names);
+}
+function recordBookKnownShopNames(){
+  const r=normalizePlayerRecords(state).facilities;
+  const names=r.customEntries.map(e=>e?.shopName);
+  for(const id of r.discoveredShopIds||[]){
+    const shop=RECORD_MASTER.shops.find(s=>s.id===id);
+    if(shop){names.push(shop.owner_ja);names.push(shop.name_ja)}
+  }
+  return recordBookUniqueKnownLabels(names);
+}
+function recordBookKnownFacilityNames(shopName=''){
+  const r=normalizePlayerRecords(state).facilities;
+  const query=norm(shopName||'');
+  const matchesShop=entry=>!query||[entry?.shopName,entry?.owner_ja].some(n=>n&&norm(n)===query);
+  const names=r.customEntries.filter(matchesShop).map(e=>e?.title);
+  const known=new Set([...(r.discoveredIds||[]),...(r.completedIds||[])]);
+  for(const f of RECORD_MASTER.facilities){
+    if(!known.has(f.id)||!f.name_ja)continue;
+    const shop=RECORD_MASTER.shops.find(s=>s.id===f.shop_id);
+    if(!query||matchesShop({shopName:shop?.name_ja,owner_ja:shop?.owner_ja}))names.push(f.name_ja);
+  }
+  return recordBookUniqueKnownLabels(names);
+}
+function recordBookKnownToolGrades(toolId){
+  const r=normalizePlayerRecords(state).tools;
+  const names=[r.customStageById[toolId]];
+  const current=r.ownedStageById[toolId];
+  if(current==='base')names.push('初期');
+  if(current==='unowned')names.push('未所持');
+  const previouslyKnown=new Set(r.discoveredUpgradeIds||[]);
+  for(const upgrade of RECORD_MASTER.upgrades){
+    if(upgrade.tool_id!==toolId)continue;
+    if(previouslyKnown.has(upgrade.id)||upgrade.stage===current){
+      names.push(upgrade.name_ja);
+      if(RECORD_TOOL_STAGE_WORDS[upgrade.stage])names.push(RECORD_TOOL_STAGE_WORDS[upgrade.stage]);
+    }
+  }
+  return recordBookUniqueKnownLabels(names);
+}
+function recordBookBindKnownSuggestions(inputId,candidates){
+  const input=$('#'+inputId),box=$('#'+inputId+'Suggestions');
+  if(!input||!box)return {refresh(){}};
+  const refresh=()=>{
+    const query=norm(input.value||'');
+    box.innerHTML='';
+    if(!query){box.hidden=true;return}
+    const known=recordBookUniqueKnownLabels(candidates());
+    const suggestions=known.filter(label=>norm(label).includes(query)&&norm(label)!==query).slice(0,6);
+    if(!suggestions.length){box.hidden=true;return}
+    for(const label of suggestions){
+      const button=document.createElement('button');
+      button.type='button';button.className='recordSuggestion';
+      button.textContent=label;
+      button.addEventListener('click',()=>{
+        input.value=label;
+        box.hidden=true;
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+      });
+      box.append(button);
+    }
+    box.hidden=false;
+  };
+  input.addEventListener('input',refresh);
+  input.addEventListener('focus',refresh);
+  return {refresh};
+}
+
 function recordBookCropSheet(id=null){
   const r=normalizePlayerRecords(state).fields,entry=r.crops.find(c=>c?.id===id);
   modal(`<h3>${entry?'栽培を編集':'栽培を登録'}</h3>
-    <div class="field"><label for="recordCropName">作物・果樹の名前</label><input id="recordCropName" autocomplete="off" value="${esc(entry?.name||'')}" placeholder="自分が育てているもの"></div>
+    <div class="field"><label for="recordCropName">作物・果樹の名前</label><input id="recordCropName" autocomplete="off" value="${esc(entry?.name||'')}" placeholder="自分が育てているもの"><div id="recordCropNameSuggestions" class="recordAutocomplete" aria-label="登録済みの候補" hidden></div></div>
     <div class="field" style="margin-top:8px"><label for="recordCropCount">植えている数</label><input id="recordCropCount" type="number" inputmode="numeric" min="0" step="1" value="${entry?.count??1}"></div>
     ${entry?`<div class="field" style="margin-top:8px"><label for="recordCropHarvestCount">収穫した回数</label><input id="recordCropHarvestCount" type="number" inputmode="numeric" min="0" step="1" value="${Number(entry.harvestCount)||0}"></div>`:''}
     <div class="sheet-actions"><button class="btn secondary" id="recordCropCancel">キャンセル</button>${entry?'<button class="btn ghost" id="recordCropDelete">削除</button>':''}<button class="btn" id="recordCropSave">保存</button></div>`);
+  recordBookBindKnownSuggestions('recordCropName',recordBookKnownCropNames);
   $('#recordCropCancel').onclick=renderRecordFields;
   $('#recordCropSave').onclick=async()=>{
     const name=$('#recordCropName').value.trim(),count=Number($('#recordCropCount').value);
@@ -476,14 +566,17 @@ function recordBookFacilitySheet(id=null){
     <p class="small muted">ゲーム内で確認した内容を入力してください。未知の候補は表示しません。</p>
     ${knownShops.length?`<div class="recordBookKnownLabel small muted">登録済みの依頼先</div>
       <div class="recordKnownSpecies">${knownShops.map(name=>`<button type="button" class="recordKnownShop recordKnownButton" data-name="${esc(name)}">${esc(name)}</button>`).join('')}</div>`:''}
-    <div class="field"><label for="recordFacilityShop">依頼先（任意）</label><input id="recordFacilityShop" value="${esc(entry?.shopName||'')}" autocomplete="off" placeholder="ゲーム内で確認した依頼先"></div>
-    <div class="field" style="margin-top:8px"><label for="recordFacilityName">アップデート名</label><input id="recordFacilityName" value="${esc(entry?.title||'')}" autocomplete="off" placeholder="例：自分が発見した強化"></div>
+    <div class="field"><label for="recordFacilityShop">依頼先（任意）</label><input id="recordFacilityShop" value="${esc(entry?.shopName||'')}" autocomplete="off" placeholder="ゲーム内で確認した依頼先"><div id="recordFacilityShopSuggestions" class="recordAutocomplete" aria-label="登録済み依頼先の候補" hidden></div></div>
+    <div class="field" style="margin-top:8px"><label for="recordFacilityName">アップデート名</label><input id="recordFacilityName" value="${esc(entry?.title||'')}" autocomplete="off" placeholder="例：自分が発見した強化"><div id="recordFacilityNameSuggestions" class="recordAutocomplete" aria-label="登録済み工事の候補" hidden></div></div>
     <label class="recordInlineCheck"><input id="recordFacilityComplete" type="checkbox" ${entry?.completed?'checked':''}> 完了している</label>
     <div class="field" style="margin-top:8px"><label for="recordFacilityNote">メモ（任意）</label><textarea id="recordFacilityNote" placeholder="次にしたいことなど">${esc(entry?.note||'')}</textarea></div>
     ${entry?.masterId?`<p class="tiny muted">Master照合済み・参考価格 ${Number(RECORD_MASTER.facilities.find(f=>f.id===entry.masterId)?.price_g||0).toLocaleString('ja-JP')}G</p>`:''}
     <div class="sheet-actions"><button class="btn secondary" id="recordFacilityCancel">キャンセル</button>
       ${entry?'<button class="btn ghost" id="recordFacilityDelete">削除</button>':''}<button class="btn" id="recordFacilitySave">保存</button></div>`);
-  $$('.recordKnownShop').forEach(b=>b.onclick=()=>{$('#recordFacilityShop').value=b.dataset.name});
+  recordBookBindKnownSuggestions('recordFacilityShop',recordBookKnownShopNames);
+  const facilitySuggestions=recordBookBindKnownSuggestions('recordFacilityName',()=>recordBookKnownFacilityNames($('#recordFacilityShop').value));
+  $('#recordFacilityShop').addEventListener('input',()=>facilitySuggestions.refresh());
+  $$('.recordKnownShop').forEach(b=>b.onclick=()=>{$('#recordFacilityShop').value=b.dataset.name;facilitySuggestions.refresh()});
   $('#recordFacilityCancel').onclick=renderRecordFacilities;
   $('#recordFacilitySave').onclick=async()=>{
     const shopName=$('#recordFacilityShop').value.trim(),title=$('#recordFacilityName').value.trim();
@@ -574,10 +667,11 @@ function recordBookToolSheet(toolId){
   const value=grade==='未記録'?'':grade;
   modal(`<h3>${esc(tool.name_ja)}のグレード</h3>
     <div class="field"><label for="recordToolGrade">現在のグレード名</label>
-      <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="ゲーム内で確認したグレード"></div>
+      <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="ゲーム内で確認したグレード"><div id="recordToolGradeSuggestions" class="recordAutocomplete" aria-label="記録済みグレードの候補" hidden></div></div>
     <p class="tiny muted">未確認の強化候補は表示しません。入力名がMasterと一致すれば、既知の素材情報と照合します。</p>
     <div class="sheet-actions"><button class="btn secondary" id="recordToolCancel">キャンセル</button>
       <button class="btn" id="recordToolSave">保存</button></div>`);
+  recordBookBindKnownSuggestions('recordToolGrade',()=>recordBookKnownToolGrades(toolId));
   $('#recordToolCancel').onclick=renderRecordTools;
   $('#recordToolSave').onclick=async()=>{
     const grade=recordBookToolResolve(toolId,$('#recordToolGrade').value);
