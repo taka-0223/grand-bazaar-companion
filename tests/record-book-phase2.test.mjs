@@ -17,6 +17,7 @@ function fixture(){
     RECORD_MASTER:master,state:{ui:{},playerRecords:{}},
     MASTER:{animals:[]},
     clone:x=>JSON.parse(JSON.stringify(x)),
+    esc:x=>String(x??''),
     withUndo:async(label,fn)=>{
       const snapshot=JSON.parse(JSON.stringify(sandbox.state));
       fn();
