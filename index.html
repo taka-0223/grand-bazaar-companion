@@ -289,6 +289,7 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .recordCropActions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .recordCropResume,.recordCropArchive,.recordCropRestore{font-size:11px;font-weight:750;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface2);color:var(--text)}
 .recordCropArchive{color:var(--muted)}
+.recordCropUndo{color:#8b5a24;background:#fff5e5;border-color:#e5c69b}
 .recordCropBottom:has(.recordCropHarvestedLabel){flex-wrap:wrap}
 .recordCropArchived{margin:12px 0 8px;font-size:12px}
 .recordCropArchived summary{cursor:pointer;font-weight:750;color:var(--muted);padding:8px 0}
@@ -319,7 +320,7 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 <script src="./record-book.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.25';
+const APP_VERSION='0.11.26';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};

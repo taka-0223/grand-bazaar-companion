@@ -216,3 +216,49 @@ test('harvested and archived controls are wired with an explicit return to growi
   assert.ok(source.includes('archived.length'));
   assert.ok(source.includes('crops.filter(c=>c&&!c.archived)'));
 });
+
+test('accidental harvest can be undone, including the count, prior timestamp and reload-safe snapshot',async()=>{
+  const f=fixture(),crop={id:'c1',name:'オリーブ',count:16,harvestCount:2,lastHarvestedAt:'2026-10-18T10:00:00Z'};
+  f.sandbox.state.playerRecords={fields:{crops:[crop],note:'残しておく',entries:[]}};
+  f.sandbox.save=async()=>true;
+  f.sandbox.toast=()=>{};
+  f.sandbox.renderRecordFields=()=>{};
+  await f.eval('recordBookHarvestCrop("c1")');
+  assert.equal(crop.harvestCount,3);
+  assert.equal(crop.harvested,true);
+  assert.equal(crop.harvestUndo.harvestCount,2);
+  const saved=plain(crop);
+  f.sandbox.state.playerRecords.fields.crops=[saved];
+  await f.eval('recordBookUndoHarvestCrop("c1")');
+  assert.equal(saved.harvested,false);
+  assert.equal(saved.harvestCount,2);
+  assert.equal(saved.lastHarvestedAt,'2026-10-18T10:00:00Z');
+  assert.equal(saved.count,16);
+  assert.equal(saved.harvestUndo,undefined);
+  await f.eval('recordBookUndoHarvestCrop("c1")');
+  assert.equal(saved.harvestCount,2,'undo may not be repeated');
+});
+
+test('undo works for old harvested entries without snapshot and rolls back on storage failure',async()=>{
+  const f=fixture(),crop={id:'old',name:'トマト',count:3,harvestCount:4,harvested:true,lastHarvestedAt:'2026-10-20T10:00:00Z'};
+  f.sandbox.state.playerRecords={fields:{crops:[crop]}};
+  f.sandbox.toast=()=>{};
+  f.sandbox.renderRecordFields=()=>{};
+  f.sandbox.save=async()=>false;
+  await f.eval('recordBookUndoHarvestCrop("old")');
+  assert.equal(crop.harvestCount,4);
+  assert.equal(crop.harvested,true);
+  assert.equal(crop.lastHarvestedAt,'2026-10-20T10:00:00Z');
+  f.sandbox.save=async()=>true;
+  await f.eval('recordBookUndoHarvestCrop("old")');
+  assert.equal(crop.harvestCount,3);
+  assert.equal(crop.harvested,false);
+  assert.equal(crop.lastHarvestedAt,undefined);
+});
+
+test('harvest undo button is visible only in the harvested branch and bound to undo action',()=>{
+  assert.ok(source.includes('class="recordCropUndo"'));
+  assert.ok(source.includes("recordBookUndoHarvestCrop(b.dataset.id)"));
+  assert.ok(source.includes('↶ 取り消す'));
+  assert.ok(source.includes('harvestUndo'));
+});
