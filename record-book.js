@@ -166,8 +166,7 @@ function renderRecordFields(){
           <b aria-label="栽培数">${Math.max(0,Number(c.count)||0)}</b><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="1" aria-label="${esc(c.name)}を1増やす">＋</button></div></div>
       <div class="recordCropBottom">${c.harvested?`
         <span class="recordCropHarvestedLabel">✓ 収穫済み${c.harvestCount?`（${Number(c.harvestCount)}回）`:''}</span>
-        <div class="recordCropActions"><button class="recordCropUndo" type="button" data-id="${esc(c.id)}" aria-label="${esc(c.name)}の収穫を取り消す" title="収穫回数と状態を一つ前に戻す">↶ 取り消す</button>
-          <button class="recordCropResume" type="button" data-id="${esc(c.id)}">↻ 再び育成中</button>
+        <div class="recordCropActions"><button class="recordCropResume" type="button" data-id="${esc(c.id)}">↻ 再び育成中</button>
           <button class="recordCropArchive" type="button" data-id="${esc(c.id)}">アーカイブ</button></div>`:
         `<button class="recordCropHarvest" type="button" data-id="${esc(c.id)}">収穫</button>
           <span class="tiny muted">${c.harvestCount?`これまで ${Number(c.harvestCount)}回収穫`:'収穫後も数は自動変更しません'}</span>`}</div></div>`).join('')}</div>`:
@@ -185,8 +184,7 @@ function renderRecordFields(){
   $('#recordCropAdd').onclick=()=>leaveRecordBook(()=>recordBookCropSheet());
   $$('.recordCropRow').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookCropSheet(b.dataset.id)));
   $$('.recordCropAdjust').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookAdjustCrop(b.dataset.id,Number(b.dataset.delta))));
-  $('.recordCropHarvest').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookHarvestCrop(b.dataset.id)));
-  $('.recordCropUndo').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookUndoHarvestCrop(b.dataset.id)));
+  $$('.recordCropHarvest').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookHarvestCrop(b.dataset.id)));
   $$('.recordCropResume').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{harvested:false})));
   $$('.recordCropArchive').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{archived:true})));
   $$('.recordCropRestore').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{archived:false})));
@@ -208,31 +206,20 @@ async function recordBookAdjustCrop(id,delta){
   else{Object.assign(entry,old);toast('保存できませんでした。もう一度お試しください')}
 }
 async function recordBookHarvestCrop(id){
-  const r=state.playerRecords.fields,entry=r.crops.find(c=>c.id===id);
-  if(!entry||entry.archived||entry.harvested)return;
-  const old=clone(entry),count=Math.max(0,Number(entry.harvestCount)||0);
-  // Save the harvest-specific prior values. Planting count and unrelated edits are untouched by undo.
-  entry.harvestUndo={harvestCount:count,harvested:!!old.harvested,lastHarvestedAt:old.lastHarvestedAt??null};
-  entry.harvestCount=count+1;entry.harvested=true;
-  entry.lastHarvestedAt=new Date().toISOString();entry.updatedAt=entry.lastHarvestedAt;
-  if(await save()){renderRecordFields();toast('収穫済みにしました。連作・果樹は「再び育成中」で続けられます')}
-  else{recordBookRestorePart(entry,old);toast('保存できませんでした。もう一度お試しください')}
-}
-async function recordBookUndoHarvestCrop(id){
   const entry=state.playerRecords.fields.crops.find(c=>c.id===id);
-  if(!entry||entry.archived||!entry.harvested)return;
-  const backup=clone(entry),previous=entry.harvestUndo;
-  // Records from versions before Undo have no snapshot; still allow reverting one harvest.
-  const prior=previous&&Number.isSafeInteger(previous.harvestCount)&&previous.harvestCount>=0
-    ?previous.harvestCount:Math.max(0,(Number(entry.harvestCount)||0)-1);
-  entry.harvestCount=prior;
-  entry.harvested=false;
-  if(typeof previous?.lastHarvestedAt==='string')entry.lastHarvestedAt=previous.lastHarvestedAt;
-  else delete entry.lastHarvestedAt;
-  delete entry.harvestUndo;
-  entry.updatedAt=new Date().toISOString();
-  if(await save()){renderRecordFields();toast('収穫を取り消しました')}
-  else{recordBookRestorePart(entry,backup);toast('保存できませんでした。もう一度お試しください')}
+  if(!entry||entry.archived||entry.harvested)return;
+  const old=clone(entry);
+  const count=Math.max(0,Number(entry.harvestCount)||0);
+  const ok=await withUndo('収穫を元に戻せます',()=>{
+    entry.harvestCount=count+1;
+    entry.harvested=true;
+    entry.lastHarvestedAt=new Date().toISOString();
+    entry.updatedAt=entry.lastHarvestedAt;
+    // Old persistent undo metadata is obsolete: the common five-second Undo handles this operation.
+    delete entry.harvestUndo;
+  });
+  if(ok)renderRecordFields();
+  else{recordBookRestorePart(entry,old);toast('保存できませんでした。もう一度お試しください')}
 }
 async function recordBookSetCropFlags(id,flags){
   const entry=state.playerRecords.fields.crops.find(c=>c.id===id);

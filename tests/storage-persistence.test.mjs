@@ -192,7 +192,7 @@ test('Player State keys, autosave, migration and beforeunload safeguards are unc
   assert.ok(html.includes('function bindAutosave(elements,persist,delay=400)'));
   assert.ok(html.includes('window.addEventListener(\'beforeunload\''));
   assert.ok(html.includes('async function hydrate()'));
-  assert.ok(html.includes('const APP_VERSION=\'0.11.26\''));
+  assert.ok(html.includes('const APP_VERSION=\'0.11.27\''));
   assert.ok(storageSource.includes("t.objectStore('kv').put(snapshot,'state')"));
   assert.ok(!storageSource.includes("put(clone("));
 });

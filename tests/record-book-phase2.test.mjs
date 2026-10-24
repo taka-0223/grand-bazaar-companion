@@ -17,6 +17,13 @@ function fixture(){
     RECORD_MASTER:master,state:{ui:{},playerRecords:{}},
     MASTER:{animals:[]},
     clone:x=>JSON.parse(JSON.stringify(x)),
+    withUndo:async(label,fn)=>{
+      const snapshot=JSON.parse(JSON.stringify(sandbox.state));
+      fn();
+      const ok=typeof sandbox.save==='function'?await sandbox.save():true;
+      if(ok!==false)sandbox.lastUndo={label,snapshot};
+      return ok;
+    },
     norm:s=>String(s).normalize('NFKC').trim().toLowerCase().replace(/[\s　・･\-_]+/g,''),
   };
   runInNewContext(source,sandbox);
@@ -217,7 +224,7 @@ test('harvested and archived controls are wired with an explicit return to growi
   assert.ok(source.includes('crops.filter(c=>c&&!c.archived)'));
 });
 
-test('accidental harvest can be undone, including the count, prior timestamp and reload-safe snapshot',async()=>{
+test('harvest uses the shared five-second Undo and restores prior crop state without touching planting count',async()=>{
   const f=fixture(),crop={id:'c1',name:'オリーブ',count:16,harvestCount:2,lastHarvestedAt:'2026-10-18T10:00:00Z'};
   f.sandbox.state.playerRecords={fields:{crops:[crop],note:'残しておく',entries:[]}};
   f.sandbox.save=async()=>true;
@@ -226,39 +233,93 @@ test('accidental harvest can be undone, including the count, prior timestamp and
   await f.eval('recordBookHarvestCrop("c1")');
   assert.equal(crop.harvestCount,3);
   assert.equal(crop.harvested,true);
-  assert.equal(crop.harvestUndo.harvestCount,2);
-  const saved=plain(crop);
-  f.sandbox.state.playerRecords.fields.crops=[saved];
-  await f.eval('recordBookUndoHarvestCrop("c1")');
-  assert.equal(saved.harvested,false);
-  assert.equal(saved.harvestCount,2);
-  assert.equal(saved.lastHarvestedAt,'2026-10-18T10:00:00Z');
-  assert.equal(saved.count,16);
-  assert.equal(saved.harvestUndo,undefined);
-  await f.eval('recordBookUndoHarvestCrop("c1")');
-  assert.equal(saved.harvestCount,2,'undo may not be repeated');
+  assert.equal(crop.count,16);
+  assert.equal(crop.harvestUndo,undefined,'old always-visible undo metadata is no longer added');
+  assert.equal(f.sandbox.lastUndo.label,'収穫を元に戻せます');
+  const before=plain(f.sandbox.lastUndo.snapshot);
+  const previous=before.playerRecords.fields.crops[0];
+  assert.equal(previous.harvestCount,2);
+  assert.equal(previous.lastHarvestedAt,'2026-10-18T10:00:00Z');
+  assert.equal(previous.harvested,undefined);
+  assert.equal(previous.count,16);
+  f.sandbox.state=before;
+  assert.equal(f.sandbox.state.playerRecords.fields.note,'残しておく');
+  assert.equal(f.sandbox.state.playerRecords.fields.crops[0].count,16);
 });
-
-test('undo works for old harvested entries without snapshot and rolls back on storage failure',async()=>{
-  const f=fixture(),crop={id:'old',name:'トマト',count:3,harvestCount:4,harvested:true,lastHarvestedAt:'2026-10-20T10:00:00Z'};
+test('harvest save failure rolls the visible state back and never offers Undo',async()=>{
+  const f=fixture(),crop={id:'c1',name:'トマト',count:3,harvestCount:4};
   f.sandbox.state.playerRecords={fields:{crops:[crop]}};
   f.sandbox.toast=()=>{};
   f.sandbox.renderRecordFields=()=>{};
   f.sandbox.save=async()=>false;
-  await f.eval('recordBookUndoHarvestCrop("old")');
+  await f.eval('recordBookHarvestCrop("c1")');
   assert.equal(crop.harvestCount,4);
-  assert.equal(crop.harvested,true);
-  assert.equal(crop.lastHarvestedAt,'2026-10-20T10:00:00Z');
-  f.sandbox.save=async()=>true;
-  await f.eval('recordBookUndoHarvestCrop("old")');
-  assert.equal(crop.harvestCount,3);
-  assert.equal(crop.harvested,false);
+  assert.equal(crop.harvested,undefined);
   assert.equal(crop.lastHarvestedAt,undefined);
+  assert.equal(f.sandbox.lastUndo,undefined);
 });
-
-test('harvest undo button is visible only in the harvested branch and bound to undo action',()=>{
-  assert.ok(source.includes('class="recordCropUndo"'));
-  assert.ok(source.includes("recordBookUndoHarvestCrop(b.dataset.id)"));
-  assert.ok(source.includes('↶ 取り消す'));
-  assert.ok(source.includes('harvestUndo'));
+test('crop row harvest control binds via the multi-selector and no persistent Undo button remains',async()=>{
+  const f=fixture(),crop={id:'c1',name:'にんじん',count:2,harvestCount:0};
+  f.sandbox.state.playerRecords={fields:{note:'',entries:[],crops:[crop]}};
+  const nodes={};
+  f.sandbox.$=id=>id==='#recordCropAdd'?(nodes.add={onclick:null}):null;
+  f.sandbox.$$=sel=>sel==='.recordCropHarvest'?[nodes.harvest={dataset:{id:'c1'},onclick:null}]:[];
+  f.sandbox.recordBookPage=()=>{};
+  f.sandbox.recordBookShell=()=>'<div>sheet</div>';
+  f.sandbox.bindRecordBookBack=()=>{};
+  f.sandbox.esc=s=>String(s);
+  f.sandbox.leaveRecordBook=async fn=>fn();
+  f.sandbox.save=async()=>true;
+  f.sandbox.toast=()=>{};
+  f.eval('renderRecordFields()');
+  f.sandbox.renderRecordFields=()=>{};
+  assert.equal(typeof nodes.harvest.onclick,'function');
+  await nodes.harvest.onclick();
+  assert.equal(crop.harvested,true);
+  assert.equal(crop.harvestCount,1);
+  assert.equal(f.sandbox.lastUndo.label,'収穫を元に戻せます');
+  assert.ok(source.includes("$$('.recordCropHarvest').forEach("));
+  assert.ok(!source.split('\n').some(line=>/^\s*\$\('\.recordCropHarvest'\)\.forEach/.test(line)));
+  assert.ok(!source.includes('recordCropUndo'));
+  assert.ok(!source.includes('recordBookUndoHarvestCrop'));
+});
+test('the shared Undo button refreshes an open record bottom sheet after restoring state',async()=>{
+  const html=readFileSync('index.html','utf8');
+  const start=html.indexOf("$('#undoBtn').onclick=async()=>{");
+  const end=html.indexOf('\nfunction show(id)',start);
+  assert.ok(start>0&&end>start,'shared Undo handler was not found');
+  const undoSource=html.slice(start,end);
+  const before={playerRecords:{fields:{crops:[{id:'c1',name:'にんじん',count:2,harvestCount:0}]}}};
+  const modal={classList:{contains:v=>v==='open'}};
+  const sheet={classList:{contains:v=>v==='recordBookViewSheet'}};
+  const undo={classList:{remove(){}}};
+  const button={onclick:null};
+  let didRender=false,didRefresh=false,didDispose=false,didSave=false;
+  const context={
+    undoSnapshot:before,memoLinksUndo:null,memoEditors:new Set(),
+    state:{playerRecords:{fields:{crops:[{id:'c1',count:2,harvestCount:1,harvested:true}]}}},
+    recordBookView:'fields',
+    recordBookEditor:{dispose(){didDispose=true}},
+    $:selector=>({'#undoBtn':button,'#modal':modal,'#modalSheet':sheet,'#undo':undo})[selector]||null,
+    flushMemoEditors:async()=>true,
+    replaceMemoState(next){context.state=next},
+    render(){didRender=true},
+    renderRecordBookView(){didRefresh=true},
+    memoOperation:()=>async()=>{didSave=true;return true},
+    toast(){}
+  };
+  runInNewContext(undoSource,context);
+  assert.equal(typeof button.onclick,'function');
+  await button.onclick();
+  assert.equal(context.state, before);
+  assert.equal(context.recordBookEditor,null);
+  assert.ok(didRender&&didRefresh&&didDispose&&didSave);
+});
+test('undo is a temporary shared action, not a permanently visible crop control',()=>{
+  const html=readFileSync('index.html','utf8');
+  assert.ok(source.includes("withUndo('収穫を元に戻せます'"));
+  assert.ok(html.includes("undoTimer=setTimeout("));
+  assert.ok(html.includes("},5000)"));
+  assert.ok(html.includes('<div id="undo" class="undo">'));
+  assert.ok(!html.includes('.recordCropUndo{'));
 });
