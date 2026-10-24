@@ -779,7 +779,7 @@ $('#undoBtn').onclick=async()=>{
   const id=[...memoEditors].find(e=>e.body)?.captureId,snapshot=undoSnapshot;
   // The shared Undo may be triggered while a Record Book bottom sheet is visible.
   // Refresh it after restoring Player State, rather than leaving stale crop rows onscreen.
-  const recordSheetOpen=!!(recordBookView&&$('#modal')?.classList.contains('open')&&$('#modalSheet')?.classList.contains('recordBookViewSheet'));
+  const recordSheetOpen=!!(typeof recordBookView!=='undefined'&&recordBookView&&$('#modal')?.classList.contains('open')&&$('#modalSheet')?.classList.contains('recordBookViewSheet'));
   replaceMemoState(snapshot);$('#undo').classList.remove('show');
   render();
   if(recordSheetOpen){
