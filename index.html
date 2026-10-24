@@ -302,6 +302,9 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .recordSuggestion{max-width:100%;padding:7px 10px;border:1px solid #afc3a7;border-radius:9px;background:#f0f5ec;color:#385a35;font-size:12px;font-weight:750;cursor:pointer;text-align:left}
 .recordSuggestion:active{background:#deebd6}
 .recordSuggestion:focus-visible{outline:3px solid #b2d3ac;outline-offset:2px}
+.recordAutocomplete:not([hidden]){padding-top:6px;border-top:1px solid var(--line);margin-top:7px}
+.recordSuggestion{line-height:1.45;overflow-wrap:anywhere}
+
 .recordCropBottom:has(.recordCropHarvestedLabel){flex-wrap:wrap}
 .recordCropArchived{margin:12px 0 8px;font-size:12px}
 .recordCropArchived summary{cursor:pointer;font-weight:750;color:var(--muted);padding:8px 0}
@@ -332,7 +335,7 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 <script src="./record-book.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.28';
+const APP_VERSION='0.11.29';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};

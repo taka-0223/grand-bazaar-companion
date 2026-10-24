@@ -158,7 +158,7 @@ function renderRecordFields(){
   const current=r.crops.filter(c=>c&&!c.archived),archived=r.crops.filter(c=>c?.archived);
   const growing=current.filter(c=>Number(c.count)>0&&!c.harvested).length;
   recordBookPage(recordBookShell('畑','育てているものと数を記録')+
-    `<div class="recordBookToolbar"><span class="small muted">育成中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
+    `<div class="recordBookToolbar"><span class="small muted">育成中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 作物・果樹を追加</button></div>
     ${current.length?`<div class="recordBookList">${current.map(c=>`<div class="recordCropItem ${c.harvested?'recordCropDone':''}" data-id="${esc(c.id)}">
       <div class="recordCropTop"><div class="recordCropIdentity"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集">
         <span class="strong">${esc(c.name)}</span><span class="tiny muted">${c.harvested?'✓ 収穫済み':'編集 ›'}</span></button>
@@ -238,9 +238,16 @@ function recordBookUniqueKnownLabels(items){
   }
   return [...names.values()];
 }
-// Candidates MUST come from things the player has registered or explicitly learned.
-// Never enumerate unseen Master rows as a search/autocomplete corpus.
-function recordBookKnownCropNames(){
+function recordBookTypedQuery(text){
+  return String(text||'').normalize('NFKC').trim().replace(/倉庫/g,'そうこ').replace(/じょうろ/g,'じょうろ');
+}
+function recordBookMatchName(name,typed){
+  const a=norm(String(name||'').replace(/倉庫/g,'そうこ')),b=norm(recordBookTypedQuery(typed));
+  return !!b&&a.includes(b);
+}
+// A typed query is the player's intent. No Master rows are listed on focus/empty input.
+// Unknown item names are not visible until an informative query narrows them.
+function recordBookKnownCropNames(query=''){
   const r=normalizePlayerRecords(state).fields;
   const names=r.crops.map(c=>c?.name);
   for(const id of state.knownEntities||[]){
@@ -248,72 +255,82 @@ function recordBookKnownCropNames(){
     const e=typeof ent==='function'?ent(id):(typeof baseById!=='undefined'?baseById.get(id):null);
     if(!e||!['crop','seed','fruit','seedling','flower','flower_seed','mushroom'].includes(e.kind))continue;
     const source=typeof cultivationSource==='function'?cultivationSource(e):e;
-    const text=(typeof name==='function'&&source?.id?name(source.id):source?.name_ja||e.name_ja||'');
-    if(text)names.push(String(text).replace(/(?:の種|の苗|の菌)$/,''));
+    const label=typeof name==='function'&&source?.id?name(source.id):source?.name_ja||e.name_ja||'';
+    if(label)names.push(String(label).replace(/(?:の種|の苗|の菌)$/,''));
   }
-  return recordBookUniqueKnownLabels(names);
-}
-function recordBookKnownShopNames(){
-  const r=normalizePlayerRecords(state).facilities;
-  const names=r.customEntries.map(e=>e?.shopName);
-  for(const id of r.discoveredShopIds||[]){
-    const shop=RECORD_MASTER.shops.find(s=>s.id===id);
-    if(shop){names.push(shop.owner_ja);names.push(shop.name_ja)}
+  const filtered=recordBookUniqueKnownLabels(names);
+  if(norm(query).length<2||typeof baseById==='undefined')return filtered;
+  for(const e of baseById.values()){
+    if(!e||!['crop','seed','fruit','seedling','flower','flower_seed','mushroom'].includes(e.kind))continue;
+    const source=typeof cultivationSource==='function'?cultivationSource(e):e;
+    const label=typeof name==='function'&&source?.id?name(source.id):source?.name_ja||e.name_ja||'';
+    const cleaned=String(label).replace(/(?:の種|の苗|の菌|種菌)$/,'');
+    if(cleaned&&recordBookMatchName(cleaned,query))filtered.push(cleaned);
   }
-  return recordBookUniqueKnownLabels(names);
+  return recordBookUniqueKnownLabels(filtered);
 }
-function recordBookKnownFacilityNames(shopName=''){
-  const r=normalizePlayerRecords(state).facilities;
-  const query=norm(shopName||'');
-  const matchesShop=entry=>!query||[entry?.shopName,entry?.owner_ja].some(n=>n&&norm(n)===query);
-  const names=r.customEntries.filter(matchesShop).map(e=>e?.title);
-  const known=new Set([...(r.discoveredIds||[]),...(r.completedIds||[])]);
-  for(const f of RECORD_MASTER.facilities){
-    if(!known.has(f.id)||!f.name_ja)continue;
-    const shop=RECORD_MASTER.shops.find(s=>s.id===f.shop_id);
-    if(!query||matchesShop({shopName:shop?.name_ja,owner_ja:shop?.owner_ja}))names.push(f.name_ja);
+function recordBookKnownFacilityNames(query=''){
+  const r=normalizePlayerRecords(state),fac=r.facilities;
+  const known=fac.customEntries.map(e=>e?.title);
+  const typed=recordBookTypedQuery(query);
+  if(norm(typed).length<2)return recordBookUniqueKnownLabels(known);
+  const rank=r.bazaar.rankNumber;
+  const discovered=new Set([...(fac.discoveredIds||[]),...(fac.completedIds||[]),...fac.customEntries.map(e=>e?.masterId).filter(Boolean)]);
+  for(const entry of RECORD_MASTER.facilities){
+    // Only verified names, never descriptive labels masquerading as in-game wording.
+    if(!entry.name_ja||!recordBookMatchName(entry.name_ja,typed))continue;
+    const min=entry.unlock?.rank_min||1;
+    // With no rank recorded, normal-story names can be found deliberately by typing.
+    // Once the user records their rank, suppress unearned future tiers.
+    if(!discovered.has(entry.id)&&((rank!=null&&min>rank)||(rank==null&&min>7)))continue;
+    known.push(entry.name_ja);
   }
-  return recordBookUniqueKnownLabels(names);
+  return recordBookUniqueKnownLabels(known);
 }
-function recordBookKnownToolGrades(toolId){
+function recordBookKnownToolGrades(toolId,query=''){
   const r=normalizePlayerRecords(state).tools;
   const names=[r.customStageById[toolId]];
   const current=r.ownedStageById[toolId];
   if(current==='base')names.push('初期');
   if(current==='unowned')names.push('未所持');
-  const previouslyKnown=new Set(r.discoveredUpgradeIds||[]);
   for(const upgrade of RECORD_MASTER.upgrades){
     if(upgrade.tool_id!==toolId)continue;
-    if(previouslyKnown.has(upgrade.id)||upgrade.stage===current){
+    const known=(r.discoveredUpgradeIds||[]).includes(upgrade.id)||upgrade.stage===current;
+    if(known||norm(query).length>=1&&(recordBookMatchName(upgrade.name_ja,query)||
+        recordBookMatchName(RECORD_TOOL_STAGE_WORDS[upgrade.stage],query))){
       names.push(upgrade.name_ja);
       if(RECORD_TOOL_STAGE_WORDS[upgrade.stage])names.push(RECORD_TOOL_STAGE_WORDS[upgrade.stage]);
     }
   }
   return recordBookUniqueKnownLabels(names);
 }
-function recordBookBindKnownSuggestions(inputId,candidates){
+function recordBookBindKnownSuggestions(inputId,candidates,{minChars=2,onChoose=null}={}){
   const input=$('#'+inputId),box=$('#'+inputId+'Suggestions');
   if(!input||!box)return {refresh(){}};
+  let composing=false;
   const refresh=()=>{
-    const query=norm(input.value||'');
+    const query=recordBookTypedQuery(input.value||'');
     box.innerHTML='';
-    if(!query){box.hidden=true;return}
-    const known=recordBookUniqueKnownLabels(candidates());
-    const suggestions=known.filter(label=>norm(label).includes(query)&&norm(label)!==query).slice(0,6);
-    if(!suggestions.length){box.hidden=true;return}
-    for(const label of suggestions){
+    if(composing||norm(query).length<minChars){box.hidden=true;return}
+    const options=recordBookUniqueKnownLabels(candidates(query))
+      .filter(label=>recordBookMatchName(label,query)&&norm(label)!==norm(query)).slice(0,6);
+    if(!options.length){box.hidden=true;return}
+    for(const label of options){
       const button=document.createElement('button');
       button.type='button';button.className='recordSuggestion';
       button.textContent=label;
       button.addEventListener('click',()=>{
         input.value=label;
         box.hidden=true;
+        onChoose?.(label);
         input.dispatchEvent(new Event('input',{bubbles:true}));
       });
       box.append(button);
     }
     box.hidden=false;
   };
+  input.addEventListener('compositionstart',()=>{composing=true;box.hidden=true});
+  input.addEventListener('compositionend',()=>{composing=false;refresh()});
   input.addEventListener('input',refresh);
   input.addEventListener('focus',refresh);
   return {refresh};
@@ -321,8 +338,8 @@ function recordBookBindKnownSuggestions(inputId,candidates){
 
 function recordBookCropSheet(id=null){
   const r=normalizePlayerRecords(state).fields,entry=r.crops.find(c=>c?.id===id);
-  modal(`<h3>${entry?'栽培を編集':'栽培を登録'}</h3>
-    <div class="field"><label for="recordCropName">作物・果樹の名前</label><input id="recordCropName" autocomplete="off" value="${esc(entry?.name||'')}" placeholder="自分が育てているもの"><div id="recordCropNameSuggestions" class="recordAutocomplete" aria-label="登録済みの候補" hidden></div></div>
+  modal(`<h3>${entry?'作物・果樹を編集':'作物・果樹を追加'}</h3>
+    <div class="field"><label for="recordCropName">作物・果樹の名前</label><input id="recordCropName" autocomplete="off" value="${esc(entry?.name||'')}" placeholder="例：トマト"><p class="tiny muted">2文字以上で入力候補を表示します。自分で名前を入力しても登録できます。</p><div id="recordCropNameSuggestions" class="recordAutocomplete" aria-label="作物名の候補" hidden></div></div>
     <div class="field" style="margin-top:8px"><label for="recordCropCount">植えている数</label><input id="recordCropCount" type="number" inputmode="numeric" min="0" step="1" value="${entry?.count??1}"></div>
     ${entry?`<div class="field" style="margin-top:8px"><label for="recordCropHarvestCount">収穫した回数</label><input id="recordCropHarvestCount" type="number" inputmode="numeric" min="0" step="1" value="${Number(entry.harvestCount)||0}"></div>`:''}
     <div class="sheet-actions"><button class="btn secondary" id="recordCropCancel">キャンセル</button>${entry?'<button class="btn ghost" id="recordCropDelete">削除</button>':''}<button class="btn" id="recordCropSave">保存</button></div>`);
@@ -464,20 +481,30 @@ function recordBookAnimalSheet(id=null,speciesPreset=null){
   };
 }
 
-// Facility upgrades are recorded by the player. The audited Master is used
-// ONLY when the player has explicitly entered both the contractor and label.
-function recordBookFacilityMatch(name,shopName){
+// Shop and contractor are Master facts. The player selects/types ONLY the in-game
+// work name; shop ID and canonical upgrade ID are inferred when unambiguous.
+function recordBookFacilityMatches(name){
+  const key=norm(name);
+  if(!key)return [];
+  return RECORD_MASTER.facilities.filter(f=>
+    [f.name_ja,f.label_ja].some(label=>label&&norm(label)===key));
+}
+function recordBookFacilityMatch(name,legacyShopName=''){
+  const matches=recordBookFacilityMatches(name);
+  if(!legacyShopName)return matches.length===1?matches[0]:null;
   const shop=RECORD_MASTER.shops.find(s=>
-    norm(s.owner_ja)===norm(shopName)||norm(s.name_ja)===norm(shopName));
+    norm(s.owner_ja)===norm(legacyShopName)||norm(s.name_ja)===norm(legacyShopName));
   if(!shop)return null;
-  return RECORD_MASTER.facilities.find(f=>f.shop_id===shop.id&&
-    [f.label_ja,f.name_ja].some(label=>label&&norm(label)===norm(name)))||null;
+  return matches.find(f=>f.shop_id===shop.id)||null;
 }
 function recordBookFacilityGroups(entries){
   const groups=new Map();
   for(const entry of entries){
     if(!entry||typeof entry!=='object')continue;
-    const label=String(entry.shopName||'').trim()||'依頼先未記録';
+    const facility=RECORD_MASTER.facilities.find(f=>f.id===entry.masterId);
+    const shopId=entry.shopId||facility?.shop_id;
+    const shop=RECORD_MASTER.shops.find(s=>s.id===shopId||norm(s.owner_ja)===norm(entry.shopName||''));
+    const label=shop?.name_ja||String(entry.shopName||'').trim()||'その他の工事';
     const key=norm(label);
     if(!groups.has(key))groups.set(key,{name:label,entries:[]});
     groups.get(key).entries.push(entry);
@@ -561,32 +588,38 @@ function recordBookBazaarRankSheet(){
 }
 function recordBookFacilitySheet(id=null){
   const r=normalizePlayerRecords(state).facilities,entry=r.customEntries.find(e=>e?.id===id);
-  const knownShops=[...new Set(r.customEntries.map(e=>e?.shopName?.trim()).filter(Boolean))];
+  const rememberedShop=entry?.shopName||'';
+
   modal(`<h3>${entry?'アップデートを編集':'アップデートを登録'}</h3>
-    <p class="small muted">ゲーム内で確認した内容を入力してください。未知の候補は表示しません。</p>
-    ${knownShops.length?`<div class="recordBookKnownLabel small muted">登録済みの依頼先</div>
-      <div class="recordKnownSpecies">${knownShops.map(name=>`<button type="button" class="recordKnownShop recordKnownButton" data-name="${esc(name)}">${esc(name)}</button>`).join('')}</div>`:''}
-    <div class="field"><label for="recordFacilityShop">依頼先（任意）</label><input id="recordFacilityShop" value="${esc(entry?.shopName||'')}" autocomplete="off" placeholder="ゲーム内で確認した依頼先"><div id="recordFacilityShopSuggestions" class="recordAutocomplete" aria-label="登録済み依頼先の候補" hidden></div></div>
-    <div class="field" style="margin-top:8px"><label for="recordFacilityName">アップデート名</label><input id="recordFacilityName" value="${esc(entry?.title||'')}" autocomplete="off" placeholder="例：自分が発見した強化"><div id="recordFacilityNameSuggestions" class="recordAutocomplete" aria-label="登録済み工事の候補" hidden></div></div>
+    <p class="small muted">ゲームで確認した工事名を入力してください。2文字以上入力すると、確認済みMasterの候補から探せます。</p>
+    <div class="field"><label for="recordFacilityName">アップデート名</label>
+      <input id="recordFacilityName" value="${esc(entry?.title||'')}" autocomplete="off" placeholder="例：そうこ、畑の土…">
+      <div id="recordFacilityNameSuggestions" class="recordAutocomplete" aria-label="工事名の候補" hidden></div></div>
+    <p id="recordFacilityAutoShop" class="tiny muted">${entry?.shopName?'関連するお店：'+esc(entry.shopName):'工事がMasterと一致すれば、お店は自動で判定します。'}</p>
     <label class="recordInlineCheck"><input id="recordFacilityComplete" type="checkbox" ${entry?.completed?'checked':''}> 完了している</label>
     <div class="field" style="margin-top:8px"><label for="recordFacilityNote">メモ（任意）</label><textarea id="recordFacilityNote" placeholder="次にしたいことなど">${esc(entry?.note||'')}</textarea></div>
-    ${entry?.masterId?`<p class="tiny muted">Master照合済み・参考価格 ${Number(RECORD_MASTER.facilities.find(f=>f.id===entry.masterId)?.price_g||0).toLocaleString('ja-JP')}G</p>`:''}
     <div class="sheet-actions"><button class="btn secondary" id="recordFacilityCancel">キャンセル</button>
       ${entry?'<button class="btn ghost" id="recordFacilityDelete">削除</button>':''}<button class="btn" id="recordFacilitySave">保存</button></div>`);
-  recordBookBindKnownSuggestions('recordFacilityShop',recordBookKnownShopNames);
-  const facilitySuggestions=recordBookBindKnownSuggestions('recordFacilityName',()=>recordBookKnownFacilityNames($('#recordFacilityShop').value));
-  $('#recordFacilityShop').addEventListener('input',()=>facilitySuggestions.refresh());
-  $$('.recordKnownShop').forEach(b=>b.onclick=()=>{$('#recordFacilityShop').value=b.dataset.name;facilitySuggestions.refresh()});
+  const updateShopHint=()=>{
+    const name=$('#recordFacilityName').value;
+    const match=recordBookFacilityMatch(name);
+    const shop=RECORD_MASTER.shops.find(s=>s.id===match?.shop_id);
+    $('#recordFacilityAutoShop').textContent=shop?`関連するお店：${shop.name_ja}`:'一致する工事があればお店を自動で判定します。';
+  };
+  recordBookBindKnownSuggestions('recordFacilityName',recordBookKnownFacilityNames,{onChoose:updateShopHint});
+  $('#recordFacilityName').addEventListener('input',updateShopHint);
   $('#recordFacilityCancel').onclick=renderRecordFacilities;
   $('#recordFacilitySave').onclick=async()=>{
-    const shopName=$('#recordFacilityShop').value.trim(),title=$('#recordFacilityName').value.trim();
+    const title=$('#recordFacilityName').value.trim();
     if(!title){toast('アップデート名を入力してください');return}
-    const match=recordBookFacilityMatch(title,shopName);
+    const match=recordBookFacilityMatch(title,rememberedShop)||recordBookFacilityMatch(title);
+    const masterShop=RECORD_MASTER.shops.find(s=>s.id===match?.shop_id);
+    const shopName=masterShop?.owner_ja||rememberedShop;
     if(match&&r.customEntries.some(e=>e?.id!==id&&e.masterId===match.id)){
       toast('このアップデートは登録済みです');return;
     }
     const backup=clone(r),previousId=entry?.masterId||null;
-    const changed={title,shopName,shopId:match?.shop_id||null,masterId:match?.id||null,
+    const changed={title,shopName,shopId:match?.shop_id||entry?.shopId||null,masterId:match?.id||null,
       completed:$('#recordFacilityComplete').checked,note:$('#recordFacilityNote').value,
       updatedAt:new Date().toISOString()};
     if(entry)Object.assign(entry,changed);
@@ -668,10 +701,10 @@ function recordBookToolSheet(toolId){
   modal(`<h3>${esc(tool.name_ja)}のグレード</h3>
     <div class="field"><label for="recordToolGrade">現在のグレード名</label>
       <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="ゲーム内で確認したグレード"><div id="recordToolGradeSuggestions" class="recordAutocomplete" aria-label="記録済みグレードの候補" hidden></div></div>
-    <p class="tiny muted">未確認の強化候補は表示しません。入力名がMasterと一致すれば、既知の素材情報と照合します。</p>
+    <p class="tiny muted">グレード名を入力すると候補が表示されます。空欄では未来の強化を表示しません。</p>
     <div class="sheet-actions"><button class="btn secondary" id="recordToolCancel">キャンセル</button>
       <button class="btn" id="recordToolSave">保存</button></div>`);
-  recordBookBindKnownSuggestions('recordToolGrade',()=>recordBookKnownToolGrades(toolId));
+  recordBookBindKnownSuggestions('recordToolGrade',query=>recordBookKnownToolGrades(toolId,query),{minChars:1});
   $('#recordToolCancel').onclick=renderRecordTools;
   $('#recordToolSave').onclick=async()=>{
     const grade=recordBookToolResolve(toolId,$('#recordToolGrade').value);

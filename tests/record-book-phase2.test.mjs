@@ -93,7 +93,8 @@ test('facility Master match requires exact entered shop and upgrade name',()=>{
   assert.equal(match.price_g,5000);
   assert.equal(f.eval('recordBookFacilityMatch("カバンを広げる","ゴラン")'),null);
   assert.equal(f.eval('recordBookFacilityMatch("カバン","ウィルバー")'),null);
-  assert.equal(f.eval('recordBookFacilityMatch("カバンを広げる","")'),null);
+  assert.equal(f.eval('recordBookFacilityMatch("カバンを広げる","")').id,'fac_wilbur_bag_1');
+  assert.equal(f.eval('recordBookFacilityMatch("そうこをすごくパワーアップする工事")').shop_id,'shop_garon');
 });
 
 test('facility completed/discovered IDs follow player-authored entries only',()=>{
@@ -350,25 +351,38 @@ test('crop name suggestions use existing field records and player-discovered see
   assert.ok(!names.some(x=>x.includes('未発見')));
   assert.equal(names.filter(x=>x==='トマト').length,1);
 });
-test('facility suggestions require prior player discovery and respect the entered contractor',()=>{
+test('Master names are suggested only after intentional text and filtered by rank',()=>{
   const f=fixture();
-  const discovered=master.facilities.find(x=>x.name_ja&&x.shop_id==='shop_wilbur');
-  assert.ok(discovered);
-  f.sandbox.state.playerRecords={facilities:{
-    discoveredIds:[],completedIds:[],discoveredShopIds:[],
-    customEntries:[{id:'f1',title:'倉庫を自分で改良',shopName:'ウィルバー'},
-                   {id:'f2',title:'土の改良を記録',shopName:'ゴラン'}]}};
-  const privateNames=plain(f.eval('recordBookKnownFacilityNames("ウィルバー")'));
-  assert.deepEqual(privateNames,['倉庫を自分で改良']);
-  assert.ok(!privateNames.includes(discovered.name_ja));
-  assert.deepEqual(plain(f.eval('recordBookKnownFacilityNames("ゴラン")')),['土の改良を記録']);
-  const shopNames=plain(f.eval('recordBookKnownShopNames()'));
-  assert.deepEqual(shopNames,['ウィルバー','ゴラン']);
-  f.sandbox.state.playerRecords.facilities.discoveredIds=[discovered.id];
-  const withMaster=plain(f.eval('recordBookKnownFacilityNames("ウィルバー")'));
-  assert.ok(withMaster.includes(discovered.name_ja));
+  f.sandbox.state.playerRecords={facilities:{customEntries:[],discoveredIds:[],completedIds:[],discoveredShopIds:[]},bazaar:{rankName:'',rankNumber:null}};
+  assert.deepEqual(plain(f.eval('recordBookKnownFacilityNames("")')),[]);
+  assert.deepEqual(plain(f.eval('recordBookKnownFacilityNames("そ")')),[]);
+  const results=plain(f.eval('recordBookKnownFacilityNames("そうこ")'));
+  assert.ok(results.includes('そうこを広げる工事'),'the preview must work even with empty user data');
+  assert.ok(results.includes('そうこをすごくパワーアップする工事'),'game-verified Goran name is now part of Master');
+  const warehouse=plain(f.eval('recordBookKnownFacilityNames("倉庫")'));
+  assert.ok(warehouse.includes('そうこを広げる工事'),'Japanese spelling variants search the same facility');
+  f.sandbox.state.playerRecords.bazaar={rankName:'広場のバザール',rankNumber:1};
+  const early=plain(f.eval('recordBookKnownFacilityNames("そうこ")'));
+  assert.ok(early.includes('そうこを広げる工事'));
+  assert.ok(!early.includes('そうこをすごくパワーアップする工事'));
+  f.sandbox.state.playerRecords.bazaar={rankName:'地方のバザール',rankNumber:5};
+  const mid=plain(f.eval('recordBookKnownFacilityNames("そうこ")'));
+  assert.ok(mid.includes('そうこをすごくパワーアップする工事'));
+  assert.ok(!mid.includes('そうこを限界までパワーアップする工事'));
 });
-test('tool grade suggestions never reveal unknown future upgrade stages',()=>{
+test('facility shops are Master-derived, not manually entered player metadata',()=>{
+  const f=fixture();
+  const row=f.eval('recordBookFacilityMatch("畑の土を良くする工事")');
+  assert.equal(row.shop_id,'shop_garon');
+  assert.equal(row.price_g,50000);
+  const sourcePart=source.slice(source.indexOf('function recordBookFacilitySheet('));
+  assert.ok(!sourcePart.includes('id="recordFacilityShop"'));
+  assert.ok(!sourcePart.includes('登録済みの依頼先'));
+  assert.ok(sourcePart.includes("recordBookFacilityMatch(title,rememberedShop)||recordBookFacilityMatch(title)"));
+  assert.ok(source.includes('その他の工事'));
+  assert.ok(!source.includes('依頼先未記録'));
+});
+test('tool input gives full Master suggestions only after a typed grade clue',()=>{
   const f=fixture();
   f.sandbox.state.playerRecords={tools:{
     ownedStageById:{hoe:'gold'},customStageById:{},discoveredUpgradeIds:[],notesById:{}
@@ -376,8 +390,10 @@ test('tool grade suggestions never reveal unknown future upgrade stages',()=>{
   let labels=plain(f.eval('recordBookKnownToolGrades("hoe")'));
   assert.ok(labels.includes('金のクワ'));
   assert.ok(!labels.some(x=>x.includes('オリハルコン')));
-  assert.ok(!labels.some(x=>x.includes('究極')));
   assert.deepEqual(plain(f.eval('recordBookKnownToolGrades("watering_can")')),[]);
+  labels=plain(f.eval('recordBookKnownToolGrades("hoe","オリ")'));
+  assert.ok(labels.includes('オリハルコンのクワ'));
+  assert.ok(!labels.some(x=>x.includes('銀のクワ')));
   f.sandbox.state.playerRecords.tools.discoveredUpgradeIds=['tool_upgrade_hoe_copper'];
   labels=plain(f.eval('recordBookKnownToolGrades("hoe")'));
   assert.ok(labels.includes('銅のクワ'));
@@ -399,9 +415,80 @@ test('suggestion chips filter names and fill the input when tapped',()=>{
   f.sandbox.inputChoices=()=>['オリーブ','オレンジ','未発見の作物'];
   f.eval('recordBookBindKnownSuggestions("recordCropName",inputChoices)');
   listeners.input();
+  assert.equal(box.hidden,true,'one character is too broad to show Master results');
+  input.value='オリ';listeners.input();
   assert.equal(box.hidden,false);
-  assert.deepEqual(box.items.map(b=>b.textContent),['オリーブ','オレンジ']);
+  assert.deepEqual(box.items.map(b=>b.textContent),['オリーブ']);
   box.items[0].click();
   assert.equal(input.value,'オリーブ');
   assert.equal(box.hidden,true);
+});
+
+test('typed crop query can resolve Master crops with no prior player records',()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords={fields:{crops:[]}};
+  f.sandbox.state.knownEntities=[];
+  f.sandbox.state.playerState={};
+  f.sandbox.baseById=new Map([
+    ['tomato',{id:'tomato',name_ja:'トマト',kind:'crop'}],
+    ['olive',{id:'olive',name_ja:'オリーブ',kind:'fruit'}],
+    ['junk',{id:'junk',name_ja:'プレゼント',kind:'gift'}]
+  ]);
+  f.sandbox.cultivationSource=x=>x;
+  f.sandbox.name=id=>({tomato:'トマト',olive:'オリーブ',junk:'プレゼント'})[id]||id;
+  assert.deepEqual(plain(f.eval('recordBookKnownCropNames("トマ")')),['トマト']);
+  assert.deepEqual(plain(f.eval('recordBookKnownCropNames("オリ")')),['オリーブ']);
+  assert.ok(!plain(f.eval('recordBookKnownCropNames("プレゼント")')).includes('プレゼント'));
+  assert.deepEqual(plain(f.eval('recordBookKnownCropNames("ト")')),[]);
+});
+test('field add label and facility form prioritize the user task, not contractor details',()=>{
+  assert.ok(source.includes('＋ 作物・果樹を追加'));
+  assert.ok(!source.includes('＋ 栽培を登録'));
+  assert.ok(source.includes("entry?'作物・果樹を編集':'作物・果樹を追加'"));
+  assert.ok(source.includes('工事がMasterと一致すれば、お店は自動で判定します。'));
+  assert.ok(!source.includes('id="recordFacilityShop"'));
+});
+
+test('facility form has no contractor input, filters Master choices, and saves inferred Goran IDs',async()=>{
+  const f=fixture();
+  f.sandbox.state.playerRecords={facilities:{customEntries:[]},bazaar:{}};
+  const fields={};
+  const input=(value='')=>({value,handlers:{},
+    addEventListener(event,callback){(this.handlers[event]??=[]).push(callback)},
+    dispatchEvent(e){for(const fn of this.handlers[e.type]||[])fn(e)}});
+  fields['#recordFacilityName']=input('');
+  fields['#recordFacilityNote']=input('');
+  fields['#recordFacilityAutoShop']={textContent:''};
+  fields['#recordFacilityComplete']={checked:false};
+  fields['#recordFacilityCancel']={onclick:null};
+  fields['#recordFacilitySave']={onclick:null,disabled:false};
+  fields['#recordFacilityNameSuggestions']={hidden:true,items:[],
+    set innerHTML(_value){this.items=[]},
+    append(button){this.items.push(button)}};
+  let markup='';
+  f.sandbox.modal=html=>{markup=html};
+  f.sandbox.$=selector=>fields[selector]||null;
+  f.sandbox.document={createElement:()=>({
+    addEventListener(event,fn){this[event]=fn},type:'button',className:'',textContent:''
+  })};
+  f.sandbox.Event=class{constructor(type){this.type=type}};
+  f.sandbox.save=async()=>true;
+  f.sandbox.renderRecordFacilities=()=>{};
+  f.eval('recordBookFacilitySheet()');
+  assert.ok(!markup.includes('id="recordFacilityShop"'));
+  const nameInput=fields['#recordFacilityName'];
+  nameInput.value='そうこ';
+  nameInput.dispatchEvent({type:'input'});
+  const box=fields['#recordFacilityNameSuggestions'];
+  assert.equal(box.hidden,false,'empty preview should suggest Master names after typing');
+  const selection=box.items.find(b=>b.textContent==='そうこをパワーアップする工事');
+  assert.ok(selection,'the Goran upgrade should be among confirmed Master names');
+  selection.click();
+  assert.equal(nameInput.value,'そうこをパワーアップする工事');
+  assert.match(fields['#recordFacilityAutoShop'].textContent,/ゴラン/);
+  await fields['#recordFacilitySave'].onclick();
+  const record=f.sandbox.state.playerRecords.facilities.customEntries[0];
+  assert.equal(record.shopId,'shop_garon');
+  assert.equal(record.masterId,'fac_garon_storage_fresh_1');
+  assert.equal(record.shopName,'ゴラン');
 });
