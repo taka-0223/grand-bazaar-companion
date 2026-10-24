@@ -16,6 +16,7 @@ function fixture(){
   const sandbox={
     RECORD_MASTER:master,state:{ui:{},playerRecords:{}},
     MASTER:{animals:[]},
+    clone:x=>JSON.parse(JSON.stringify(x)),
     norm:s=>String(s).normalize('NFKC').trim().toLowerCase().replace(/[\s　・･\-_]+/g,''),
   };
   runInNewContext(source,sandbox);
@@ -50,6 +51,30 @@ test('field crop structure survives normalization with existing legacy notes and
   });
   assert.equal(f.sandbox.state.playerRecords.tools.ownedStageById.hoe,'gold');
   assert.equal(f.sandbox.state.playerRecords.tools.customStageById.watering_can,'自分の呼び方');
+});
+
+test('field +/- changes planting count, while harvest records an event without removing fruit trees',async()=>{
+  const f=fixture();
+  const crop={id:'c1',name:'オリーブ',count:2,harvestCount:0};
+  f.sandbox.state.playerRecords={fields:{crops:[crop],note:'以前の畑メモ',entries:[]}};
+  f.sandbox.save=async()=>true;
+  f.sandbox.toast=()=>{};
+  let renders=0;
+  f.sandbox.renderRecordFields=()=>{renders++};
+  await f.eval('recordBookAdjustCrop("c1",-1)');
+  assert.equal(crop.count,1);
+  await f.eval('recordBookAdjustCrop("c1",-1)');
+  assert.equal(crop.count,0);
+  await f.eval('recordBookAdjustCrop("c1",-1)');
+  assert.equal(crop.count,0);
+  await f.eval('recordBookAdjustCrop("c1",1)');
+  assert.equal(crop.count,1);
+  await f.eval('recordBookHarvestCrop("c1")');
+  assert.equal(crop.harvestCount,1);
+  assert.equal(crop.count,1);
+  assert.ok(crop.lastHarvestedAt);
+  assert.equal(f.sandbox.state.playerRecords.fields.note,'以前の畑メモ');
+  assert.equal(renders,4);
 });
 
 test('facility Master match requires exact entered shop and upgrade name',()=>{
@@ -115,8 +140,16 @@ test('tap sorting, crop count, compact ranks, species shortcuts and no spoiled l
   assert.ok(source.includes('recordSortButton'));
   assert.ok(source.includes('data-sort="birthday"'));
   assert.ok(source.includes('recordCropCount'));
-  assert.ok(source.includes('recordKnownSpecies'));
-  assert.ok(source.includes('recordRankSelect'));
+  assert.ok(source.includes('recordAnimalGroupAdd'));
+  assert.ok(source.includes('recordAnimalTypeAdd'));
+  assert.ok(source.includes('recordRankIcon'));
+  assert.ok(source.includes('recordBookMedalIcon'));
+  assert.ok(source.includes('<svg class="recordMedalIcon"'));
+  assert.ok(source.includes('recordAnimalFriendship'));
+  assert.ok(source.includes('recordAnimalRelaxation'));
+  assert.ok(source.includes('recordCropAdjust'));
+  assert.ok(source.includes('recordCropHarvest'));
+  assert.ok(source.includes('recordBookPage'));
   assert.ok(source.includes('recordFacilityToggle'));
   assert.ok(source.includes('recordToolKnownRecipes'));
   assert.ok(!source.includes('RECORD_MASTER.facilities.map('));

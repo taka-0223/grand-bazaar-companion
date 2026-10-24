@@ -1,11 +1,5 @@
 // Player-authored farm records. Keep this independent of unrevealed Master entries:
 // a Master name can be matched only after the player has typed it.
-const RECORD_BOOK_RANKS=[
-  {id:'',label:'未記録'},
-  {id:'bronze',label:'ブロンズ'},
-  {id:'silver',label:'シルバー'},
-  {id:'gold',label:'ゴールド'}
-];
 let recordBookView=null,recordBookEditor=null,recordBookExitPromise=null;
 
 function normalizePlayerRecords(x){
@@ -55,16 +49,25 @@ function deferRecordBookNavigation(next){
 function openRecordBook(view){
   if(deferMemoNavigation(()=>openRecordBook(view)))return;
   if(deferRecordBookNavigation(()=>openRecordBook(view)))return;
+  if(!view){recordBookReset();closeModal();return}
   recordBookView=view;
-  inbox();
-  window.scrollTo({top:0,behavior:'instant'});
+  renderRecordBookView();
 }
 function recordBookShell(title,description){
-  return `<div class="recordBookBack"><button class="miniLink recordBookBackButton" type="button">← メモに戻る</button></div>
-    <div class="pageHead"><h1>${esc(title)}</h1><p>${esc(description)}</p></div>`;
+  return `<div class="recordBookSheetHead"><div><h3>${esc(title)}</h3><p class="small muted">${esc(description)}</p></div>
+    <button class="recordBookBackButton" type="button" aria-label="記録画面を閉じる">✕</button></div>`;
 }
 function bindRecordBookBack(){
-  $('#inbox .recordBookBackButton')?.addEventListener('click',()=>openRecordBook(null));
+  $('#modalSheet .recordBookBackButton')?.addEventListener('click',()=>openRecordBook(null));
+}
+function recordBookPage(content){
+  const previousSheet=$('#modalSheet');
+  const keepScroll=previousSheet?.classList.contains('recordBookViewSheet')&&previousSheet.dataset.recordView===recordBookView;
+  const previousTop=keepScroll?previousSheet.scrollTop:0;
+  modal(content);
+  $('#modalSheet').classList.add('recordBookViewSheet');
+  $('#modalSheet').dataset.recordView=recordBookView;
+  if(keepScroll)$('#modalSheet').scrollTop=previousTop;
 }
 function recordBookNextId(prefix){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,9)}
 
@@ -77,7 +80,7 @@ function renderRecordBookHub(){
   section.innerHTML=`<div class="section-head"><h2>記録・確認</h2><span class="tiny muted">自分の牧場の記録</span></div>
     <div class="recordBookGrid">
       <button class="recordBookLink" data-record-book="residents" type="button"><span>👤 住人</span><small>${people}人の記録</small></button>
-      <button class="recordBookLink" data-record-book="fields" type="button"><span>🌱 畑</span><small>${r.fields.crops.length}種類を栽培中</small></button>
+      <button class="recordBookLink" data-record-book="fields" type="button"><span>🌱 畑</span><small>${r.fields.crops.filter(c=>Number(c?.count)>0).length}種類を栽培中</small></button>
       <button class="recordBookLink" data-record-book="barn" type="button"><span>🐄 小屋</span><small>${r.barn.animals.length}匹の記録</small></button>
       <button class="recordBookLink" data-record-book="facilities" type="button"><span>🏡 牧場</span><small>アップデート ${done}/${r.facilities.customEntries.length}件完了</small></button>
       <button class="recordBookLink" data-record-book="tools" type="button"><span>🛠 道具</span><small>${configured}種類の記録</small></button>
@@ -88,7 +91,6 @@ function renderRecordBookHub(){
 
 function renderRecordBookView(){
   if(!recordBookView)return false;
-  if(deferRecordBookNavigation(()=>inbox()))return true;
   if(recordBookView==='residents')renderRecordResidents();
   else if(recordBookView==='fields')renderRecordFields();
   else if(recordBookView==='barn')renderRecordBarn();
@@ -110,8 +112,9 @@ function recordResidentNames(sort='name'){
   return names.sort((a,b)=>a.localeCompare(b,'ja'));
 }
 function renderRecordResidents(){
+  if(deferMemoNavigation(renderRecordResidents))return;
   const sort=state.ui.recordResidentSort==='birthday'?'birthday':'name',names=recordResidentNames(sort);
-  $('#inbox').innerHTML=recordBookShell('住人','出会った人だけを一覧に表示します')+
+  recordBookPage(recordBookShell('住人','出会った人だけを一覧に表示します')+
     `<div class="recordBookToolbar"><div class="recordBookSort" role="group" aria-label="住人の並び順">
       <button type="button" class="recordSortButton ${sort==='name'?'active':''}" data-sort="name" aria-pressed="${sort==='name'}">名前順</button>
       <button type="button" class="recordSortButton ${sort==='birthday'?'active':''}" data-sort="birthday" aria-pressed="${sort==='birthday'}">誕生日順</button>
@@ -119,7 +122,7 @@ function renderRecordResidents(){
     ${names.length?`<div class="recordBookList">${names.map(name=>{
       const bd=residentBirthday(name),profile=residentProfile(name);
       return `<button class="recordBookResident recordBookRow" type="button" data-resident-name="${esc(name)}"><span class="strong">${esc(name)}</span><span class="tiny muted">${bd?`${bd.season} ${bd.day}日`:'誕生日 未確認'}${profile.note?' · メモあり':''}　›</span></button>`;
-    }).join('')}</div>`:'<div class="notice">まだ住人の記録がありません。自分で登録するか、お願い・カレンダーから住人を記録すると表示されます。</div>'}`;
+    }).join('')}</div>`:'<div class="notice">まだ住人の記録がありません。自分で登録するか、お願い・カレンダーから住人を記録すると表示されます。</div>'}`);
   $$('.recordSortButton').forEach(b=>b.addEventListener('click',async()=>{
     if(b.dataset.sort===sort)return;
     const previous=state.ui.recordResidentSort;
@@ -129,20 +132,20 @@ function renderRecordResidents(){
     else{state.ui.recordResidentSort=previous;renderRecordResidents();toast('保存できませんでした')}
   }));
   $('#recordResidentAdd').addEventListener('click',recordBookAddResident);
-  $$('.recordBookResident').forEach(b=>b.addEventListener('click',()=>openResidentCard(b.dataset.residentName)));
+  $$('.recordBookResident').forEach(b=>b.addEventListener('click',()=>openResidentCard(b.dataset.residentName,null,true)));
   bindRecordBookBack();
 }
 function recordBookAddResident(){
   modal(`<h3>住人を登録</h3><p class="small muted">ゲーム内で出会った住人の名前を入力してください。未発見の住人は候補に表示しません。</p>
     <div class="field"><label for="recordResidentName">名前</label><input id="recordResidentName" autocomplete="off" placeholder="住人の名前"></div>
     <div class="sheet-actions"><button class="btn secondary" id="recordResidentCancel" type="button">キャンセル</button><button class="btn" id="recordResidentSave" type="button">登録</button></div>`);
-  $('#recordResidentCancel').onclick=closeModal;
+  $('#recordResidentCancel').onclick=renderRecordResidents;
   $('#recordResidentSave').onclick=async()=>{
     const name=$('#recordResidentName').value.trim();
     if(!name){toast('名前を入力してください');return}
     const prior=state.residentProfiles[name];
     state.residentProfiles[name]={...residentProfile(name),registered:true,updatedAt:new Date().toISOString()};
-    if(await save()){closeModal();renderRecordResidents();toast('住人を登録しました')}
+    if(await save()){renderRecordResidents();toast('住人を登録しました')}
     else{if(prior)state.residentProfiles[name]=prior;else delete state.residentProfiles[name];toast('保存できませんでした。もう一度お試しください')}
   };
 }
@@ -150,17 +153,25 @@ function recordBookAddResident(){
 function renderRecordFields(){
   const r=normalizePlayerRecords(state).fields;
   const hasLegacy=!!r.note||r.entries.length>0;
-  $('#inbox').innerHTML=recordBookShell('畑','育てているものと数を記録')+
-    `<div class="recordBookToolbar"><span class="small muted">栽培中：${r.crops.length}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
-    ${r.crops.length?`<div class="recordBookList">${r.crops.map(c=>`<button type="button" class="recordCropRow recordBookRow" data-id="${esc(c.id)}"><span class="strong">${esc(c.name)}</span><span class="recordCropCount">× ${Number(c.count)||0}　›</span></button>`).join('')}</div>`:
+  const growing=r.crops.filter(c=>Number(c?.count)>0).length;
+  recordBookPage(recordBookShell('畑','育てているものと数を記録')+
+    `<div class="recordBookToolbar"><span class="small muted">栽培中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
+    ${r.crops.length?`<div class="recordBookList">${r.crops.map(c=>`<div class="recordCropItem" data-id="${esc(c.id)}">
+      <div class="recordCropTop"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集"><span class="strong">${esc(c.name)}</span><span class="tiny muted">編集 ›</span></button>
+        <div class="recordCropStepper"><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="-1" aria-label="${esc(c.name)}を1減らす">−</button>
+          <b aria-label="栽培数">${Math.max(0,Number(c.count)||0)}</b><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="1" aria-label="${esc(c.name)}を1増やす">＋</button></div></div>
+      <div class="recordCropBottom"><button class="recordCropHarvest" type="button" data-id="${esc(c.id)}"><svg viewBox="0 0 24 24" aria-hidden="true" class="recordHarvestIcon" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V5M12 16c-5-1-7-4-7-7 4 0 7 2 7 5M12 11c5-1 7-4 7-7-4 0-7 2-7 5M12 19c4-.5 6-3 6-5-3 0-5 1-6 3"/></svg>収穫を記録</button>
+        ${c.harvestCount?`<span class="tiny muted">収穫 ${Number(c.harvestCount)}回</span>`:'<span class="tiny muted">収穫しても栽培数は変わりません</span>'}</div></div>`).join('')}</div>`:
       '<div class="notice">栽培している作物や果樹を、自分で登録してください。畑の数や区画は決め打ちしません。</div>'}
     ${hasLegacy?`<details class="recordLegacyNotes"><summary>以前の畑メモ（内容は保存されています）</summary>
       <div class="card recordBookMainNote"><div class="row between"><label for="recordFieldMain">畑全体のメモ</label><span class="tiny muted">自動保存</span></div>
         <textarea id="recordFieldMain" class="recordBookTextarea">${esc(r.note)}</textarea></div>
       ${r.entries.length?`<div class="recordBookList">${r.entries.map(e=>`<div class="recordBookFieldEntry recordBookRow"><button class="recordBookFieldOpen" type="button" data-id="${esc(e.id)}"><span class="strong">${esc(e.title||'名称未設定')}</span><span class="small muted">${esc(e.text||'メモなし')}</span></button></div>`).join('')}</div>`:''}
-    </details>`:''}`;
+    </details>`:''}`);
   $('#recordCropAdd').onclick=()=>leaveRecordBook(()=>recordBookCropSheet());
   $$('.recordCropRow').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookCropSheet(b.dataset.id)));
+  $$('.recordCropAdjust').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookAdjustCrop(b.dataset.id,Number(b.dataset.delta))));
+  $$('.recordCropHarvest').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookHarvestCrop(b.dataset.id)));
   const main=$('#recordFieldMain');
   if(main)recordBookEditor=bindAutosave([main],async()=>{
     state.playerRecords.fields.note=main.value;
@@ -169,29 +180,50 @@ function renderRecordFields(){
   $$('.recordBookFieldOpen').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookFieldSheet(b.dataset.id)));
   bindRecordBookBack();
 }
+async function recordBookAdjustCrop(id,delta){
+  const r=state.playerRecords.fields,entry=r.crops.find(c=>c.id===id);
+  if(!entry||![-1,1].includes(delta))return;
+  const old=clone(entry),count=Math.max(0,Math.min(999999,(Number(entry.count)||0)+delta));
+  if(entry.count===count)return;
+  entry.count=count;entry.updatedAt=new Date().toISOString();
+  if(await save())renderRecordFields();
+  else{Object.assign(entry,old);toast('保存できませんでした。もう一度お試しください')}
+}
+async function recordBookHarvestCrop(id){
+  const r=state.playerRecords.fields,entry=r.crops.find(c=>c.id===id);
+  if(!entry)return;
+  const old=clone(entry),count=Math.max(0,Number(entry.harvestCount)||0);
+  entry.harvestCount=count+1;
+  entry.lastHarvestedAt=new Date().toISOString();entry.updatedAt=entry.lastHarvestedAt;
+  if(await save()){renderRecordFields();toast('収穫を記録しました（栽培数は維持）')}
+  else{Object.assign(entry,old);toast('保存できませんでした。もう一度お試しください')}
+}
 function recordBookCropSheet(id=null){
   const r=normalizePlayerRecords(state).fields,entry=r.crops.find(c=>c?.id===id);
   modal(`<h3>${entry?'栽培を編集':'栽培を登録'}</h3>
     <div class="field"><label for="recordCropName">作物・果樹の名前</label><input id="recordCropName" autocomplete="off" value="${esc(entry?.name||'')}" placeholder="自分が育てているもの"></div>
-    <div class="field" style="margin-top:8px"><label for="recordCropCount">植えている数</label><input id="recordCropCount" type="number" inputmode="numeric" min="1" step="1" value="${entry?.count||1}"></div>
+    <div class="field" style="margin-top:8px"><label for="recordCropCount">植えている数</label><input id="recordCropCount" type="number" inputmode="numeric" min="0" step="1" value="${entry?.count??1}"></div>
+    ${entry?`<div class="field" style="margin-top:8px"><label for="recordCropHarvestCount">収穫した回数</label><input id="recordCropHarvestCount" type="number" inputmode="numeric" min="0" step="1" value="${Number(entry.harvestCount)||0}"></div>`:''}
     <div class="sheet-actions"><button class="btn secondary" id="recordCropCancel">キャンセル</button>${entry?'<button class="btn ghost" id="recordCropDelete">削除</button>':''}<button class="btn" id="recordCropSave">保存</button></div>`);
-  $('#recordCropCancel').onclick=closeModal;
+  $('#recordCropCancel').onclick=renderRecordFields;
   $('#recordCropSave').onclick=async()=>{
     const name=$('#recordCropName').value.trim(),count=Number($('#recordCropCount').value);
     if(!name){toast('名前を入力してください');return}
-    if(!Number.isSafeInteger(count)||count<1){toast('栽培数は1以上の整数で入力してください');return}
+    if(!Number.isSafeInteger(count)||count<0||count>999999){toast('栽培数は0〜999999の整数で入力してください');return}
+    const harvestCount=entry?Number($('#recordCropHarvestCount').value):0;
+    if(!Number.isSafeInteger(harvestCount)||harvestCount<0){toast('収穫回数は0以上の整数で入力してください');return}
     if(r.crops.some(c=>c?.id!==id&&norm(c?.name||'')===norm(name))){toast('登録済みの作物です。数を編集してください');return}
     const before=clone(r.crops),updatedAt=new Date().toISOString();
-    if(entry)Object.assign(entry,{name,count,updatedAt});
-    else r.crops.push({id:recordBookNextId('crop'),name,count,updatedAt});
-    if(await save()){closeModal();renderRecordFields()}
+    if(entry)Object.assign(entry,{name,count,harvestCount,updatedAt});
+    else r.crops.push({id:recordBookNextId('crop'),name,count,harvestCount:0,updatedAt});
+    if(await save()){renderRecordFields()}
     else{r.crops=before;toast('保存できませんでした。もう一度お試しください')}
   };
   if(entry)$('#recordCropDelete').onclick=()=>{
     if(!confirm('この栽培記録を削除しますか？'))return;
     const before=clone(r.crops);r.crops=r.crops.filter(c=>c.id!==id);
     void save().then(ok=>{
-      if(ok){closeModal();renderRecordFields()}
+      if(ok){renderRecordFields()}
       else{r.crops=before;toast('保存できませんでした。もう一度お試しください')}
     });
   };
@@ -202,14 +234,14 @@ function recordBookFieldSheet(id=null){
     <div class="field"><label for="recordFieldTitle">タイトル</label><input id="recordFieldTitle" value="${esc(entry?.title||'')}" placeholder="自分で付けた場所の名前"></div>
     <div class="field" style="margin-top:8px"><label for="recordFieldText">メモ</label><textarea class="recordBookTextarea" id="recordFieldText" placeholder="育てているもの・次にしたいことなど">${esc(entry?.text||'')}</textarea></div>
     <div class="sheet-actions"><button class="btn secondary" id="recordFieldCancel">キャンセル</button>${entry?'<button class="btn ghost" id="recordFieldDelete">削除</button>':''}<button class="btn" id="recordFieldSave">保存</button></div>`);
-  $('#recordFieldCancel').onclick=closeModal;
+  $('#recordFieldCancel').onclick=renderRecordFields;
   $('#recordFieldSave').onclick=async()=>{
     const title=$('#recordFieldTitle').value.trim(),body=$('#recordFieldText').value;
     if(!title){toast('タイトルを入力してください');return}
     const before=clone(state.playerRecords.fields.entries),time=new Date().toISOString();
     if(entry){entry.title=title;entry.text=body;entry.updatedAt=time}
     else state.playerRecords.fields.entries.push({id:recordBookNextId('field'),title,text:body,updatedAt:time});
-    if(await save()){closeModal();renderRecordFields()}
+    if(await save()){renderRecordFields()}
     else{state.playerRecords.fields.entries=before;toast('保存できませんでした。もう一度お試しください')}
   };
   if(entry)$('#recordFieldDelete').onclick=()=>{
@@ -217,7 +249,7 @@ function recordBookFieldSheet(id=null){
     const before=clone(state.playerRecords.fields.entries);
     state.playerRecords.fields.entries=before.filter(e=>e.id!==id);
     void save().then(ok=>{
-      if(ok){closeModal();renderRecordFields()}
+      if(ok){renderRecordFields()}
       else{state.playerRecords.fields.entries=before;toast('保存できませんでした。もう一度お試しください')}
     });
   };
@@ -238,63 +270,73 @@ function recordBookAnimalGroups(animals){
   }
   return [...groups.values()];
 }
+function recordBookMedalIcon(){
+  return '<svg class="recordMedalIcon" viewBox="0 0 24 24" aria-hidden="true" fill="none">'+
+    '<path d="m5 2 4 8 3-2-3-6ZM15 2l-3 6 3 2 4-8Z" fill="currentColor" opacity=".68"/>'+
+    '<circle cx="12" cy="15" r="7" fill="currentColor" stroke="currentColor" stroke-width=".7"/>'+
+    '<path d="m12 10.4 1.42 2.88 3.17.46-2.3 2.24.54 3.17L12 17.65l-2.83 1.5.54-3.17-2.3-2.24 3.17-.46Z" fill="#fff" opacity=".94"/>'+
+    '</svg>';
+}
 function renderRecordBarn(){
   const r=normalizePlayerRecords(state).barn,groups=recordBookAnimalGroups(r.animals);
-  $('#inbox').innerHTML=recordBookShell('小屋','飼っているどうぶつと品評会の結果を記録')+
-    `<div class="recordBookToolbar"><span class="small muted">登録：${r.animals.length}匹</span><button class="btn secondary" id="recordAnimalAdd">＋ どうぶつを登録</button></div>
+  recordBookPage(recordBookShell('小屋','どうぶつの成長と品評会を記録')+
+    `<div class="recordBookToolbar"><span class="small muted">登録：${r.animals.length}匹</span></div>
     ${groups.length?`<div class="recordBookAnimalGroups">${groups.map(g=>{
       const rank=r.contestRankByAnimalId[g.key]||'';
-      return `<section class="card recordBookAnimalGroup"><div class="row between"><span class="strong">${esc(g.name)}</span><span class="small muted">${g.animals.length}匹</span></div>
-        <div class="recordBookRankCompact"><label class="tiny muted" for="rank-${esc(g.key)}">品評会</label>
-        <select class="recordRankSelect" id="rank-${esc(g.key)}" data-species="${esc(g.key)}" aria-label="${esc(g.name)}の品評会">${RECORD_BOOK_RANKS.map(o=>`<option value="${o.id}" ${rank===o.id?'selected':''}>${o.label}</option>`).join('')}</select></div>
-        <div class="recordBookAnimalList">${g.animals.map(a=>`<button type="button" class="recordBookAnimal recordBookRow" data-id="${esc(a.id)}"><span class="strong">${esc(a.nickname||a.speciesName)}</span><span class="tiny muted">${a.note?'メモあり · ':''}編集 ›</span></button>`).join('')}</div></section>`;
-    }).join('')}</div>`:'<div class="notice">まだどうぶつの記録がありません。飼っている種類を自分で入力して登録できます。</div>'}`;
-  $('#recordAnimalAdd').onclick=()=>recordBookAnimalSheet();
+      return `<section class="card recordBookAnimalGroup"><div class="recordBookGroupHead"><span class="strong">${esc(g.name)} <span class="tiny muted">${g.animals.length}匹</span></span>
+        <div class="recordRankIcons" role="group" aria-label="${esc(g.name)}の品評会ランク">${[
+          ['bronze','ブロンズ'],['silver','シルバー'],['gold','ゴールド']
+        ].map(([id,label])=>`<button type="button" class="recordRankIcon ${rank===id?'lit':''}" data-species="${esc(g.key)}" data-rank="${id}" aria-label="${esc(g.name)}：${label}" title="${label}" aria-pressed="${rank===id}">${recordBookMedalIcon()}</button>`).join('')}</div></div>
+        <div class="recordBookAnimalList">${g.animals.map(a=>`<button type="button" class="recordBookAnimal recordBookRow" data-id="${esc(a.id)}"><span class="strong">${esc(a.nickname||a.speciesName)}</span>
+          <span class="tiny muted">${Number.isInteger(a.friendship)?`なかよし ${a.friendship}`:''}${Number.isInteger(a.relaxation)?`　のびのび ${a.relaxation}`:''}　›</span></button>`).join('')}</div>
+        <button class="recordAnimalGroupAdd" data-species-name="${esc(g.name)}" type="button">＋ ${esc(g.name)}を追加</button></section>`;
+    }).join('')}</div>`:'<div class="notice">まだどうぶつの記録がありません。飼っている種類から登録できます。</div>'}
+    <button type="button" class="recordAnimalTypeAdd" id="recordAnimalTypeAdd">＋ 新しい種類を登録</button>`);
+  $('#recordAnimalTypeAdd').onclick=()=>recordBookAnimalSheet();
+  $$('.recordAnimalGroupAdd').forEach(b=>b.onclick=()=>recordBookAnimalSheet(null,b.dataset.speciesName));
   $$('.recordBookAnimal').forEach(b=>b.onclick=()=>recordBookAnimalSheet(b.dataset.id));
-  $$('.recordRankSelect').forEach(b=>b.onchange=async()=>{
+  $$('.recordRankIcon').forEach(b=>b.onclick=async()=>{
     const key=b.dataset.species,prior=r.contestRankByAnimalId[key];
-    b.disabled=true;
-    if(b.value)r.contestRankByAnimalId[key]=b.value;
+    $$('.recordRankIcon').forEach(x=>{if(x.dataset.species===key)x.disabled=true});
+    const newRank=prior===b.dataset.rank?'':b.dataset.rank;
+    if(newRank)r.contestRankByAnimalId[key]=newRank;
     else delete r.contestRankByAnimalId[key];
     if(await save())renderRecordBarn();
-    else{if(prior===undefined)delete r.contestRankByAnimalId[key];else r.contestRankByAnimalId[key]=prior;b.disabled=false;b.value=prior||'';toast('保存できませんでした。もう一度お試しください')}
+    else{if(prior===undefined)delete r.contestRankByAnimalId[key];else r.contestRankByAnimalId[key]=prior;renderRecordBarn();toast('保存できませんでした。もう一度お試しください')}
   });
   bindRecordBookBack();
 }
-function recordBookAnimalSheet(id=null){
+function recordBookAnimalSheet(id=null,speciesPreset=null){
   const r=state.playerRecords.barn,animal=r.animals.find(a=>a.id===id);
-  const species=recordBookAnimalGroups(r.animals);
-  modal(`<h3>${animal?'どうぶつを編集':'どうぶつを登録'}</h3>
-    <p class="small muted">ゲーム内で飼っている種類を入力してください。未発見の種類は候補に出しません。</p>
-    ${species.length?`<div class="recordBookKnownLabel small muted">登録済みの種類から選ぶ</div>
-      <div class="recordKnownSpecies">${species.map(g=>`<button class="recordKnownButton ${g.name===animal?.speciesName?'active':''}" type="button" data-species-name="${esc(g.name)}">${esc(g.name)}</button>`).join('')}</div>`:''}
-    <div class="field"><label for="recordAnimalSpecies">種類（必須）</label><input id="recordAnimalSpecies" value="${esc(animal?.speciesName||'')}" autocomplete="off" placeholder="例：ニワトリ"></div>
-    <div class="field" style="margin-top:8px"><label for="recordAnimalNickname">名前（任意）</label><input id="recordAnimalNickname" value="${esc(animal?.nickname||'')}" placeholder="ゲーム内で付けた名前"></div>
-    <div class="field" style="margin-top:8px"><label for="recordAnimalNote">メモ（任意）</label><textarea id="recordAnimalNote" placeholder="育成方針など">${esc(animal?.note||'')}</textarea></div>
+  const lockedName=animal?.speciesName||speciesPreset||'';
+  const statOptions=value=>`<option value="">未記録</option>`+Array.from({length:11},(_,i)=>`<option value="${i}" ${value===i?'selected':''}>${i} / 10</option>`).join('');
+  modal(`<h3>${animal?'どうぶつを編集':lockedName?`${esc(lockedName)}を追加`:'新しい種類を登録'}</h3>
+    ${lockedName?`<p class="small muted">種類：${esc(lockedName)}</p>`:
+      '<div class="field"><label for="recordAnimalSpecies">種類（必須）</label><input id="recordAnimalSpecies" autocomplete="off" placeholder="ゲームで迎えた種類"></div>'}
+    <div class="field" style="margin-top:8px"><label for="recordAnimalNickname">名前</label><input id="recordAnimalNickname" value="${esc(animal?.nickname||'')}" placeholder="ゲーム内の名前"></div>
+    <div class="grid2 recordAnimalStatsEdit" style="margin-top:8px">
+      <div class="field"><label for="recordAnimalFriendship">なかよし度</label><select id="recordAnimalFriendship">${statOptions(animal?.friendship)}</select></div>
+      <div class="field"><label for="recordAnimalRelaxation">のびのび度</label><select id="recordAnimalRelaxation">${statOptions(animal?.relaxation)}</select></div>
+    </div>
     <div class="sheet-actions"><button class="btn secondary" id="recordAnimalCancel">キャンセル</button>${animal?'<button class="btn ghost" id="recordAnimalDelete">削除</button>':''}<button class="btn" id="recordAnimalSave">保存</button></div>`);
-  $$('.recordKnownButton').forEach(b=>b.onclick=()=>{
-    $('#recordAnimalSpecies').value=b.dataset.speciesName;
-    $$('.recordKnownButton').forEach(x=>x.classList.toggle('active',x===b));
-  });
-  $('#recordAnimalSpecies').addEventListener('input',()=>{
-    $$('.recordKnownButton').forEach(b=>b.classList.toggle('active',b.dataset.speciesName===$('#recordAnimalSpecies').value.trim()));
-  });
-  $('#recordAnimalCancel').onclick=closeModal;
+  $('#recordAnimalCancel').onclick=renderRecordBarn;
   $('#recordAnimalSave').onclick=async()=>{
-    const species=recordBookSpecies($('#recordAnimalSpecies').value);
+    const species=recordBookSpecies(lockedName||$('#recordAnimalSpecies').value);
     if(!species.speciesName){toast('種類を入力してください');return}
     const before=clone(r.animals),time=new Date().toISOString();
-    const changed={...species,nickname:$('#recordAnimalNickname').value.trim(),note:$('#recordAnimalNote').value,updatedAt:time};
+    const readStat=id=>$('#'+id).value===''?null:Number($('#'+id).value);
+    const changed={nickname:$('#recordAnimalNickname').value.trim(),
+      friendship:readStat('recordAnimalFriendship'),relaxation:readStat('recordAnimalRelaxation'),updatedAt:time};
     if(animal)Object.assign(animal,changed);
-    else r.animals.push({id:recordBookNextId('animal'),...changed});
-    if(await save()){closeModal();renderRecordBarn()}
+    else r.animals.push({id:recordBookNextId('animal'),...species,...changed});
+    if(await save()){renderRecordBarn()}
     else{r.animals=before;toast('保存できませんでした。もう一度お試しください')}
   };
   if(animal)$('#recordAnimalDelete').onclick=()=>{
     if(!confirm('このどうぶつの記録を削除しますか？'))return;
     const before=clone(r.animals);r.animals=r.animals.filter(a=>a.id!==id);
     void save().then(ok=>{
-      if(ok){closeModal();renderRecordBarn()}
+      if(ok){renderRecordBarn()}
       else{r.animals=before;toast('保存できませんでした。もう一度お試しください')}
     });
   };
@@ -342,7 +384,7 @@ function recordBookSyncFacilityIds(r,previousId=null){
 function renderRecordFacilities(){
   const r=normalizePlayerRecords(state).facilities,groups=recordBookFacilityGroups(r.customEntries);
   const completed=r.customEntries.filter(e=>e?.completed).length;
-  $('#inbox').innerHTML=recordBookShell('牧場','自分が確認したアップデートと完了状況')+
+  recordBookPage(recordBookShell('牧場','自分が確認したアップデートと完了状況')+
     `<div class="recordBookToolbar"><span class="small muted">完了 ${completed}/${r.customEntries.length}件</span>
       <button class="btn secondary" id="recordFacilityAdd" type="button">＋ アップデートを登録</button></div>
     ${groups.length?`<div class="recordFacilityGroups">${groups.map(g=>`
@@ -353,7 +395,7 @@ function renderRecordFacilities(){
           <span class="tiny muted">${e.note?'メモあり · ':''}編集 ›</span></button>
         <button class="recordFacilityToggle ${e.completed?'done':''}" type="button" data-id="${esc(e.id)}" aria-pressed="${!!e.completed}">${e.completed?'✓ 完了':'未完了'}</button>
       </div>`).join('')}</div></section>`).join('')}</div>`:
-      '<div class="notice">ゲーム内で確認した強化だけを追加できます。未発見の工事や依頼先の一覧は表示しません。</div>'}`;
+      '<div class="notice">ゲーム内で確認した強化だけを追加できます。未発見の工事や依頼先の一覧は表示しません。</div>'}`);
   $('#recordFacilityAdd').onclick=()=>recordBookFacilitySheet();
   $$('.recordFacilityOpen').forEach(b=>b.onclick=()=>recordBookFacilitySheet(b.dataset.id));
   $$('.recordFacilityToggle').forEach(b=>b.onclick=async()=>{
@@ -384,7 +426,7 @@ function recordBookFacilitySheet(id=null){
     <div class="sheet-actions"><button class="btn secondary" id="recordFacilityCancel">キャンセル</button>
       ${entry?'<button class="btn ghost" id="recordFacilityDelete">削除</button>':''}<button class="btn" id="recordFacilitySave">保存</button></div>`);
   $$('.recordKnownShop').forEach(b=>b.onclick=()=>{$('#recordFacilityShop').value=b.dataset.name});
-  $('#recordFacilityCancel').onclick=closeModal;
+  $('#recordFacilityCancel').onclick=renderRecordFacilities;
   $('#recordFacilitySave').onclick=async()=>{
     const shopName=$('#recordFacilityShop').value.trim(),title=$('#recordFacilityName').value.trim();
     if(!title){toast('アップデート名を入力してください');return}
@@ -400,7 +442,7 @@ function recordBookFacilitySheet(id=null){
     else r.customEntries.push({id:recordBookNextId('facility'),...changed});
     recordBookSyncFacilityIds(r,previousId);
     $('#recordFacilitySave').disabled=true;
-    if(await save()){closeModal();renderRecordFacilities()}
+    if(await save()){renderRecordFacilities()}
     else{recordBookRestorePart(r,backup);$('#recordFacilitySave').disabled=false;toast('保存できませんでした。もう一度お試しください')}
   };
   if(entry)$('#recordFacilityDelete').onclick=()=>{
@@ -409,7 +451,7 @@ function recordBookFacilitySheet(id=null){
     r.customEntries=r.customEntries.filter(e=>e.id!==id);
     recordBookSyncFacilityIds(r,entry.masterId);
     void save().then(ok=>{
-      if(ok){closeModal();renderRecordFacilities()}
+      if(ok){renderRecordFacilities()}
       else{recordBookRestorePart(r,backup);toast('保存できませんでした。もう一度お試しください')}
     });
   };
@@ -449,7 +491,7 @@ function recordBookDiscoveredForTool(id,records){
 }
 function renderRecordTools(){
   const r=normalizePlayerRecords(state).tools;
-  $('#inbox').innerHTML=recordBookShell('道具','現在のグレードと、見つけた強化素材を記録')+
+  recordBookPage(recordBookShell('道具','現在のグレードと、見つけた強化素材を記録')+
     `<p class="small muted recordBookIntro">道具は全種類表示します。未発見のグレードや強化素材は、自分で登録するまで表示されません。</p>
     <div class="recordBookList">${RECORD_MASTER.tools.map(t=>{
       const discovered=recordBookDiscoveredForTool(t.id,r);
@@ -461,7 +503,7 @@ function renderRecordTools(){
           <div class="row between"><b class="small">${esc(u.name_ja)}</b><button class="miniLink recordToolForget" type="button" data-id="${esc(u.id)}">記録を削除</button></div>
           <p class="tiny muted">${u.materials.map(m=>esc(m.name_ja)+' ×'+Number(m.quantity)).join(' ／ ')}</p>
         </div>`).join('')}</details>`:''}</div>`;
-    }).join('')}</div>`;
+    }).join('')}</div>`);
   $$('.recordToolOpen').forEach(b=>b.onclick=()=>recordBookToolSheet(b.dataset.id));
   $$('.recordToolForget').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id,known=RECORD_MASTER.upgrades.find(u=>u.id===id);
@@ -496,7 +538,7 @@ function recordBookToolSheet(toolId){
     <div class="sheet-actions"><button class="btn secondary" id="recordToolCancel">キャンセル</button>
       <button class="btn" id="recordToolSave">保存</button></div>`);
   $$('.recordToolQuick').forEach(b=>b.onclick=()=>{$('#recordToolGrade').value=b.dataset.value});
-  $('#recordToolCancel').onclick=closeModal;
+  $('#recordToolCancel').onclick=renderRecordTools;
   $('#recordToolSave').onclick=async()=>{
     const grade=recordBookToolResolve(toolId,$('#recordToolGrade').value);
     const foundName=$('#recordToolDiscovered')?.value.trim()||'';
@@ -515,7 +557,7 @@ function recordBookToolSheet(toolId){
     for(const id of [grade.upgradeId,found?.upgradeId].filter(Boolean))
       if(!r.discoveredUpgradeIds.includes(id))r.discoveredUpgradeIds.push(id);
     $('#recordToolSave').disabled=true;
-    if(await save()){closeModal();renderRecordTools()}
+    if(await save()){renderRecordTools()}
     else{recordBookRestorePart(r,backup);$('#recordToolSave').disabled=false;toast('保存できませんでした。もう一度お試しください')}
   };
 }

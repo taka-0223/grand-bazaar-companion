@@ -27,7 +27,8 @@ test('standalone record UI script is syntactically valid and loaded before the m
   assert.ok(html.indexOf('<script src="./record-book.js"></script>')<html.indexOf('const MASTER=JSON.parse'));
   assert.ok(html.indexOf('<script src="./record-master.js"></script>')<html.indexOf('<script src="./record-book.js"></script>'));
   assert.ok(html.includes('normalizePlayerRecords(x);'));
-  assert.ok(html.includes("if(typeof renderRecordBookView==='function'&&renderRecordBookView())return;"));
+  assert.ok(!html.includes("if(typeof renderRecordBookView==='function'&&renderRecordBookView())return;"));
+  assert.ok(source.includes("$('#modalSheet').classList.add('recordBookViewSheet')"));
   assert.ok(html.includes('renderRecordBookHub();'));
 });
 
@@ -68,6 +69,19 @@ test('animal type canonicalization requires an exact player-entered name; no spo
   assert.deepEqual(plain(f.evalCode('recordBookSpecies("わが家の新種")')),{animalId:null,speciesName:'わが家の新種'});
   assert.equal(source.includes('datalist'),false);
   assert.equal(source.includes('MASTER.animals.map('),false);
+});
+
+test('record bottom sheet keeps its scroll position when updating the same category',()=>{
+  const sheet={scrollTop:196,dataset:{recordView:'barn'},classes:new Set(['recordBookViewSheet'])};
+  sheet.classList={contains:value=>sheet.classes.has(value),add:value=>sheet.classes.add(value)};
+  const f=fixture({
+    $:()=>sheet,
+    modal:()=>{sheet.scrollTop=0;sheet.classes.delete('recordBookViewSheet')}
+  });
+  f.evalCode('recordBookView="barn";recordBookPage("更新");');
+  assert.equal(sheet.scrollTop,196);
+  f.evalCode('recordBookView="fields";recordBookPage("別の項目");');
+  assert.equal(sheet.scrollTop,0);
 });
 
 test('one rank is shared by individuals of exactly the same animal type',()=>{

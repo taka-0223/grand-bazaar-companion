@@ -252,6 +252,38 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .recordToolKnownRecipes{padding:0 12px 10px}.recordToolKnownRecipes summary{cursor:pointer;font-size:11px;color:var(--accent);font-weight:750;padding:4px 0 6px}
 .recordToolRecipe{padding:7px 0;border-top:1px solid var(--line)}
 .recordToolRecipe p{margin:5px 0 0;white-space:normal;overflow-wrap:anywhere}
+.sheet.recordBookViewSheet{height:82dvh;max-height:94dvh;padding-top:0;scroll-padding-top:93px}
+.recordBookViewSheet .sheetGrabber{position:sticky;top:0;z-index:8;background:var(--surface);margin-bottom:0}
+.recordBookSheetHead{position:sticky;top:26px;z-index:7;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:9px 0 12px;margin-bottom:5px;background:var(--surface);border-bottom:1px solid var(--line)}
+.recordBookSheetHead h3{margin:0 0 4px!important;font-size:21px}.recordBookSheetHead p{margin:0}
+.recordBookBackButton{flex:0 0 34px;width:34px;min-height:34px;border:1px solid var(--line);border-radius:50%;background:var(--surface2);color:var(--muted);font-size:16px;cursor:pointer}
+.recordCropItem+.recordCropItem{border-top:1px solid var(--line)}
+.recordCropItem{padding:7px 10px}
+.recordCropTop{display:flex;align-items:center;gap:8px}
+.recordCropRow{display:flex;flex:1;min-width:0;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 2px;text-align:left;border:0;background:none;color:var(--text)}
+.recordCropStepper{display:flex;align-items:center;gap:5px;flex:0 0 auto}
+.recordCropStepper button{width:32px;height:32px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);font-size:19px;font-weight:800;color:var(--text)}
+.recordCropStepper b{min-width:26px;text-align:center;font-size:15px;font-variant-numeric:tabular-nums}
+.recordCropBottom{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 6px}
+.recordCropHarvest{display:inline-flex;align-items:center;gap:4px;border:1px solid #abc7a3;border-radius:9px;background:#eff6ec;color:#426c3d;font-size:11px;font-weight:850;padding:6px 9px;white-space:nowrap}
+.recordHarvestIcon{width:14px;height:14px;flex:0 0 14px}
+.recordCropBottom .tiny{text-align:right}
+.recordBookGroupHead{display:flex;align-items:center;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.recordRankIcons{display:flex;align-items:center;gap:4px;margin-left:auto}
+.recordRankIcon{display:grid;place-items:center;width:31px;height:32px;padding:0;border:1px solid var(--line);border-radius:9px;background:#f7f5f0;filter:grayscale(1);opacity:.39;cursor:pointer;transition:opacity .12s,background .12s,border-color .12s,transform .12s}
+.recordMedalIcon{width:21px;height:21px}
+.recordRankIcon[data-rank="bronze"]{color:#b67a43}
+.recordRankIcon[data-rank="silver"]{color:#8699b6}
+.recordRankIcon[data-rank="gold"]{color:#dcb53e}
+.recordRankIcon.lit{opacity:1;filter:none;box-shadow:0 0 0 1px rgba(0,0,0,.05)}
+.recordRankIcon.lit[data-rank="bronze"]{background:#fff0df;border-color:#b67a43}
+.recordRankIcon.lit[data-rank="silver"]{background:#ecf2f8;border-color:#8699b6}
+.recordRankIcon.lit[data-rank="gold"]{background:#fff2c9;border-color:#c9a142}
+.recordRankIcon:active{transform:scale(.92)}
+.recordRankIcon:focus-visible{outline:3px solid #9bbd8e;outline-offset:1px}
+.recordAnimalGroupAdd{display:block;width:100%;border:0;border-top:1px solid var(--line);background:transparent;color:#4f6949;font-size:12px;font-weight:850;text-align:left;padding:12px 4px 2px;margin-top:5px}
+.recordAnimalTypeAdd{display:block;width:100%;padding:12px;border:1px dashed #a9bca3;border-radius:12px;background:#f3f7f0;color:#42643f;font-size:13px;font-weight:900;margin:13px 0 8px}
+.recordAnimalStatsEdit{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:360px){.recordBookGrid{gap:6px}.recordBookLink{padding:10px}.recordBookToolbar{gap:6px}.recordBookToolbar select{min-width:95px}}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
@@ -275,7 +307,7 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 <script src="./record-book.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.23';
+const APP_VERSION='0.11.24';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};
@@ -754,7 +786,7 @@ function residentCompletedRequests(name){
   const q=requestNorm(name);
   return requestsState().filter(r=>requestNorm(r.requester||'')===q&&r.status==='completed').sort((a,b)=>String(b.completedAt||b.updatedAt||'').localeCompare(String(a.completedAt||a.updatedAt||'')))
 }
-function openResidentCard(name,backDay=null){if(deferMemoNavigation(()=>openResidentCard(name,backDay)))return;
+function openResidentCard(name,backDay=null,backToRecords=false){if(deferMemoNavigation(()=>openResidentCard(name,backDay,backToRecords)))return;
   touchRecent('resident',name);const x=residentProfile(name),bd=residentBirthday(name),completedRequests=residentCompletedRequests(name);
   modal(`<h3>🎂 ${esc(name)}</h3>
     <div class="card">
@@ -775,12 +807,12 @@ function openResidentCard(name,backDay=null){if(deferMemoNavigation(()=>openResi
       <button class="btn" id="closeResidentCard">閉じる</button>
     </div>`);
   if(backDay!=null)$('#backResidentDay').onclick=()=>openCalendarDay(backDay);
-  $('#editResidentProfile').onclick=()=>openResidentEdit(name,backDay);
-  $('#closeResidentCard').onclick=closeModal;
+  $('#editResidentProfile').onclick=()=>openResidentEdit(name,backDay,backToRecords);
+  $('#closeResidentCard').onclick=backToRecords?renderRecordResidents:closeModal;
   $$('.residentRequestOpen').forEach(b=>b.onclick=()=>showRequestRecord(b.dataset.id));
   bindAutosave([$('#residentCardNote')],async()=>{state.residentProfiles[name]={...residentProfile(name),note:$('#residentCardNote').value,updatedAt:new Date().toISOString()};await save()})
 }
-function openResidentEdit(name,backDay=null){if(deferMemoNavigation(()=>openResidentEdit(name,backDay)))return;
+function openResidentEdit(name,backDay=null,backToRecords=false){if(deferMemoNavigation(()=>openResidentEdit(name,backDay,backToRecords)))return;
   const x=residentProfile(name),bd=residentBirthday(name);
   modal(`<h3>👤 ${esc(name)}の住人情報</h3><div class="editorSaveHint">変更は自動保存されます</div>
     <div class="tiny muted" style="margin-bottom:10px">誕生日：${bd?`${bd.season}の月 ${bd.day}日`:'未確認'}（カレンダーから自動）</div>
@@ -789,7 +821,7 @@ function openResidentEdit(name,backDay=null){if(deferMemoNavigation(()=>openResi
     <div class="field" style="margin-top:8px"><label>苦手なもの</label><textarea id="residentDislikes" placeholder="ゲーム内「住人情報」の文言">${esc(x.dislikes||'')}</textarea></div>
     <div class="tiny muted" style="margin-top:8px">この編集画面は固定情報をMaster化するまでの暫定運用です。</div>
     <div class="sheet-actions"><button class="btn secondary" id="closeResidentEdit">戻る</button></div>`);
-  $('#closeResidentEdit').onclick=()=>openResidentCard(name,backDay);
+  $('#closeResidentEdit').onclick=()=>openResidentCard(name,backDay,backToRecords);
   const persist=async()=>{state.residentProfiles[name]={...residentProfile(name),color:$('#residentColor').value.trim(),likes:$('#residentLikes').value.trim(),dislikes:$('#residentDislikes').value.trim(),updatedAt:new Date().toISOString()};await save()};
   bindAutosave([$('#residentColor'),$('#residentLikes'),$('#residentDislikes')],persist)
 }
@@ -2205,7 +2237,6 @@ function bindInlineSubMemoEditing(root=document){
   return editor
 }
 function inbox(){if([...memoEditors].some(e=>!e.body&&(e.dirty||e.composing))&&deferMemoNavigation(inbox))return;
-  if(typeof renderRecordBookView==='function'&&renderRecordBookView())return;
   const filter=state.ui.memoFilter||'active',xs=state.captures.filter(c=>filter==='pinned'?captureOnHome(c):captureStatus(c)===filter);const labels={active:'未整理',processed:'変換済み',archived:'アーカイブ',pinned:'ピン留め'};
   $('#inbox').innerHTML=`<div class="pageHead"><h1>メモ</h1><p>まだ形のないことを、そのまま置いておく</p></div><div class="filters"><button class="filter ${filter==='pinned'?'active':''}" data-mfilter="pinned">📌 ピン留め</button><button class="filter ${filter==='active'?'active':''}" data-mfilter="active">未整理</button><button class="filter ${filter==='processed'?'active':''}" data-mfilter="processed">変換済み</button><button class="filter ${filter==='archived'?'active':''}" data-mfilter="archived">アーカイブ</button></div><div class="section">${xs.length?xs.map(c=>`<div class="card clickable capOpen" data-id="${c.id}"><div class="memoCardHead"><div class="small">${esc(c.text)}</div><button type="button" class="memoPinControl capPin ${c.pinned?'active':''}" data-id="${c.id}" aria-label="${c.pinned?'ピン留め解除':'ホームにピン留め'}" aria-pressed="${!!c.pinned}">📌</button><button class="memoMore capMenu" data-id="${c.id}" aria-label="メモの操作">⋯</button></div>${captureChildrenExpanded(c)}</div>`).join(''):`<div class="card empty">${labels[filter]}メモはありません</div>`}</div>${seasonReminderInboxHtml()}`;
   bindSeasonReminderUi();
@@ -2385,11 +2416,11 @@ if(window.visualViewport){
   syncKeyboardInset()
 }
 let modalGeneration=0;
-function modal(content){if(deferMemoNavigation(()=>modal(content)))return;const focus=document.activeElement;if(focus?.tagName==='BUTTON')focus.blur?.();modalGeneration++;const sheet=$('#modalSheet');sheet.classList.remove('cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
-window.closeModal=()=>{if(deferMemoNavigation(closeModal))return;modalGeneration++;const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling','cropDetailSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.style.transform=''}}
+function modal(content){if(deferMemoNavigation(()=>modal(content)))return;const focus=document.activeElement;if(focus?.tagName==='BUTTON')focus.blur?.();modalGeneration++;const sheet=$('#modalSheet');sheet.classList.remove('cropDetailSheet','recordBookViewSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.innerHTML='<div class="sheetGrabber" aria-hidden="true"></div>'+content;$('#modal').classList.add('open');sheet.scrollTop=0;sheet.style.transform='';$('#modal').style.backgroundColor='';bindSheetDrag()}
+window.closeModal=()=>{if(deferMemoNavigation(closeModal))return;modalGeneration++;const m=$('#modal'),sheet=$('#modalSheet');m.classList.remove('open','dragging');m.style.backgroundColor='';if(sheet){sheet.classList.remove('dragging','settling','cropDetailSheet','recordBookViewSheet');delete sheet.dataset.cropDetailId;delete sheet.dataset.cropOrigin;delete sheet.dataset.cropReturnScroll;sheet.style.transform=''}}
 function dismissModalContextually(){
   const sheet=$('#modalSheet');if(!sheet){closeModal();return}
-  const selectors=['#closeSettings','#closeSettingsBottom','#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeCropSheet','#cropSheetCloseBottom','#closeRecipeSheet','#recipeSheetCloseBottom','#cancelRecipeGoal','#backRevealProcess','#cancelRecipeQty','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#closeCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit','#cancelCaptureConvert'];
+  const selectors=['#recordCropCancel','#recordFieldCancel','#recordAnimalCancel','#recordFacilityCancel','#recordToolCancel','#recordResidentCancel','.recordBookBackButton','#closeSettings','#closeSettingsBottom','#backResidentDay','#closeGoalSheet','#sheetCloseBottom','#closeCropSheet','#cropSheetCloseBottom','#closeRecipeSheet','#recipeSheetCloseBottom','#cancelRecipeGoal','#backRevealProcess','#cancelRecipeQty','#closeGoalEditor','#closeReqEditor','#closeActionEditor','#closeCaptureEditor','#closeCalendarSheet','#closeCalendarSheetBottom','#closeCalDay','#closeRequestEditor','#closeRequestDetail','#closeResidentCard','#closeResidentEdit','#closeRequestObjective','#closeSeasonReminder','#backSubEdit','#cancelCaptureConvert'];
   const target=selectors.map(q=>sheet.querySelector(q)).find(Boolean);
   if(target){target.click();return}
   closeModal()
