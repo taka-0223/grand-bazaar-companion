@@ -31,6 +31,8 @@ test('record Master is generated reproducibly from audited catalogs',()=>{
   assert.equal(master.tools.filter(t=>t.upgradable).length,5);
   assert.equal(master.upgrades.length,37);
   assert.equal(master.facilities.length,38);
+  assert.equal(master.ranks.length,7);
+  assert.ok(master.facilities.every(f=>f.unlock&&Number.isInteger(f.unlock.rank_min)&&Array.isArray(f.unlock.required_facility_ids)));
   assert.deepEqual(master.tools.map(t=>t.id),
     ['hoe','watering_can','sickle','fishing_rod','hatchet','brush','milker','clippers']);
   assert.ok(master.upgrades.every(u=>u.materials.every(m=>m.name_ja&&Number.isInteger(m.quantity)&&m.quantity>0)));
@@ -157,4 +159,60 @@ test('tap sorting, crop count, compact ranks, species shortcuts and no spoiled l
   assert.ok(!source.includes('RECORD_MASTER.upgrades.map('));
   assert.ok(html.includes('<script src="./record-master.js"></script>'));
   assert.ok(worker.includes("'./record-master.js'"));
+});
+
+test('harvested crops remain visible until archived, can be restored, and can cycle for repeat harvests',async()=>{
+  const f=fixture();
+  const crop={id:'c1',name:'オリーブ',count:16,harvestCount:0};
+  f.sandbox.state.playerRecords={fields:{note:'',entries:[],crops:[crop]}};
+  f.sandbox.save=async()=>true;
+  f.sandbox.toast=()=>{};
+  f.sandbox.renderRecordFields=()=>{};
+  await f.eval('recordBookSetCropFlags("c1",{archived:true})');
+  assert.equal(crop.archived,undefined,'unharvested crops cannot be archived');
+  await f.eval('recordBookHarvestCrop("c1")');
+  assert.equal(crop.harvested,true);
+  assert.equal(crop.harvestCount,1);
+  assert.equal(crop.count,16);
+  await f.eval('recordBookHarvestCrop("c1")');
+  assert.equal(crop.harvestCount,1,'repeated taps must not double-count');
+  await f.eval('recordBookSetCropFlags("c1",{archived:true})');
+  assert.equal(crop.archived,true);
+  await f.eval('recordBookAdjustCrop("c1",-1)');
+  assert.equal(crop.count,16,'archived records cannot be incremented or decremented');
+  await f.eval('recordBookSetCropFlags("c1",{archived:false})');
+  assert.equal(crop.archived,false);
+  assert.equal(crop.harvested,true);
+  await f.eval('recordBookSetCropFlags("c1",{harvested:false})');
+  assert.equal(crop.harvested,false);
+  await f.eval('recordBookHarvestCrop("c1")');
+  assert.equal(crop.harvestCount,2);
+  assert.equal(crop.count,16,'regrowing crops and trees keep their planting count');
+});
+test('bazaar rank recording uses only a player-entered name and never reveals future facility items',()=>{
+  const f=fixture();
+  f.eval('normalizePlayerRecords(state)');
+  assert.deepEqual(plain(f.eval('recordBookBazaarRankResolve("町のバザール")')),{rankName:'町のバザール',rankNumber:3});
+  assert.deepEqual(plain(f.eval('recordBookBazaarRankResolve("30")')),{rankName:'30',rankNumber:30});
+  assert.deepEqual(plain(f.eval('recordBookBazaarRankResolve("")')),{rankName:'',rankNumber:null});
+  assert.deepEqual(plain(f.eval('recordBookBazaarRankResolve("自分の呼び方")')),{rankName:'自分の呼び方',rankNumber:null});
+  assert.ok(!source.includes('RECORD_MASTER.ranks.map('));
+  assert.ok(!source.includes('RECORD_MASTER.facilities.map('));
+  assert.ok(source.includes('recordBazaarRankEdit'));
+});
+test('only upgradeable tools are listed and grade is the only editable field',()=>{
+  assert.ok(source.includes('RECORD_MASTER.tools.filter(t=>t.upgradable)'));
+  assert.ok(source.includes('recordToolGrade'));
+  assert.ok(!source.includes('recordToolDiscovered'));
+  assert.ok(!source.includes('recordToolNote'));
+  assert.ok(!source.includes('recordToolQuick'));
+  assert.ok(source.includes('recordToolKnownRecipes'));
+});
+test('harvested and archived controls are wired with an explicit return to growing state',()=>{
+  assert.ok(source.includes('recordCropHarvestedLabel'));
+  assert.ok(source.includes('recordCropArchive'));
+  assert.ok(source.includes('recordCropRestore'));
+  assert.ok(source.includes('recordCropResume'));
+  assert.ok(source.includes('archived.length'));
+  assert.ok(source.includes('crops.filter(c=>c&&!c.archived)'));
 });

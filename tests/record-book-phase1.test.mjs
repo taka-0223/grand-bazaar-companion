@@ -39,6 +39,7 @@ test('optional playerRecords normalization preserves schema 7 and prior user sta
   assert.deepEqual(plain(f.sandbox.state.captures),[{id:'note-existing',text:'残しておく'}]);
   assert.deepEqual(plain(f.sandbox.state.playerRecords),{
     fields:{note:'',entries:[],crops:[]},barn:{animals:[],contestRankByAnimalId:{}},
+    bazaar:{rankName:'',rankNumber:null},
     facilities:{discoveredIds:[],completedIds:[],discoveredShopIds:[],notesById:{},customEntries:[]},
     tools:{ownedStageById:{},discoveredUpgradeIds:[],notesById:{},customStageById:{}}
   });

@@ -284,6 +284,18 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 .recordAnimalGroupAdd{display:block;width:100%;border:0;border-top:1px solid var(--line);background:transparent;color:#4f6949;font-size:12px;font-weight:850;text-align:left;padding:12px 4px 2px;margin-top:5px}
 .recordAnimalTypeAdd{display:block;width:100%;padding:12px;border:1px dashed #a9bca3;border-radius:12px;background:#f3f7f0;color:#42643f;font-size:13px;font-weight:900;margin:13px 0 8px}
 .recordAnimalStatsEdit{grid-template-columns:repeat(2,minmax(0,1fr))}
+.recordCropDone{background:color-mix(in srgb,var(--surface2),transparent 46%)}
+.recordCropHarvestedLabel{font-size:12px;font-weight:800;color:#528050}
+.recordCropActions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.recordCropResume,.recordCropArchive,.recordCropRestore{font-size:11px;font-weight:750;border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:var(--surface2);color:var(--text)}
+.recordCropArchive{color:var(--muted)}
+.recordCropBottom:has(.recordCropHarvestedLabel){flex-wrap:wrap}
+.recordCropArchived{margin:12px 0 8px;font-size:12px}
+.recordCropArchived summary{cursor:pointer;font-weight:750;color:var(--muted);padding:8px 0}
+.recordCropArchivedRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 11px;border-top:1px solid var(--line)}
+.recordCropArchivedRow small{color:var(--muted)}
+.recordBazaarRank{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);margin:8px 0 4px}
+.recordBazaarRankNote{margin:3px 4px 10px;line-height:1.5}
 @media(max-width:360px){.recordBookGrid{gap:6px}.recordBookLink{padding:10px}.recordBookToolbar{gap:6px}.recordBookToolbar select{min-width:95px}}
 </style></head><body>
 <div id="app"><div id="updateBar" class="updatebar"><div><strong id="updateTitle">新しいバージョンがあります</strong><div id="updateNotes" class="tiny" style="color:white;margin-top:2px"></div></div><button id="reloadAppBtn">更新</button></div><header class="topbar"><div class="toprow"><div class="brand">🌿 作戦ボード <span class="tiny" id="appVersionLabel"></span></div><div class="row"><button id="seasonContextBtn" class="seasonContextBtn hidden" type="button"></button><select id="seasonSelect" class="seasonSelect"><option value="">今の季節 未設定</option><option value="春">🌸 春</option><option value="夏">☀️ 夏</option><option value="秋">🍂 秋</option><option value="冬">❄️ 冬</option></select><button class="iconbtn" id="settingsBtn" aria-label="設定">⚙</button></div></div><div id="saveStatus" class="savebar">保存準備中…</div></header>
@@ -307,7 +319,7 @@ button:focus:not(:focus-visible),.clickable:focus:not(:focus-visible){outline:no
 <script src="./record-book.js"></script>
 <script>
 const MASTER=JSON.parse(document.getElementById('MASTER_DATA').textContent),INITIAL=JSON.parse(document.getElementById('INITIAL_STATE').textContent);
-const APP_VERSION='0.11.24';
+const APP_VERSION='0.11.25';
 // PERFORMANCE_DIAGNOSTICS_BEGIN - timings only, never persisted or transmitted
 const PERF_DIAG=(()=>{
   const LIMIT=40,samples={tab:[],render:[],save:[]};

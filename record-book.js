@@ -4,12 +4,13 @@ let recordBookView=null,recordBookEditor=null,recordBookExitPromise=null;
 
 function normalizePlayerRecords(x){
   const obj=v=>v&&typeof v==='object'&&!Array.isArray(v)?v:{};
-  const r=obj(x.playerRecords),fields=obj(r.fields),barn=obj(r.barn),facilities=obj(r.facilities),tools=obj(r.tools);
+  const r=obj(x.playerRecords),fields=obj(r.fields),barn=obj(r.barn),facilities=obj(r.facilities),tools=obj(r.tools),bazaar=obj(r.bazaar);
   x.playerRecords={
     ...r,
     fields:{...fields,note:typeof fields.note==='string'?fields.note:'',entries:Array.isArray(fields.entries)?fields.entries:[],
       crops:Array.isArray(fields.crops)?fields.crops:[]},
     barn:{...barn,animals:Array.isArray(barn.animals)?barn.animals:[],contestRankByAnimalId:obj(barn.contestRankByAnimalId)},
+    bazaar:{...bazaar,rankName:typeof bazaar.rankName==='string'?bazaar.rankName:'',rankNumber:Number.isSafeInteger(bazaar.rankNumber)&&bazaar.rankNumber>0?bazaar.rankNumber:null},
     facilities:{...facilities,discoveredIds:Array.isArray(facilities.discoveredIds)?facilities.discoveredIds:[],completedIds:Array.isArray(facilities.completedIds)?facilities.completedIds:[],discoveredShopIds:Array.isArray(facilities.discoveredShopIds)?facilities.discoveredShopIds:[],notesById:obj(facilities.notesById),customEntries:Array.isArray(facilities.customEntries)?facilities.customEntries:[]},
     tools:{...tools,ownedStageById:obj(tools.ownedStageById),discoveredUpgradeIds:Array.isArray(tools.discoveredUpgradeIds)?tools.discoveredUpgradeIds:[],
       notesById:obj(tools.notesById),customStageById:obj(tools.customStageById)}
@@ -74,7 +75,8 @@ function recordBookNextId(prefix){return prefix+'_'+Date.now().toString(36)+'_'+
 function renderRecordBookHub(){
   const r=normalizePlayerRecords(state),people=knownResidentNames().length;
   const done=r.facilities.customEntries.filter(e=>e?.completed).length;
-  const configured=Object.keys(r.tools.ownedStageById).length+Object.keys(r.tools.customStageById).filter(id=>!Object.hasOwn(r.tools.ownedStageById,id)).length;
+  const upgradeable=new Set(RECORD_MASTER.tools.filter(t=>t.upgradable).map(t=>t.id));
+  const configured=Object.keys(r.tools.ownedStageById).filter(id=>upgradeable.has(id)).length+Object.keys(r.tools.customStageById).filter(id=>upgradeable.has(id)&&!Object.hasOwn(r.tools.ownedStageById,id)).length;
   const section=document.createElement('section');
   section.className='section recordBookHub';
   section.innerHTML=`<div class="section-head"><h2>記録・確認</h2><span class="tiny muted">自分の牧場の記録</span></div>
@@ -153,16 +155,27 @@ function recordBookAddResident(){
 function renderRecordFields(){
   const r=normalizePlayerRecords(state).fields;
   const hasLegacy=!!r.note||r.entries.length>0;
-  const growing=r.crops.filter(c=>Number(c?.count)>0).length;
+  const current=r.crops.filter(c=>c&&!c.archived),archived=r.crops.filter(c=>c?.archived);
+  const growing=current.filter(c=>Number(c.count)>0&&!c.harvested).length;
   recordBookPage(recordBookShell('畑','育てているものと数を記録')+
-    `<div class="recordBookToolbar"><span class="small muted">栽培中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
-    ${r.crops.length?`<div class="recordBookList">${r.crops.map(c=>`<div class="recordCropItem" data-id="${esc(c.id)}">
-      <div class="recordCropTop"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集"><span class="strong">${esc(c.name)}</span><span class="tiny muted">編集 ›</span></button>
+    `<div class="recordBookToolbar"><span class="small muted">育成中：${growing}種類</span><button class="btn secondary" id="recordCropAdd" type="button">＋ 栽培を登録</button></div>
+    ${current.length?`<div class="recordBookList">${current.map(c=>`<div class="recordCropItem ${c.harvested?'recordCropDone':''}" data-id="${esc(c.id)}">
+      <div class="recordCropTop"><button type="button" class="recordCropRow" data-id="${esc(c.id)}" aria-label="${esc(c.name)}を編集">
+        <span class="strong">${esc(c.name)}</span><span class="tiny muted">${c.harvested?'✓ 収穫済み':'編集 ›'}</span></button>
         <div class="recordCropStepper"><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="-1" aria-label="${esc(c.name)}を1減らす">−</button>
           <b aria-label="栽培数">${Math.max(0,Number(c.count)||0)}</b><button class="recordCropAdjust" type="button" data-id="${esc(c.id)}" data-delta="1" aria-label="${esc(c.name)}を1増やす">＋</button></div></div>
-      <div class="recordCropBottom"><button class="recordCropHarvest" type="button" data-id="${esc(c.id)}"><svg viewBox="0 0 24 24" aria-hidden="true" class="recordHarvestIcon" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21V5M12 16c-5-1-7-4-7-7 4 0 7 2 7 5M12 11c5-1 7-4 7-7-4 0-7 2-7 5M12 19c4-.5 6-3 6-5-3 0-5 1-6 3"/></svg>収穫を記録</button>
-        ${c.harvestCount?`<span class="tiny muted">収穫 ${Number(c.harvestCount)}回</span>`:'<span class="tiny muted">収穫しても栽培数は変わりません</span>'}</div></div>`).join('')}</div>`:
-      '<div class="notice">栽培している作物や果樹を、自分で登録してください。畑の数や区画は決め打ちしません。</div>'}
+      <div class="recordCropBottom">${c.harvested?`
+        <span class="recordCropHarvestedLabel">✓ 収穫済み${c.harvestCount?`（${Number(c.harvestCount)}回）`:''}</span>
+        <div class="recordCropActions"><button class="recordCropResume" type="button" data-id="${esc(c.id)}">↻ 再び育成中</button>
+          <button class="recordCropArchive" type="button" data-id="${esc(c.id)}">アーカイブ</button></div>`:
+        `<button class="recordCropHarvest" type="button" data-id="${esc(c.id)}">収穫</button>
+          <span class="tiny muted">${c.harvestCount?`これまで ${Number(c.harvestCount)}回収穫`:'収穫後も数は自動変更しません'}</span>`}</div></div>`).join('')}</div>`:
+      '<div class="notice">育てている作物や果樹を登録してください。畑の数や区画は決め打ちしません。収穫済みは必要なときにアーカイブできます。</div>'}
+    ${archived.length?`<details class="recordCropArchived"><summary>アーカイブ済み（${archived.length}件）</summary>
+      <div class="recordBookList">${archived.map(c=>`<div class="recordCropArchivedRow">
+        <span>${esc(c.name)} <small>×${Math.max(0,Number(c.count)||0)}　${Number(c.harvestCount)||0}回収穫</small></span>
+        <button class="recordCropRestore" data-id="${esc(c.id)}" type="button">復元</button>
+      </div>`).join('')}</div></details>`:''}
     ${hasLegacy?`<details class="recordLegacyNotes"><summary>以前の畑メモ（内容は保存されています）</summary>
       <div class="card recordBookMainNote"><div class="row between"><label for="recordFieldMain">畑全体のメモ</label><span class="tiny muted">自動保存</span></div>
         <textarea id="recordFieldMain" class="recordBookTextarea">${esc(r.note)}</textarea></div>
@@ -172,6 +185,9 @@ function renderRecordFields(){
   $$('.recordCropRow').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookCropSheet(b.dataset.id)));
   $$('.recordCropAdjust').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookAdjustCrop(b.dataset.id,Number(b.dataset.delta))));
   $$('.recordCropHarvest').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookHarvestCrop(b.dataset.id)));
+  $$('.recordCropResume').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{harvested:false})));
+  $$('.recordCropArchive').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{archived:true})));
+  $$('.recordCropRestore').forEach(b=>b.onclick=()=>leaveRecordBook(()=>recordBookSetCropFlags(b.dataset.id,{archived:false})));
   const main=$('#recordFieldMain');
   if(main)recordBookEditor=bindAutosave([main],async()=>{
     state.playerRecords.fields.note=main.value;
@@ -182,7 +198,7 @@ function renderRecordFields(){
 }
 async function recordBookAdjustCrop(id,delta){
   const r=state.playerRecords.fields,entry=r.crops.find(c=>c.id===id);
-  if(!entry||![-1,1].includes(delta))return;
+  if(!entry||![-1,1].includes(delta)||entry.archived)return;
   const old=clone(entry),count=Math.max(0,Math.min(999999,(Number(entry.count)||0)+delta));
   if(entry.count===count)return;
   entry.count=count;entry.updatedAt=new Date().toISOString();
@@ -191,12 +207,21 @@ async function recordBookAdjustCrop(id,delta){
 }
 async function recordBookHarvestCrop(id){
   const r=state.playerRecords.fields,entry=r.crops.find(c=>c.id===id);
-  if(!entry)return;
+  if(!entry||entry.archived||entry.harvested)return;
   const old=clone(entry),count=Math.max(0,Number(entry.harvestCount)||0);
-  entry.harvestCount=count+1;
+  entry.harvestCount=count+1;entry.harvested=true;
   entry.lastHarvestedAt=new Date().toISOString();entry.updatedAt=entry.lastHarvestedAt;
-  if(await save()){renderRecordFields();toast('収穫を記録しました（栽培数は維持）')}
+  if(await save()){renderRecordFields();toast('収穫済みにしました。連作・果樹は「再び育成中」で続けられます')}
   else{Object.assign(entry,old);toast('保存できませんでした。もう一度お試しください')}
+}
+async function recordBookSetCropFlags(id,flags){
+  const entry=state.playerRecords.fields.crops.find(c=>c.id===id);
+  if(!entry)return;
+  if(flags.archived===true&&!entry.harvested)return;
+  const backup=clone(entry);
+  Object.assign(entry,flags,{updatedAt:new Date().toISOString()});
+  if(await save())renderRecordFields();
+  else{Object.assign(entry,backup);toast('保存できませんでした。もう一度お試しください')}
 }
 function recordBookCropSheet(id=null){
   const r=normalizePlayerRecords(state).fields,entry=r.crops.find(c=>c?.id===id);
@@ -212,7 +237,7 @@ function recordBookCropSheet(id=null){
     if(!Number.isSafeInteger(count)||count<0||count>999999){toast('栽培数は0〜999999の整数で入力してください');return}
     const harvestCount=entry?Number($('#recordCropHarvestCount').value):0;
     if(!Number.isSafeInteger(harvestCount)||harvestCount<0){toast('収穫回数は0以上の整数で入力してください');return}
-    if(r.crops.some(c=>c?.id!==id&&norm(c?.name||'')===norm(name))){toast('登録済みの作物です。数を編集してください');return}
+    if(r.crops.some(c=>c?.id!==id&&!c.archived&&norm(c?.name||'')===norm(name))){toast('登録済みの作物です。数を編集してください');return}
     const before=clone(r.crops),updatedAt=new Date().toISOString();
     if(entry)Object.assign(entry,{name,count,harvestCount,updatedAt});
     else r.crops.push({id:recordBookNextId('crop'),name,count,harvestCount:0,updatedAt});
@@ -382,10 +407,12 @@ function recordBookSyncFacilityIds(r,previousId=null){
   }
 }
 function renderRecordFacilities(){
-  const r=normalizePlayerRecords(state).facilities,groups=recordBookFacilityGroups(r.customEntries);
+  const records=normalizePlayerRecords(state),r=records.facilities,bazaar=records.bazaar,groups=recordBookFacilityGroups(r.customEntries);
   const completed=r.customEntries.filter(e=>e?.completed).length;
   recordBookPage(recordBookShell('牧場','自分が確認したアップデートと完了状況')+
-    `<div class="recordBookToolbar"><span class="small muted">完了 ${completed}/${r.customEntries.length}件</span>
+    `<div class="recordBazaarRank"><span class="small">🎪 バザールランク　<strong>${esc(bazaar.rankName||'未記録')}</strong></span><button class="miniLink" id="recordBazaarRankEdit" type="button">更新</button></div>
+    <p class="tiny muted recordBazaarRankNote">ランクは進行状況の記録です。工事の表示は、ゲームで確認した内容だけに限定します。</p>
+    <div class="recordBookToolbar"><span class="small muted">完了 ${completed}/${r.customEntries.length}件</span>
       <button class="btn secondary" id="recordFacilityAdd" type="button">＋ アップデートを登録</button></div>
     ${groups.length?`<div class="recordFacilityGroups">${groups.map(g=>`
       <section class="card recordFacilityGroup"><div class="row between"><strong>${esc(g.name)}</strong>
@@ -396,6 +423,7 @@ function renderRecordFacilities(){
         <button class="recordFacilityToggle ${e.completed?'done':''}" type="button" data-id="${esc(e.id)}" aria-pressed="${!!e.completed}">${e.completed?'✓ 完了':'未完了'}</button>
       </div>`).join('')}</div></section>`).join('')}</div>`:
       '<div class="notice">ゲーム内で確認した強化だけを追加できます。未発見の工事や依頼先の一覧は表示しません。</div>'}`);
+  $('#recordBazaarRankEdit').onclick=()=>recordBookBazaarRankSheet();
   $('#recordFacilityAdd').onclick=()=>recordBookFacilitySheet();
   $$('.recordFacilityOpen').forEach(b=>b.onclick=()=>recordBookFacilitySheet(b.dataset.id));
   $$('.recordFacilityToggle').forEach(b=>b.onclick=async()=>{
@@ -410,6 +438,29 @@ function renderRecordFacilities(){
     else{recordBookRestorePart(r,backup);renderRecordFacilities();toast('保存できませんでした')}
   });
   bindRecordBookBack();
+}
+function recordBookBazaarRankResolve(text){
+  const rankName=String(text||'').trim();
+  if(!rankName)return {rankName:'',rankNumber:null};
+  const known=(RECORD_MASTER.ranks||[]).find(r=>norm(r.name_ja)===norm(rankName));
+  const asNumber=/^[1-9]\d*$/.test(rankName)?Number(rankName):null;
+  const rankNumber=known?known.rank:(Number.isSafeInteger(asNumber)&&asNumber>0&&asNumber<=999?asNumber:null);
+  return {rankName,rankNumber};
+}
+function recordBookBazaarRankSheet(){
+  const bazaar=normalizePlayerRecords(state).bazaar;
+  modal(`<h3>バザールランクを更新</h3>
+    <p class="small muted">今のゲーム画面で確認したランク名（または数字）を入力してください。次のランクや未発見の工事は表示しません。</p>
+    <div class="field"><label for="recordBazaarRankName">現在のバザールランク</label><input id="recordBazaarRankName" autocomplete="off" value="${esc(bazaar.rankName)}" placeholder="確認したランク名"></div>
+    <div class="sheet-actions"><button class="btn secondary" id="recordBazaarRankCancel">キャンセル</button><button class="btn" id="recordBazaarRankSave">保存</button></div>`);
+  $('#recordBazaarRankCancel').onclick=renderRecordFacilities;
+  $('#recordBazaarRankSave').onclick=async()=>{
+    const backup=clone(bazaar);
+    Object.assign(bazaar,recordBookBazaarRankResolve($('#recordBazaarRankName').value),{updatedAt:new Date().toISOString()});
+    $('#recordBazaarRankSave').disabled=true;
+    if(await save())renderRecordFacilities();
+    else{recordBookRestorePart(bazaar,backup);$('#recordBazaarRankSave').disabled=false;toast('保存できませんでした')}
+  };
 }
 function recordBookFacilitySheet(id=null){
   const r=normalizePlayerRecords(state).facilities,entry=r.customEntries.find(e=>e?.id===id);
@@ -491,73 +542,46 @@ function recordBookDiscoveredForTool(id,records){
 }
 function renderRecordTools(){
   const r=normalizePlayerRecords(state).tools;
-  recordBookPage(recordBookShell('道具','現在のグレードと、見つけた強化素材を記録')+
-    `<p class="small muted recordBookIntro">道具は全種類表示します。未発見のグレードや強化素材は、自分で登録するまで表示されません。</p>
-    <div class="recordBookList">${RECORD_MASTER.tools.map(t=>{
+  const upgradeable=RECORD_MASTER.tools.filter(t=>t.upgradable);
+  recordBookPage(recordBookShell('道具','現在のグレードを記録')+
+    `<p class="small muted recordBookIntro">強化できる道具だけを表示します。グレード名を記録すると、対応する既知の素材情報をMasterから参照できます。</p>
+    <div class="recordBookList">${upgradeable.map(t=>{
       const discovered=recordBookDiscoveredForTool(t.id,r);
       return `<div class="recordToolItem"><button type="button" class="recordToolOpen recordBookRow" data-id="${esc(t.id)}">
         <span class="strong">${esc(t.name_ja)}</span><span class="small muted">${esc(recordBookToolLabel(t.id,r))}　›</span>
       </button>
       ${discovered.length?`<details class="recordToolKnownRecipes"><summary>確認済みの強化素材（${discovered.length}件）</summary>
         ${discovered.map(u=>`<div class="recordToolRecipe">
-          <div class="row between"><b class="small">${esc(u.name_ja)}</b><button class="miniLink recordToolForget" type="button" data-id="${esc(u.id)}">記録を削除</button></div>
+          <b class="small">${esc(u.name_ja)}</b>
           <p class="tiny muted">${u.materials.map(m=>esc(m.name_ja)+' ×'+Number(m.quantity)).join(' ／ ')}</p>
         </div>`).join('')}</details>`:''}</div>`;
     }).join('')}</div>`);
   $$('.recordToolOpen').forEach(b=>b.onclick=()=>recordBookToolSheet(b.dataset.id));
-  $$('.recordToolForget').forEach(b=>b.onclick=async()=>{
-    const id=b.dataset.id,known=RECORD_MASTER.upgrades.find(u=>u.id===id);
-    if(!known||!confirm('この強化の発見記録を削除しますか？'))return;
-    const backup=clone(r);
-    r.discoveredUpgradeIds=r.discoveredUpgradeIds.filter(x=>x!==id);
-    if(await save())renderRecordTools();
-    else{recordBookRestorePart(r,backup);renderRecordTools();toast('保存できませんでした')}
-  });
   bindRecordBookBack();
 }
 function recordBookToolSheet(toolId){
   const r=normalizePlayerRecords(state).tools;
-  const tool=RECORD_MASTER.tools.find(t=>t.id===toolId);
+  const tool=RECORD_MASTER.tools.find(t=>t.id===toolId&&t.upgradable);
   if(!tool)return;
   const grade=recordBookToolLabel(toolId,r);
   const value=grade==='未記録'?'':grade;
-  modal(`<h3>${esc(tool.name_ja)}の記録</h3>
-    <p class="small muted">今持っている道具の名前・グレードを入力してください。未確認の強化候補は表示しません。</p>
-    <div class="recordKnownSpecies">
-      <button class="recordToolQuick recordKnownButton" data-value="初期" type="button">初期を所持</button>
-      <button class="recordToolQuick recordKnownButton" data-value="未所持" type="button">未所持</button>
-    </div>
-    ${tool.upgradable?`<div class="field"><label for="recordToolGrade">現在の道具名・グレード</label>
-      <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="取得した道具の名前"></div>
-      <div class="field" style="margin-top:10px"><label for="recordToolDiscovered">素材を確認した強化名（任意・1件ずつ）</label>
-        <input id="recordToolDiscovered" autocomplete="off" placeholder="ゲーム内で確認した強化名"></div>
-      <p class="tiny muted">Masterの名前と一致した段階の素材だけを表示します。一致しない名前は現在のグレードとしても記録できます。</p>`:
-      `<div class="field"><label for="recordToolGrade">所持状況</label>
-        <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="初期 または 未所持"></div>`}
-    <div class="field" style="margin-top:9px"><label for="recordToolNote">メモ（任意）</label><textarea id="recordToolNote" placeholder="次に確認したいことなど">${esc(r.notesById[toolId]||'')}</textarea></div>
+  modal(`<h3>${esc(tool.name_ja)}のグレード</h3>
+    <div class="field"><label for="recordToolGrade">現在のグレード名</label>
+      <input id="recordToolGrade" value="${esc(value)}" autocomplete="off" placeholder="ゲーム内で確認したグレード"></div>
+    <p class="tiny muted">未確認の強化候補は表示しません。入力名がMasterと一致すれば、既知の素材情報と照合します。</p>
     <div class="sheet-actions"><button class="btn secondary" id="recordToolCancel">キャンセル</button>
       <button class="btn" id="recordToolSave">保存</button></div>`);
-  $$('.recordToolQuick').forEach(b=>b.onclick=()=>{$('#recordToolGrade').value=b.dataset.value});
   $('#recordToolCancel').onclick=renderRecordTools;
   $('#recordToolSave').onclick=async()=>{
     const grade=recordBookToolResolve(toolId,$('#recordToolGrade').value);
-    const foundName=$('#recordToolDiscovered')?.value.trim()||'';
-    const found=foundName?recordBookToolResolve(toolId,foundName):null;
-    if(foundName&&!found?.upgradeId){
-      toast('強化名がMasterと一致しません。ゲーム内の名前を確認してください');return;
-    }
     const backup=clone(r);
     if(grade.stage)r.ownedStageById[toolId]=grade.stage;
     else delete r.ownedStageById[toolId];
     if(grade.custom)r.customStageById[toolId]=grade.custom;
     else delete r.customStageById[toolId];
-    const note=$('#recordToolNote').value;
-    if(note)r.notesById[toolId]=note;
-    else delete r.notesById[toolId];
-    for(const id of [grade.upgradeId,found?.upgradeId].filter(Boolean))
-      if(!r.discoveredUpgradeIds.includes(id))r.discoveredUpgradeIds.push(id);
+    if(grade.upgradeId&&!r.discoveredUpgradeIds.includes(grade.upgradeId))r.discoveredUpgradeIds.push(grade.upgradeId);
     $('#recordToolSave').disabled=true;
-    if(await save()){renderRecordTools()}
+    if(await save())renderRecordTools();
     else{recordBookRestorePart(r,backup);$('#recordToolSave').disabled=false;toast('保存できませんでした。もう一度お試しください')}
   };
 }
