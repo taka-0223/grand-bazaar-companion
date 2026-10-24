@@ -546,7 +546,7 @@ function renderRecordFacilities(){
           <span class="tiny muted">${e.note?'メモあり · ':''}編集 ›</span></button>
         <button class="recordFacilityToggle ${e.completed?'done':''}" type="button" data-id="${esc(e.id)}" aria-pressed="${!!e.completed}">${e.completed?'✓ 完了':'未完了'}</button>
       </div>`).join('')}</div></section>`).join('')}</div>`:
-      '<div class="notice">ゲーム内で確認した強化だけを追加できます。未発見の工事や依頼先の一覧は表示しません。</div>'}`);
+      '<div class="notice">ゲーム内で確認した強化だけを追加できます。入力した文字に合う工事名だけ候補表示します。未発見の工事一覧は表示しません。</div>'}`);
   $('#recordBazaarRankEdit').onclick=()=>recordBookBazaarRankSheet();
   $('#recordFacilityAdd').onclick=()=>recordBookFacilitySheet();
   $$('.recordFacilityOpen').forEach(b=>b.onclick=()=>recordBookFacilitySheet(b.dataset.id));
