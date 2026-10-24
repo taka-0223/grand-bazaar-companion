@@ -3,10 +3,20 @@ on:
   pull_request:
     paths:
       - 'index.html'
+      - 'record-book.js'
+      - 'record-master.js'
+      - 'sw.js'
       - 'data/board-master.full.v1.json'
+      - 'data/tool-upgrades.v1.json'
+      - 'data/bazaar-facilities.v1.json'
+      - 'data/bazaar-shops.v1.json'
       - 'lib/runtime-master-projection.mjs'
+      - 'lib/record-master-projection.mjs'
       - 'tools/build-runtime-master.mjs'
+      - 'tools/build-record-master.mjs'
       - 'tests/runtime-master.test.mjs'
+      - 'tests/record-book-phase1.test.mjs'
+      - 'tests/record-book-phase2.test.mjs'
       - 'tests/active-screen-render.test.mjs'
       - 'tests/storage-persistence.test.mjs'
       - 'tests/performance-diagnostics.test.mjs'
@@ -22,10 +32,20 @@ on:
     branches: [main]
     paths:
       - 'index.html'
+      - 'record-book.js'
+      - 'record-master.js'
+      - 'sw.js'
       - 'data/board-master.full.v1.json'
+      - 'data/tool-upgrades.v1.json'
+      - 'data/bazaar-facilities.v1.json'
+      - 'data/bazaar-shops.v1.json'
       - 'lib/runtime-master-projection.mjs'
+      - 'lib/record-master-projection.mjs'
       - 'tools/build-runtime-master.mjs'
+      - 'tools/build-record-master.mjs'
       - 'tests/runtime-master.test.mjs'
+      - 'tests/record-book-phase1.test.mjs'
+      - 'tests/record-book-phase2.test.mjs'
       - 'tests/active-screen-render.test.mjs'
       - 'tests/storage-persistence.test.mjs'
       - 'tests/performance-diagnostics.test.mjs'
@@ -44,5 +64,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Confirm runtime Master matches canonical full Master
         run: node tools/build-runtime-master.mjs --check
+      - name: Confirm record-book catalog matches canonical sources
+        run: node tools/build-record-master.mjs --check
       - name: Test projection, offline mode and UI invariants
-        run: node --test tests/runtime-master.test.mjs tests/active-screen-render.test.mjs tests/storage-persistence.test.mjs tests/performance-diagnostics.test.mjs tests/calendar-crops-requests.test.mjs tests/action-reorder.test.mjs tests/plan-interactions.test.mjs tests/crop-recipe-ux.test.mjs tests/memo-edit-session.test.mjs tests/recipe-memo-links.test.mjs
+        run: node --test tests/runtime-master.test.mjs tests/record-book-phase1.test.mjs tests/record-book-phase2.test.mjs tests/active-screen-render.test.mjs tests/storage-persistence.test.mjs tests/performance-diagnostics.test.mjs tests/calendar-crops-requests.test.mjs tests/action-reorder.test.mjs tests/plan-interactions.test.mjs tests/crop-recipe-ux.test.mjs tests/memo-edit-session.test.mjs tests/recipe-memo-links.test.mjs
