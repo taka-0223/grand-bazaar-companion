@@ -19,7 +19,11 @@
       "gamewith_utensil": "https://gamewith.jp/bokumono-grabaza/517705",
       "gamewith_storage": "https://gamewith.jp/bokumono-grabaza/515381",
       "gamewith_bees": "https://gamewith.jp/bokumono-grabaza/515019",
-      "strats_utensil": "https://stratswiki.com/sos-gb/items/utensils/"
+      "strats_utensil": "https://stratswiki.com/sos-gb/items/utensils/",
+      "appmedia_bag_storage": "https://appmedia.jp/bokumono_grabaza/79219016",
+      "gamecap_upgrades": "https://gamecap.jp/bokumono-grabaza/kakucho.html",
+      "remake_garon_wiki": "https://wikiwiki.jp/grandbazaar/%E3%82%B4%E3%83%A9%E3%83%B3%E5%A4%A7%E5%B7%A5%E5%B1%8B",
+      "support_rank_rewards": "https://kokorogu.com/bokumono-rank"
     },
     "conflicts": [
       {
@@ -114,7 +118,7 @@
       "id": "fac_wilbur_field_2",
       "shop_id": "shop_wilbur",
       "label_ja": "畑を2面に拡張",
-      "name_ja": null,
+      "name_ja": "畑を増やす工事",
       "name_en": "Field Expansion",
       "kind": "farmland",
       "price_g": 20000,
@@ -130,14 +134,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "appmedia_bag_storage",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_wilbur_bag_2",
       "shop_id": "shop_wilbur",
       "label_ja": "カバンをさらに拡張",
-      "name_ja": null,
+      "name_ja": "カバンをさらに広げる",
       "name_en": "Bigger Bag Expansion",
       "kind": "bag_capacity",
       "price_g": 30000,
@@ -156,14 +163,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "appmedia_bag_storage",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_wilbur_storage_2",
       "shop_id": "shop_wilbur",
       "label_ja": "そうこを72枠に拡張",
-      "name_ja": null,
+      "name_ja": "そうこをさらに広げる工事",
       "name_en": "Minor Storage Expansion",
       "kind": "storage_capacity",
       "price_g": 20000,
@@ -182,14 +192,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "appmedia_bag_storage",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_wilbur_pasture_2",
       "shop_id": "shop_wilbur",
       "label_ja": "牧草地を拡張",
-      "name_ja": null,
+      "name_ja": "牧草地を拡げる工事",
       "name_en": "Pasture Expansion",
       "kind": "pasture",
       "price_g": 50000,
@@ -205,7 +218,10 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "gamecap_upgrades",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
@@ -495,7 +511,7 @@
       "id": "fac_wilbur_storage_10",
       "shop_id": "shop_wilbur",
       "label_ja": "そうこを265枠に拡張",
-      "name_ja": null,
+      "name_ja": "そうこを不思議なくらい広げる工事",
       "name_en": "Gigantic Storage Expansion",
       "kind": "storage_capacity",
       "price_g": 1000000,
@@ -514,14 +530,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "support_rank_rewards",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_wilbur_storage_11",
       "shop_id": "shop_wilbur",
       "label_ja": "そうこを288枠に拡張",
-      "name_ja": null,
+      "name_ja": "そうこを限界の一歩手前まで広げる工事",
       "name_en": "Extreme Storage Expansion",
       "kind": "storage_capacity",
       "price_g": 2000000,
@@ -540,14 +559,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "support_rank_rewards",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_wilbur_storage_12",
       "shop_id": "shop_wilbur",
       "label_ja": "そうこを312枠に拡張",
-      "name_ja": null,
+      "name_ja": "そうこを限界まで広げる工事",
       "name_en": "Max Storage Expansion",
       "kind": "storage_capacity",
       "price_g": 3000000,
@@ -566,14 +588,17 @@
           "wilbur"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "support_rank_rewards",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_garon_soil_1",
       "shop_id": "shop_garon",
       "label_ja": "土の品質を向上（1段階目）",
-      "name_ja": null,
+      "name_ja": "畑の土を良くする工事",
       "name_en": "Good-Quality Soil",
       "kind": "soil_quality",
       "price_g": 50000,
@@ -590,14 +615,17 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "remake_garon_wiki",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_garon_soil_2",
       "shop_id": "shop_garon",
       "label_ja": "土の品質を向上（2段階目）",
-      "name_ja": null,
+      "name_ja": "畑の土をさらに良くする工事",
       "name_en": "High-Quality Soil",
       "kind": "soil_quality",
       "price_g": 100000,
@@ -616,7 +644,10 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "probable"
+        "confidence": "probable",
+        "name_verification": "secondary_guide",
+        "name_source": "remake_garon_wiki",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
@@ -704,7 +735,7 @@
       "id": "fac_garon_storage_fresh_1",
       "shop_id": "shop_garon",
       "label_ja": "そうこの鮮度保持を改善（1段階目）",
-      "name_ja": null,
+      "name_ja": "そうこをパワーアップする工事",
       "name_en": "Minor Storage Power-Up",
       "kind": "storage_freshness",
       "price_g": 50000,
@@ -721,7 +752,10 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "remake_garon_wiki",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
@@ -754,7 +788,7 @@
       "id": "fac_garon_bathtub",
       "shop_id": "shop_garon",
       "label_ja": "お風呂の回復効果を強化",
-      "name_ja": null,
+      "name_ja": "お風呂をパワーアップする工事",
       "name_en": "Bathtub Power-Up",
       "kind": "bathtub",
       "price_g": 112600,
@@ -771,7 +805,10 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "remake_garon_wiki",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
@@ -806,7 +843,7 @@
       "id": "fac_garon_storage_fresh_3",
       "shop_id": "shop_garon",
       "label_ja": "そうこの鮮度保持を改善（3段階目）",
-      "name_ja": null,
+      "name_ja": "そうこをすごくパワーアップする工事",
       "name_en": "Good Storage Power-Up",
       "kind": "storage_freshness",
       "price_g": 500000,
@@ -825,14 +862,17 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "remake_garon_wiki",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_garon_soil_3",
       "shop_id": "shop_garon",
       "label_ja": "土の品質を向上（3段階目）",
-      "name_ja": null,
+      "name_ja": "畑の土を最高の状態にする工事",
       "name_en": "Top-Quality Soil",
       "kind": "soil_quality",
       "price_g": 1000000,
@@ -851,14 +891,17 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "support_rank_rewards",
+        "name_verified_on": "2026-10-25"
       }
     },
     {
       "id": "fac_garon_storage_fresh_max",
       "shop_id": "shop_garon",
       "label_ja": "そうこの鮮度を最大強化",
-      "name_ja": null,
+      "name_ja": "そうこを限界までパワーアップする工事",
       "name_en": "Max Storage Power-Up",
       "kind": "storage_freshness",
       "price_g": 5000000,
@@ -878,7 +921,10 @@
           "farmland"
         ],
         "verified_on": "2026-10-09",
-        "confidence": "confirmed"
+        "confidence": "confirmed",
+        "name_verification": "secondary_guide",
+        "name_source": "support_rank_rewards",
+        "name_verified_on": "2026-10-25"
       }
     },
     {

@@ -29,8 +29,14 @@ test('cooking effect labels and recipe effect IDs are identical',()=>{
   assert.deepStrictEqual(runtime.cooking_recipes,full.cooking_recipes.map(x=>({id:x.id,effect_id:x.effect_id})));
   assert.equal(new Set(runtime.cooking_recipes.map(x=>x.id)).size,266);
 });
+test('animal species projection contains only canonical IDs/names, without unlock spoilers',()=>{
+  assert.deepStrictEqual(runtime.animals,full.animals.map(x=>({id:x.id,name_ja:x.name_ja})));
+  for(const a of runtime.animals){
+    assert.deepStrictEqual(Object.keys(a),['id','name_ja']);
+  }
+});
 test('dormant domains stay available in the canonical Master but not startup',()=>{
-  for(const domain of ['windmill_recipes','windmill_items','resource_items','animals','flowers','cooking_groups']){
+  for(const domain of ['windmill_recipes','windmill_items','resource_items','flowers','cooking_groups']){
     assert.ok(full[domain]?.length,domain+' missing in canonical Master');
     assert.equal(Object.hasOwn(runtime,domain),false,domain+' should not load during startup');
   }
@@ -46,7 +52,7 @@ test('all explicit app Master references resolve, and inline JS is syntactically
 });
 test('Player State, offline cache and request spoiler guards remain in place',()=>{
   const worker=readFileSync('sw.js','utf8');
-  assert.ok(worker.includes("const CORE=['./','./index.html'"));
+  assert.ok(worker.includes("const CORE=['./','./index.html','./record-master.js','./record-book.js'"));
   assert.ok(!worker.includes('board-master.full.v1.json'));
   assert.ok(html.includes("const STORAGE='gb-board-data'"));
   assert.ok(html.includes("function requestMasterMatches"));

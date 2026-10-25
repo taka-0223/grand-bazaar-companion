@@ -106,5 +106,5 @@ test('instrumentation is connected to app events without changing storage schema
   assert.ok(html.includes('id="copyPerfDiagnostics"'));
   assert.ok(html.includes("el.textContent=PERF_DIAG.report(APP_VERSION)"));
   assert.ok(html.includes("const STORAGE='gb-board-data'"));
-  assert.ok(html.includes("const APP_VERSION='0.11.21'"));
+  assert.ok(html.includes("const APP_VERSION='0.11.30'"));
 });
