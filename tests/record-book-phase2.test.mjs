@@ -380,7 +380,7 @@ test('facility shops are Master-derived, not manually entered player metadata',(
   assert.ok(!sourcePart.includes('id="recordFacilityShop"'));
   assert.ok(!sourcePart.includes('登録済みの依頼先'));
   assert.ok(sourcePart.includes("recordBookFacilityMatch(title,rememberedShop)||recordBookFacilityMatch(title)"));
-  assert.ok(source.includes('その他の工事'));
+  assert.ok(source.includes('その他の設備'));
   assert.ok(!source.includes('依頼先未記録'));
 });
 test('tool input gives full Master suggestions only after a typed grade clue',()=>{
@@ -492,4 +492,94 @@ test('facility form has no contractor input, filters Master choices, and saves i
   assert.equal(record.shopId,'shop_garon');
   assert.equal(record.masterId,'fac_garon_storage_fresh_1');
   assert.equal(record.shopName,'ゴラン');
+});
+
+
+test('a complete exact crop name remains in the suggestions, including IME hiragana',()=>{
+  const f=fixture();
+  assert.equal(f.eval('recordBookMatchName("トマト","トマト")'),true);
+  assert.equal(f.eval('recordBookMatchName("トマト","とまと")'),true);
+  assert.equal(f.eval('recordBookMatchName("ニワトリ","にわとり")'),true);
+  assert.equal(f.eval('recordBookSearchKey("トマト")'),f.eval('recordBookSearchKey("とまと")'));
+  f.sandbox.state.playerRecords={fields:{crops:[]}};
+  f.sandbox.baseById=new Map([['tomato',{id:'tomato',kind:'crop',name_ja:'トマト'}]]);
+  f.sandbox.cultivationSource=x=>x;
+  f.sandbox.name=id=>id==='tomato'?'トマト':id;
+  assert.deepEqual(plain(f.eval('recordBookKnownCropNames("トマト")')),['トマト']);
+  assert.deepEqual(plain(f.eval('recordBookKnownCropNames("とまと")')),['トマト']);
+});
+
+test('resident and animal prediction lists remain hidden until a name is typed',()=>{
+  const f=fixture();
+  f.sandbox.state.residentProfiles={};
+  f.sandbox.state.requests=[];
+  f.sandbox.knownResidentNames=()=>[];
+  f.sandbox.CAL_BIRTHDAYS={春:{5:['カゲツ']},夏:{3:['ウィルバー']},冬:{4:['ミーナ']}};
+  f.sandbox.residentNameUniverse=()=>['カゲツ','ウィルバー','ミーナ'];
+  f.sandbox.MASTER.animals=[
+    {id:'chicken',name_ja:'ニワトリ'},
+    {id:'buffalo',name_ja:'バッファロー'},
+    {id:'cow',name_ja:'ウシ'}
+  ];
+  f.eval('normalizePlayerRecords(state)');
+  assert.deepEqual(plain(f.eval('recordBookKnownResidentNames("")')),[]);
+  assert.deepEqual(plain(f.eval('recordBookKnownResidentNames("カ")')),[]);
+  assert.ok(plain(f.eval('recordBookKnownResidentNames("かげ")')).includes('カゲツ'));
+  assert.ok(plain(f.eval('recordBookKnownResidentNames("カゲツ")')).includes('カゲツ'));
+  assert.ok(plain(f.eval('recordBookKnownResidentNames("みー")')).includes('ミーナ'));
+  assert.deepEqual(plain(f.eval('recordBookKnownAnimalNames("")')),[]);
+  assert.ok(plain(f.eval('recordBookKnownAnimalNames("にわ")')).includes('ニワトリ'));
+  assert.ok(plain(f.eval('recordBookKnownAnimalNames("ニワトリ")')).includes('ニワトリ'));
+  assert.ok(plain(f.eval('recordBookKnownAnimalNames("ばっ")')).includes('バッファロー'));
+  const r=source.slice(source.indexOf('function recordBookAddResident('));
+  assert.ok(r.includes("recordBookBindKnownSuggestions('recordResidentName',recordBookKnownResidentNames)"));
+  assert.ok(r.includes("recordBookBindKnownSuggestions('recordAnimalSpecies',recordBookKnownAnimalNames)"));
+});
+
+test('IME composition updates candidate chips before conversion is finalized without changing the typed text',()=>{
+  const f=fixture(),listeners={},calls=[];
+  const input={value:'',addEventListener(t,fn){listeners[t]=fn},
+    dispatchEvent(event){calls.push(event.type);listeners[event.type]?.(event)}};
+  const box={hidden:true,items:[],set innerHTML(_v){this.items=[]},
+    append(button){this.items.push(button)}};
+  f.sandbox.$=q=>({'#recordResidentName':input,'#recordResidentNameSuggestions':box})[q];
+  f.sandbox.document={createElement:()=>({addEventListener(t,fn){this[t]=fn}})};
+  f.sandbox.Event=class {constructor(type){this.type=type}};
+  f.sandbox.namedResidents=()=>['カゲツ','ミーナ'];
+  f.eval('recordBookBindKnownSuggestions("recordResidentName",namedResidents)');
+  listeners.compositionstart({type:'compositionstart'});
+  input.value='かげ';
+  listeners.input({type:'input',isComposing:true});
+  assert.equal(box.hidden,false);
+  assert.deepEqual(box.items.map(b=>b.textContent),['カゲツ']);
+  assert.equal(input.value,'かげ','no IME input was rewritten');
+  input.value='かげつ';
+  listeners.compositionupdate({type:'compositionupdate',data:'かげつ'});
+  assert.deepEqual(box.items.map(b=>b.textContent),['カゲツ']);
+  listeners.compositionend({type:'compositionend',data:'かげつ'});
+  input.value='カゲツ';
+  listeners.input({type:'input'});
+  assert.equal(box.hidden,false,'an exact match should remain selectable');
+  assert.deepEqual(box.items.map(b=>b.textContent),['カゲツ']);
+  box.items[0].click();
+  assert.equal(input.value,'カゲツ');
+  assert.equal(box.hidden,true,'selection must not instantly reopen the list');
+  assert.deepEqual(calls,['change']);
+});
+
+test('facility improvements are grouped by equipment, not by shop or contractor',()=>{
+  const f=fixture();
+  const rows=[
+    {id:'g1',title:'畑の土を良くする工事',shopName:'ゴラン',masterId:'fac_garon_soil_1'},
+    {id:'g2',title:'畑の土をさらに良くする工事',shopName:'ゴラン',masterId:'fac_garon_soil_2'},
+    {id:'s1',title:'そうこを広げる工事',shopName:'ウィルバー',masterId:'fac_wilbur_storage_1'},
+    {id:'s2',title:'そうこをパワーアップする工事',shopName:'ゴラン',masterId:'fac_garon_storage_fresh_1'},
+    {id:'b1',title:'カバンを広げる',shopName:'ウィルバー',masterId:'fac_wilbur_bag_1'},
+    {id:'x1',title:'そうこの棚を整理した',shopName:'旧メモ'}
+  ];
+  const grouped=plain(f.eval('recordBookFacilityGroups('+JSON.stringify(rows)+')'));
+  assert.deepEqual(grouped.map(g=>[g.name,g.entries.length]),[['畑の土',2],['そうこ',3],['カバン',1]]);
+  assert.ok(grouped.every(g=>!g.name.includes('ゴラン')&&!g.name.includes('ウィルバー')));
+  assert.deepEqual(grouped.flatMap(g=>g.entries.map(x=>x.id)).sort(),rows.map(x=>x.id).sort());
+  assert.equal(f.eval('recordBookFacilityCategory({title:"わからない設備を改良"})'),'その他の設備');
 });

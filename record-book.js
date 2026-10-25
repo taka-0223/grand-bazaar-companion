@@ -138,9 +138,10 @@ function renderRecordResidents(){
   bindRecordBookBack();
 }
 function recordBookAddResident(){
-  modal(`<h3>住人を登録</h3><p class="small muted">ゲーム内で出会った住人の名前を入力してください。未発見の住人は候補に表示しません。</p>
-    <div class="field"><label for="recordResidentName">名前</label><input id="recordResidentName" autocomplete="off" placeholder="住人の名前"></div>
+  modal(`<h3>住人を登録</h3><p class="small muted">ゲーム内で出会った住人の名前を入力してください。日本語の変換中も、入力した文字に合う候補を表示します。</p>
+    <div class="field"><label for="recordResidentName">名前</label><input id="recordResidentName" autocomplete="off" placeholder="住人の名前"><div id="recordResidentNameSuggestions" class="recordAutocomplete" aria-label="住人名の候補" hidden></div></div>
     <div class="sheet-actions"><button class="btn secondary" id="recordResidentCancel" type="button">キャンセル</button><button class="btn" id="recordResidentSave" type="button">登録</button></div>`);
+  recordBookBindKnownSuggestions('recordResidentName',recordBookKnownResidentNames);
   $('#recordResidentCancel').onclick=renderRecordResidents;
   $('#recordResidentSave').onclick=async()=>{
     const name=$('#recordResidentName').value.trim();
@@ -239,10 +240,17 @@ function recordBookUniqueKnownLabels(items){
   return [...names.values()];
 }
 function recordBookTypedQuery(text){
-  return String(text||'').normalize('NFKC').trim().replace(/倉庫/g,'そうこ').replace(/じょうろ/g,'じょうろ');
+  return String(text||'').normalize('NFKC').trim().replace(/倉庫/g,'そうこ');
+}
+// Japanese IMEs often expose hiragana while the user is still composing.
+// Compare kana names as katakana without changing the user's actual input.
+function recordBookSearchKey(text){
+  const kana=recordBookTypedQuery(text).replace(/[ぁ-ゖ]/g,ch=>String.fromCharCode(ch.charCodeAt(0)+0x60));
+  return norm(kana);
 }
 function recordBookMatchName(name,typed){
-  const a=norm(String(name||'').replace(/倉庫/g,'そうこ')),b=norm(recordBookTypedQuery(typed));
+  const a=recordBookSearchKey(String(name||'').replace(/倉庫/g,'そうこ'));
+  const b=recordBookSearchKey(typed);
   return !!b&&a.includes(b);
 }
 // A typed query is the player's intent. No Master rows are listed on focus/empty input.
@@ -304,33 +312,66 @@ function recordBookKnownToolGrades(toolId,query=''){
   }
   return recordBookUniqueKnownLabels(names);
 }
+// Open a small autocomplete only AFTER a player types a name.
+// Birthday/request Master is a lookup index; it is never rendered as a full residents list.
+function recordBookKnownResidentNames(query=''){
+  const existing=knownResidentNames();
+  if(recordBookSearchKey(query).length<2)return recordBookUniqueKnownLabels(existing);
+  const calendar=typeof CAL_BIRTHDAYS==='undefined'?[]:
+    Object.values(CAL_BIRTHDAYS).flatMap(days=>Object.values(days).flat());
+  const universe=typeof residentNameUniverse==='function'?residentNameUniverse():calendar;
+  return recordBookUniqueKnownLabels([...existing,...universe]);
+}
+function recordBookKnownAnimalNames(query=''){
+  const r=normalizePlayerRecords(state).barn;
+  const names=r.animals.map(a=>a?.speciesName);
+  if(recordBookSearchKey(query).length>=2){
+    for(const animal of MASTER.animals||[]){
+      if(animal?.name_ja)names.push(animal.name_ja);
+    }
+  }
+  return recordBookUniqueKnownLabels(names);
+}
 function recordBookBindKnownSuggestions(inputId,candidates,{minChars=2,onChoose=null}={}){
   const input=$('#'+inputId),box=$('#'+inputId+'Suggestions');
   if(!input||!box)return {refresh(){}};
   let composing=false;
-  const refresh=()=>{
-    const query=recordBookTypedQuery(input.value||'');
+  const refresh=event=>{
+    // Composition events are read-only: never blur, rewrite or commit IME text.
+    // compositionupdate sometimes contains newer kana than input.value.
+    let typed=input.value||'';
+    if(event?.type==='compositionupdate'&&event.data)typed=event.data;
+    const query=recordBookTypedQuery(typed);
     box.innerHTML='';
-    if(composing||norm(query).length<minChars){box.hidden=true;return}
+    if(recordBookSearchKey(query).length<minChars){box.hidden=true;return}
     const options=recordBookUniqueKnownLabels(candidates(query))
-      .filter(label=>recordBookMatchName(label,query)&&norm(label)!==norm(query)).slice(0,6);
+      .filter(label=>recordBookMatchName(label,query)).slice(0,6);
+    // Do not suppress an exact match: typing トマト must still show トマト.
     if(!options.length){box.hidden=true;return}
     for(const label of options){
       const button=document.createElement('button');
       button.type='button';button.className='recordSuggestion';
       button.textContent=label;
+      // Avoid moving keyboard focus away while Japanese IME is converting.
+      button.addEventListener('pointerdown',ev=>ev.preventDefault?.());
       button.addEventListener('click',()=>{
+        // On Android a suggestion may be tapped before IME composition finishes.
+        // Commit it by releasing keyboard focus before applying the chosen name.
+        if(composing)input.blur?.();
+        composing=false;
         input.value=label;
         box.hidden=true;
         onChoose?.(label);
-        input.dispatchEvent(new Event('input',{bubbles:true}));
+        // A change event (not input) avoids immediately reopening the exact-match list.
+        input.dispatchEvent(new Event('change',{bubbles:true}));
       });
       box.append(button);
     }
     box.hidden=false;
   };
-  input.addEventListener('compositionstart',()=>{composing=true;box.hidden=true});
-  input.addEventListener('compositionend',()=>{composing=false;refresh()});
+  input.addEventListener('compositionstart',()=>{composing=true});
+  input.addEventListener('compositionupdate',refresh);
+  input.addEventListener('compositionend',event=>{composing=false;refresh(event)});
   input.addEventListener('input',refresh);
   input.addEventListener('focus',refresh);
   return {refresh};
@@ -451,13 +492,14 @@ function recordBookAnimalSheet(id=null,speciesPreset=null){
   const statOptions=value=>`<option value="">未記録</option>`+Array.from({length:11},(_,i)=>`<option value="${i}" ${value===i?'selected':''}>${i} / 10</option>`).join('');
   modal(`<h3>${animal?'どうぶつを編集':lockedName?`${esc(lockedName)}を追加`:'新しい種類を登録'}</h3>
     ${lockedName?`<p class="small muted">種類：${esc(lockedName)}</p>`:
-      '<div class="field"><label for="recordAnimalSpecies">種類（必須）</label><input id="recordAnimalSpecies" autocomplete="off" placeholder="ゲームで迎えた種類"></div>'}
+      '<div class="field"><label for="recordAnimalSpecies">種類（必須）</label><input id="recordAnimalSpecies" autocomplete="off" placeholder="ゲームで迎えた種類"><div id="recordAnimalSpeciesSuggestions" class="recordAutocomplete" aria-label="どうぶつの種類の候補" hidden></div></div>'}
     <div class="field" style="margin-top:8px"><label for="recordAnimalNickname">名前</label><input id="recordAnimalNickname" value="${esc(animal?.nickname||'')}" placeholder="ゲーム内の名前"></div>
     <div class="grid2 recordAnimalStatsEdit" style="margin-top:8px">
       <div class="field"><label for="recordAnimalFriendship">なかよし度</label><select id="recordAnimalFriendship">${statOptions(animal?.friendship)}</select></div>
       <div class="field"><label for="recordAnimalRelaxation">のびのび度</label><select id="recordAnimalRelaxation">${statOptions(animal?.relaxation)}</select></div>
     </div>
     <div class="sheet-actions"><button class="btn secondary" id="recordAnimalCancel">キャンセル</button>${animal?'<button class="btn ghost" id="recordAnimalDelete">削除</button>':''}<button class="btn" id="recordAnimalSave">保存</button></div>`);
+  if(!lockedName)recordBookBindKnownSuggestions('recordAnimalSpecies',recordBookKnownAnimalNames);
   $('#recordAnimalCancel').onclick=renderRecordBarn;
   $('#recordAnimalSave').onclick=async()=>{
     const species=recordBookSpecies(lockedName||$('#recordAnimalSpecies').value);
@@ -497,20 +539,44 @@ function recordBookFacilityMatch(name,legacyShopName=''){
   if(!shop)return null;
   return matches.find(f=>f.shop_id===shop.id)||null;
 }
+const RECORD_FACILITY_BY_KIND={
+  bag_capacity:'カバン',storage_capacity:'そうこ',storage_freshness:'そうこ',
+  farmland:'畑',soil_quality:'畑の土',pasture:'牧草地',bed:'ベッド',
+  cellar:'地下室',cooking_utensil:'キッチン',bathtub:'お風呂',
+  barn:'動物小屋',beekeeping:'養蜂畑',mushroom_cultivation:'きのこの原木'
+};
+function recordBookFacilityCategory(entry){
+  const row=RECORD_MASTER.facilities.find(f=>f.id===entry?.masterId)
+    ||recordBookFacilityMatch(entry?.title||'',entry?.shopName||'')
+    ||recordBookFacilityMatch(entry?.title||'');
+  if(row&&RECORD_FACILITY_BY_KIND[row.kind])return RECORD_FACILITY_BY_KIND[row.kind];
+  // Unmatched, player-authored entries remain grouped by the facility being upgraded.
+  const title=String(entry?.title||'');
+  if(/畑の土|土の品質|土を/.test(title))return '畑の土';
+  if(/そうこ|倉庫|鮮度/.test(title))return 'そうこ';
+  if(/カバン|かばん|バッグ/.test(title))return 'カバン';
+  if(/牧草地/.test(title))return '牧草地';
+  if(/畑|農地/.test(title))return '畑';
+  if(/キッチン|フライパン|オーブン|鍋/.test(title))return 'キッチン';
+  if(/ベッド/.test(title))return 'ベッド';
+  if(/地下室/.test(title))return '地下室';
+  if(/動物小屋|小屋/.test(title))return '動物小屋';
+  if(/お風呂|風呂/.test(title))return 'お風呂';
+  if(/養蜂|はちみつ/.test(title))return '養蜂畑';
+  if(/きのこ|原木/.test(title))return 'きのこの原木';
+  return 'その他の設備';
+}
 function recordBookFacilityGroups(entries){
   const groups=new Map();
   for(const entry of entries){
     if(!entry||typeof entry!=='object')continue;
-    const facility=RECORD_MASTER.facilities.find(f=>f.id===entry.masterId);
-    const shopId=entry.shopId||facility?.shop_id;
-    const shop=RECORD_MASTER.shops.find(s=>s.id===shopId||norm(s.owner_ja)===norm(entry.shopName||''));
-    const label=shop?.name_ja||String(entry.shopName||'').trim()||'その他の工事';
-    const key=norm(label);
+    const label=recordBookFacilityCategory(entry),key=norm(label);
     if(!groups.has(key))groups.set(key,{name:label,entries:[]});
     groups.get(key).entries.push(entry);
   }
   return [...groups.values()];
 }
+
 function recordBookRestorePart(target,backup){
   for(const key of Object.keys(target))delete target[key];
   Object.assign(target,backup);
